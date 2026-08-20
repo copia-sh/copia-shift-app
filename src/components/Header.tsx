@@ -3,7 +3,7 @@ import { ja } from "date-fns/locale";
 import { signOut } from "../firebase/auth";
 import type { Member } from "../types";
 
-export type ViewMode = "month" | "week";
+export type ViewMode = "matrix" | "month" | "week";
 
 interface HeaderProps {
   currentMember: Member;
@@ -25,9 +25,9 @@ export function Header({
   onToday,
 }: HeaderProps) {
   const label =
-    viewMode === "month"
-      ? format(anchorDate, "yyyy年M月", { locale: ja })
-      : `${format(anchorDate, "yyyy年M月d日", { locale: ja })}の週`;
+    viewMode === "week"
+      ? `${format(anchorDate, "yyyy年M月d日", { locale: ja })}の週`
+      : format(anchorDate, "yyyy年M月", { locale: ja });
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -46,7 +46,7 @@ export function Header({
             onClick={onToday}
             className="rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
           >
-            今日
+            今月
           </button>
           <button
             type="button"
@@ -61,6 +61,15 @@ export function Header({
 
       <div className="flex items-center gap-3">
         <div className="flex overflow-hidden rounded-md border border-gray-300">
+          <button
+            type="button"
+            onClick={() => onChangeViewMode("matrix")}
+            className={`px-3 py-1.5 text-sm ${
+              viewMode === "matrix" ? "bg-blue-600 text-white" : "text-gray-600"
+            }`}
+          >
+            一覧
+          </button>
           <button
             type="button"
             onClick={() => onChangeViewMode("month")}

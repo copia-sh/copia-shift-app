@@ -3,6 +3,12 @@ import { LoginGate } from "./components/LoginGate";
 import { Header, type ViewMode } from "./components/Header";
 import { MonthView } from "./components/MonthView";
 import { WeekView } from "./components/WeekView";
+import {
+  MonthMatrixView,
+  MatrixLegend,
+  CellActionSheet,
+  type CellState,
+} from "./components/MonthMatrixView";
 import { SelectionToolbar } from "./components/SelectionToolbar";
 import { ShiftDetailPopover } from "./components/ShiftDetailPopover";
 import { CreateShiftModal } from "./components/CreateShiftModal";
@@ -26,7 +32,7 @@ import {
   revertShiftEntryToDesired,
   updateShiftEntryDetails,
 } from "./firebase/shiftEntries";
-import type { Member, ShiftType } from "./types";
+import type { Member, ShiftEntry, ShiftType } from "./types";
 
 function App() {
   const user = useAuthUser();
@@ -59,16 +65,19 @@ function ShiftCalendar({
   currentMember: Member;
   members: Member[];
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [viewMode, setViewMode] = useState<ViewMode>("matrix");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [createAtDateKey, setCreateAtDateKey] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<
+    { dateKey: string; member: Member; entry?: ShiftEntry } | null
+  >(null);
   const [busy, setBusy] = useState(false);
 
   const { startKey, endKey } = useMemo(() => {
     const days =
-      viewMode === "month" ? getMonthGridDays(anchorDate) : getWeekDays(anchorDate);
+      viewMode === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
     return {
       startKey: toDateKey(days[0]),
       endKey: toDateKey(days[days.length - 1]),
@@ -83,10 +92,10 @@ function ShiftCalendar({
     : null;
 
   function handlePrev() {
-    setAnchorDate((d) => (viewMode === "month" ? previousMonth(d) : previousWeek(d)));
+    setAnchorDate((d) => (viewMode === "week" ? previousWeek(d) : previousMonth(d)));
   }
   function handleNext() {
-    setAnchorDate((d) => (viewMode === "month" ? nextMonth(d) : nextWeek(d)));
+    setAnchorDate((d) => (viewMode === "week" ? nextWeek(d) : nextMonth(d)));
   }
   function handleToday() {
     setAnchorDate(new Date());
@@ -216,6 +225,42 @@ function ShiftCalendar({
     }
   }
 
+  async function handleCycleOwn(
+    dateKey: string,
+    _from: CellState,
+    to: CellState,
+    entry: ShiftEntry | undefined,
+  ) {
+    setBusy(true);
+    try {
+      if (to === "want") {
+        await registerDesiredShiftsBulk({
+          memberId: currentMember.id,
+          dates: [dateKey],
+          type: "出勤",
+          startTime: null,
+          endTime: null,
+          uid,
+        });
+      } else if (to === "no") {
+        if (entry) await updateShiftEntryDetails(entry.id, { type: "欠勤" });
+        else
+          await registerDesiredShiftsBulk({
+            memberId: currentMember.id,
+            dates: [dateKey],
+            type: "欠勤",
+            startTime: null,
+            endTime: null,
+            uid,
+          });
+      } else {
+        await deleteDesiredShiftsBulk(currentMember.id, [dateKey]);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
@@ -228,9 +273,22 @@ function ShiftCalendar({
         onToday={handleToday}
       />
 
-      <main className="mx-auto max-w-5xl p-4">
+      <main className="mx-auto max-w-7xl p-4">
         {entries === undefined ? (
           <p className="text-center text-sm text-gray-400">読み込み中...</p>
+        ) : viewMode === "matrix" ? (
+          <>
+            <MatrixLegend />
+            <MonthMatrixView
+              anchorDate={anchorDate}
+              members={members}
+              entries={entries}
+              currentMemberId={currentMember.id}
+              busy={busy}
+              onCycleOwn={handleCycleOwn}
+              onOpenCell={(dateKey, member, entry) => setSheet({ dateKey, member, entry })}
+            />
+          </>
         ) : viewMode === "month" ? (
           <MonthView
             anchorDate={anchorDate}
@@ -282,6 +340,35 @@ function ShiftCalendar({
           busy={busy}
           onClose={() => setCreateAtDateKey(null)}
           onCreate={handleCreateTimedShift}
+        />
+      )}
+
+      {sheet && (
+        <CellActionSheet
+          dateKey={sheet.dateKey}
+          member={sheet.member}
+          entry={sheet.entry}
+          busy={busy}
+          onClose={() => setSheet(null)}
+          onConfirm={async () => {
+            if (sheet.entry) await confirmShiftEntry(sheet.entry.id, uid);
+            setSheet(null);
+          }}
+          onRevert={async () => {
+            if (sheet.entry) await revertShiftEntryToDesired(sheet.entry.id);
+            setSheet(null);
+          }}
+          onRegisterDesired={async (type) => {
+            await registerDesiredShiftsBulk({
+              memberId: sheet.member.id,
+              dates: [sheet.dateKey],
+              type,
+              startTime: null,
+              endTime: null,
+              uid,
+            });
+            setSheet(null);
+          }}
         />
       )}
     </div>
