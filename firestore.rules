@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // members/{email} が存在する = Copiaチームの登録メンバー
+    function isTeamMember() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.token.email));
+    }
+
+    match /members/{memberId} {
+      allow read: if isTeamMember();
+      // メンバーの追加・変更はFirebaseコンソールから手動で行う
+      allow write: if false;
+    }
+
+    match /shiftEntries/{entryId} {
+      allow read: if isTeamMember();
+
+      // 出勤希望日の新規登録: 本人のみ、必ず status = "desired" で作成
+      allow create: if isTeamMember()
+        && request.resource.data.memberId == request.auth.token.email
+        && request.resource.data.status == 'desired';
+
+      // 出勤希望日の削除: 本人の未確定(desired)の分のみ削除可能
+      allow delete: if isTeamMember()
+        && resource.data.memberId == request.auth.token.email
+        && resource.data.status == 'desired';
+
+      // 更新(確定/確定取り消し/種別・時間の編集): チームメンバーなら誰でも、誰の分でも可能
+      allow update: if isTeamMember()
+        && request.resource.data.memberId == resource.data.memberId;
+    }
+  }
+}
