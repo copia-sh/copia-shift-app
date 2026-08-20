@@ -8,11 +8,12 @@ import type { Member } from "../types";
 interface LoginGateProps {
   user: User | null | undefined;
   members: Member[] | undefined;
+  onMemberJoined: () => void;
   children: (currentUser: User, currentMember: Member) => React.ReactNode;
 }
 
-export function LoginGate({ user, members, children }: LoginGateProps) {
-  if (user === undefined || members === undefined) {
+export function LoginGate({ user, members, onMemberJoined, children }: LoginGateProps) {
+  if (user === undefined) {
     return <FullScreenMessage title="読み込み中..." />;
   }
 
@@ -20,12 +21,16 @@ export function LoginGate({ user, members, children }: LoginGateProps) {
     return <AuthForm />;
   }
 
+  if (members === undefined) {
+    return <FullScreenMessage title="読み込み中..." />;
+  }
+
   const currentMember = members.find(
     (m) => m.email.toLowerCase() === user.email?.toLowerCase(),
   );
 
   if (!currentMember) {
-    return <JoinTeamForm user={user} />;
+    return <JoinTeamForm user={user} onMemberJoined={onMemberJoined} />;
   }
 
   return <>{children(user, currentMember)}</>;
@@ -146,7 +151,13 @@ function AuthForm() {
   );
 }
 
-function JoinTeamForm({ user }: { user: User }) {
+function JoinTeamForm({
+  user,
+  onMemberJoined,
+}: {
+  user: User;
+  onMemberJoined: () => void;
+}) {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -157,6 +168,7 @@ function JoinTeamForm({ user }: { user: User }) {
     setBusy(true);
     try {
       await createMemberProfile({ email: user.email!, inviteCode });
+      onMemberJoined();
     } catch {
       setError("招待コードが正しくありません。");
     } finally {

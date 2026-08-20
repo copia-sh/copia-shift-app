@@ -1,5 +1,5 @@
 import { collection, doc, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
-import { db } from "./config";
+import { auth, db } from "./config";
 import type { Member } from "../types";
 
 const membersCollection = collection(db, "members");
@@ -58,10 +58,13 @@ export async function createMemberProfile(params: {
 }) {
   const email = params.email.toLowerCase();
   const ref = doc(membersCollection, email);
-  await setDoc(ref, {
+  const data = {
     name: nameFromEmail(email),
     email,
     color: colorForEmail(email),
     inviteCode: params.inviteCode.trim(),
-  });
+  };
+
+  await auth.currentUser?.getIdToken(true);
+  await setDoc(ref, data);
 }

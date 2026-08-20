@@ -30,10 +30,15 @@ import type { Member, ShiftType } from "./types";
 
 function App() {
   const user = useAuthUser();
-  const members = useMembers();
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
+  const members = useMembers(!!user, membersRefreshKey);
 
   return (
-    <LoginGate user={user} members={members}>
+    <LoginGate
+      user={user}
+      members={members}
+      onMemberJoined={() => setMembersRefreshKey((k) => k + 1)}
+    >
       {(currentUser, currentMember) => (
         <ShiftCalendar
           uid={currentUser.uid}
