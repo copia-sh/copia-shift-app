@@ -43,10 +43,9 @@ service cloud.firestore {
         && request.resource.data.memberId == request.auth.token.email
         && request.resource.data.status == 'desired';
 
-      // 出勤希望日の削除: 本人の未確定(desired)の分のみ削除可能
-      allow delete: if isTeamMember()
-        && resource.data.memberId == request.auth.token.email
-        && resource.data.status == 'desired';
+      // 出勤希望日の削除(却下): 未確定(desired)のものはチームメンバーなら誰でも削除可能。
+      // 確定(confirmed)済みのものは削除できない(取り消しは update の確定取消のみ)
+      allow delete: if isTeamMember() && resource.data.status == 'desired';
 
       // 更新(確定/確定取り消し/種別・時間の編集): チームメンバーなら誰でも、誰の分でも可能
       allow update: if isTeamMember()

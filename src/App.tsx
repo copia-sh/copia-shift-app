@@ -7,9 +7,13 @@ import {
   MonthMatrixView,
   MatrixLegend,
   CellActionSheet,
+  cellStateOf,
+  selectionKey,
+  parseSelectionKey,
   type CellState,
 } from "./components/MonthMatrixView";
 import { SelectionToolbar } from "./components/SelectionToolbar";
+import { MatrixSelectionToolbar } from "./components/MatrixSelectionToolbar";
 import { ShiftDetailPopover } from "./components/ShiftDetailPopover";
 import { CreateShiftModal } from "./components/CreateShiftModal";
 import { useAuthUser } from "./hooks/useAuth";
@@ -26,7 +30,9 @@ import {
 } from "./utils/date";
 import {
   confirmShiftEntry,
+  confirmShiftEntriesBulk,
   deleteDesiredShiftsBulk,
+  deleteShiftEntriesBulk,
   deleteShiftEntry,
   registerDesiredShiftsBulk,
   revertShiftEntryToDesired,
@@ -73,6 +79,8 @@ function ShiftCalendar({
   const [sheet, setSheet] = useState<
     { dateKey: string; member: Member; entry?: ShiftEntry } | null
   >(null);
+  const [matrixSelectionMode, setMatrixSelectionMode] = useState(false);
+  const [matrixSelectedKeys, setMatrixSelectedKeys] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
   const { startKey, endKey } = useMemo(() => {
@@ -99,6 +107,92 @@ function ShiftCalendar({
   }
   function handleToday() {
     setAnchorDate(new Date());
+  }
+
+  function toggleMatrixSelect(memberId: string, dateKey: string) {
+    const key = selectionKey(memberId, dateKey);
+    setMatrixSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const matrixSelectionSummary = useMemo(() => {
+    const ownNoneDates: string[] = [];
+    const wantEntryIds: string[] = [];
+    const entryByKey = new Map(
+      (entries ?? []).map((e) => [selectionKey(e.memberId, e.date), e]),
+    );
+    for (const key of matrixSelectedKeys) {
+      const entry = entryByKey.get(key);
+      const state = cellStateOf(entry);
+      if (state === "want" && entry) {
+        wantEntryIds.push(entry.id);
+      } else if (state === "none") {
+        const { memberId, dateKey } = parseSelectionKey(key);
+        if (memberId === currentMember.id) ownNoneDates.push(dateKey);
+      }
+    }
+    return { ownNoneDates, wantEntryIds };
+  }, [matrixSelectedKeys, entries, currentMember.id]);
+
+  async function handleRegisterOwnSelected() {
+    const dates = matrixSelectionSummary.ownNoneDates;
+    if (dates.length === 0) return;
+    setBusy(true);
+    try {
+      await registerDesiredShiftsBulk({
+        memberId: currentMember.id,
+        dates,
+        type: "出勤",
+        startTime: null,
+        endTime: null,
+        uid,
+      });
+      setMatrixSelectedKeys((prev) => {
+        const next = new Set(prev);
+        for (const d of dates) next.delete(selectionKey(currentMember.id, d));
+        return next;
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirmSelectedMatrix() {
+    const ids = matrixSelectionSummary.wantEntryIds;
+    if (ids.length === 0) return;
+    setBusy(true);
+    try {
+      await confirmShiftEntriesBulk(ids, uid);
+      setMatrixSelectedKeys((prev) => {
+        const next = new Set(prev);
+        for (const e of entries ?? [])
+          if (ids.includes(e.id)) next.delete(selectionKey(e.memberId, e.date));
+        return next;
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCancelSelectedMatrix() {
+    const ids = matrixSelectionSummary.wantEntryIds;
+    if (ids.length === 0) return;
+    setBusy(true);
+    try {
+      await deleteShiftEntriesBulk(ids);
+      setMatrixSelectedKeys((prev) => {
+        const next = new Set(prev);
+        for (const e of entries ?? [])
+          if (ids.includes(e.id)) next.delete(selectionKey(e.memberId, e.date));
+        return next;
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   function toggleDateSelect(dateKey: string) {
@@ -278,7 +372,23 @@ function ShiftCalendar({
           <p className="text-center text-sm text-gray-400">読み込み中...</p>
         ) : viewMode === "matrix" ? (
           <>
-            <MatrixLegend />
+            <div className="flex items-center justify-between">
+              <MatrixLegend />
+              <button
+                type="button"
+                onClick={() => {
+                  setMatrixSelectionMode((v) => !v);
+                  setMatrixSelectedKeys(new Set());
+                }}
+                className={`mb-2 rounded-md px-3 py-1.5 text-xs font-bold ${
+                  matrixSelectionMode
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 text-gray-600"
+                }`}
+              >
+                {matrixSelectionMode ? "選択モードを終了" : "複数選択して一括操作"}
+              </button>
+            </div>
             <MonthMatrixView
               anchorDate={anchorDate}
               members={members}
@@ -287,6 +397,9 @@ function ShiftCalendar({
               busy={busy}
               onCycleOwn={handleCycleOwn}
               onOpenCell={(dateKey, member, entry) => setSheet({ dateKey, member, entry })}
+              selectionMode={matrixSelectionMode}
+              selectedKeys={matrixSelectedKeys}
+              onToggleSelect={(memberId, dateKey) => toggleMatrixSelect(memberId, dateKey)}
             />
           </>
         ) : viewMode === "month" ? (
@@ -317,6 +430,19 @@ function ShiftCalendar({
           onClear={() => setSelectedDates(new Set())}
           canDelete={ownDesiredSelectedCount > 0}
           busy={busy}
+        />
+      )}
+
+      {viewMode === "matrix" && matrixSelectionMode && (
+        <MatrixSelectionToolbar
+          selectedCount={matrixSelectedKeys.size}
+          ownNoneCount={matrixSelectionSummary.ownNoneDates.length}
+          wantCount={matrixSelectionSummary.wantEntryIds.length}
+          busy={busy}
+          onRegisterOwn={handleRegisterOwnSelected}
+          onConfirmSelected={handleConfirmSelectedMatrix}
+          onCancelSelected={handleCancelSelectedMatrix}
+          onClear={() => setMatrixSelectedKeys(new Set())}
         />
       )}
 

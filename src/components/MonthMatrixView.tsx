@@ -67,6 +67,19 @@ function daysOfMonth(anchor: Date): Date[] {
   return Array.from({ length: last }, (_, i) => new Date(y, m, i + 1));
 }
 
+/**
+ * セル選択の一意キー（一括確定/却下・一括申請の選択管理に使う）。
+ * メールアドレスにも使われうる "_" は区切り文字にできないため "|" を使う。
+ */
+export function selectionKey(memberId: string, dateKey: string): string {
+  return `${memberId}|${dateKey}`;
+}
+
+export function parseSelectionKey(key: string): { memberId: string; dateKey: string } {
+  const sep = key.lastIndexOf("|");
+  return { memberId: key.slice(0, sep), dateKey: key.slice(sep + 1) };
+}
+
 interface MonthMatrixViewProps {
   anchorDate: Date;
   members: Member[];
@@ -85,6 +98,15 @@ interface MonthMatrixViewProps {
   ) => void;
   /** 他メンバーのセル / 自分の確定セル: 確定・確定取消のシートを開く */
   onOpenCell: (dateKey: string, member: Member, entry: ShiftEntry | undefined) => void;
+  /** 選択モード中は、通常のタップ動作の代わりにセルの選択トグルを呼ぶ */
+  selectionMode?: boolean;
+  selectedKeys?: Set<string>;
+  onToggleSelect?: (
+    memberId: string,
+    dateKey: string,
+    entry: ShiftEntry | undefined,
+    state: CellState,
+  ) => void;
 }
 
 export function MonthMatrixView({
@@ -98,6 +120,9 @@ export function MonthMatrixView({
   highlightOwnRow = true,
   onCycleOwn,
   onOpenCell,
+  selectionMode = false,
+  selectedKeys,
+  onToggleSelect,
 }: MonthMatrixViewProps) {
   const comfortable = density === "comfortable";
   const colW = showTimes ? (comfortable ? 54 : 46) : comfortable ? 40 : 32;
@@ -209,23 +234,35 @@ export function MonthMatrixView({
                 const state = cellStateOf(entry);
                 const v = CELL_VISUAL[state];
                 const time = timeLabel(entry);
+                const key = selectionKey(mem.id, d.dateKey);
+                const selectable = selectionMode && state !== "fixed";
+                const selected = selectable && selectedKeys?.has(key);
                 return (
                   <button
                     key={d.dateKey}
                     type="button"
-                    disabled={busy}
+                    disabled={busy || (selectionMode && !selectable)}
                     title={`${mem.name} / ${d.dateKey}`}
-                    onClick={() =>
+                    onClick={() => {
+                      if (selectionMode) {
+                        if (selectable) onToggleSelect?.(mem.id, d.dateKey, entry, state);
+                        return;
+                      }
                       isOwn && state !== "fixed"
                         ? onCycleOwn(d.dateKey, state, OWN_CYCLE[state], entry)
-                        : onOpenCell(d.dateKey, mem, entry)
-                    }
+                        : onOpenCell(d.dateKey, mem, entry);
+                    }}
                     className="flex flex-none items-center justify-center border-l border-[#EFF1F3] disabled:opacity-60"
                     style={{ width: colW, background: d.bg }}
                   >
                     <span
                       className={`flex flex-col items-center justify-center gap-px rounded leading-none ${v.box}`}
-                      style={{ width: colW - 4, height: rowH - 8 }}
+                      style={{
+                        width: colW - 4,
+                        height: rowH - 8,
+                        outline: selected ? "2px solid #0863A0" : undefined,
+                        outlineOffset: selected ? "1px" : undefined,
+                      }}
                     >
                       <span className={v.markClass}>{v.mark}</span>
                       {time && <span className={v.subClass}>{time}</span>}

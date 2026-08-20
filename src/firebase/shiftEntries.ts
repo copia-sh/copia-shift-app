@@ -109,6 +109,29 @@ export async function confirmShiftEntry(entryDocId: string, uid: string) {
   });
 }
 
+/** Confirm multiple desired shifts (any member's) in one batch. */
+export async function confirmShiftEntriesBulk(entryDocIds: string[], uid: string) {
+  const batch = writeBatch(db);
+  for (const id of entryDocIds) {
+    batch.update(doc(shiftEntriesCollection, id), {
+      status: "confirmed",
+      confirmedBy: uid,
+      confirmedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+  await batch.commit();
+}
+
+/** Reject/cancel multiple pending (desired) shifts (any member's) in one batch. */
+export async function deleteShiftEntriesBulk(entryDocIds: string[]) {
+  const batch = writeBatch(db);
+  for (const id of entryDocIds) {
+    batch.delete(doc(shiftEntriesCollection, id));
+  }
+  await batch.commit();
+}
+
 /** Revert a confirmed shift back to desired. Any team member may call this for anyone. */
 export async function revertShiftEntryToDesired(entryDocId: string) {
   const ref = doc(shiftEntriesCollection, entryDocId);
