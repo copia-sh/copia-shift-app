@@ -24,11 +24,13 @@ service cloud.firestore {
         (isSignedIn() && memberId == request.auth.token.email);
 
       // 新規参加: 本人のメールアドレスのドキュメントのみ作成可能。
-      // 招待コードが config/settings の値と一致しないと作成できない(自己registration制限)
+      // 招待コードが config/settings の値と一致しないと作成できない(自己registration制限)。
+      // 大文字小文字の入力ミスを吸収するため小文字化してから比較する
       allow create: if isSignedIn()
         && memberId == request.auth.token.email
-        && request.resource.data.inviteCode ==
-          get(/databases/$(database)/documents/config/settings).data.inviteCode;
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.lower() ==
+          get(/databases/$(database)/documents/config/settings).data.inviteCode.lower();
 
       allow update, delete: if false;
     }

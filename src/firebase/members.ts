@@ -29,13 +29,22 @@ export function nameFromEmail(email: string): string {
 
 export function subscribeToMembers(callback: (members: Member[]) => void) {
   const q = query(membersCollection, orderBy("name"));
-  return onSnapshot(q, (snapshot) => {
-    const members = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<Member, "id">),
-    }));
-    callback(members);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const members = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Member, "id">),
+      }));
+      callback(members);
+    },
+    () => {
+      // Not signed in yet, or signed in but not a team member: Firestore
+      // rules reject the list query. Treat that as "no members visible yet"
+      // instead of leaving callers stuck on a loading state forever.
+      callback([]);
+    },
+  );
 }
 
 /**
@@ -53,6 +62,6 @@ export async function createMemberProfile(params: {
     name: nameFromEmail(email),
     email,
     color: colorForEmail(email),
-    inviteCode: params.inviteCode,
+    inviteCode: params.inviteCode.trim(),
   });
 }
