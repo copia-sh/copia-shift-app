@@ -3,8 +3,9 @@ export type ShiftType = "出勤" | "リモート" | "欠勤" | "未定";
 export type ShiftStatus = "desired" | "confirmed";
 
 export interface Member {
-  /** Firestore doc ID for this member, which is the member's Google account email (lowercased). */
+  /** Firestore doc ID for this member, which is the member's login email (lowercased). */
   id: string;
+  /** Auto-derived from the email's local part at signup (e.g. "yamada" from yamada@example.com). */
   name: string;
   email: string;
   color: string;

@@ -13,10 +13,24 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/members/$(request.auth.token.email));
     }
 
+    // 招待コードなどの秘密設定。クライアントからは直接read/write不可(ルール内のget()でのみ参照)
+    match /config/{docId} {
+      allow read, write: if false;
+    }
+
     match /members/{memberId} {
-      allow read: if isTeamMember();
-      // メンバーの追加・変更はFirebaseコンソールから手動で行う
-      allow write: if false;
+      // 自分の分、もしくは既にチームメンバーになっている人は全員分を読める
+      allow read: if isTeamMember() ||
+        (isSignedIn() && memberId == request.auth.token.email);
+
+      // 新規参加: 本人のメールアドレスのドキュメントのみ作成可能。
+      // 招待コードが config/settings の値と一致しないと作成できない(自己registration制限)
+      allow create: if isSignedIn()
+        && memberId == request.auth.token.email
+        && request.resource.data.inviteCode ==
+          get(/databases/$(database)/documents/config/settings).data.inviteCode;
+
+      allow update, delete: if false;
     }
 
     match /shiftEntries/{entryId} {
