@@ -10,6 +10,7 @@ import {
   hourValue,
   isSameDate,
   monthGridWeeks,
+  noLabel,
   parseSelKey,
   selKey,
   shortRange,
@@ -153,6 +154,7 @@ export function ShiftLegend({ mode = "single" }: { mode?: ShiftMode }) {
     ["リモート（確定）", "bg-[#1F8A98] shadow-[0_2px_0_0_#14646E]"],
     ["希望", "bg-[#EAF5FD] border-[1.5px] border-dashed border-[#248DD4]"],
     ["不可", "bg-[#FDF1F1] border border-[#F0C7C7]"],
+    ["却下", "bg-[#FDF1F1] border border-[#F0C7C7]"],
     ["未回答", "bg-white border border-dashed border-[#E3E3E3]"],
   ] as const;
   return (
@@ -469,7 +471,7 @@ export function ShiftMonthGrid({
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                    const meta = (showTimes && shortRange(st)) || sk.label;
+                    const meta = (showTimes && shortRange(st)) || (st.kind === "no" ? noLabel(st) : sk.label);
                     const isOwn = mem.id === currentMemberId;
                     return (
                       <button
@@ -747,7 +749,7 @@ export function BulkEditToolbar({
               onClick={() => onApply({ kind: "reject" })}
               className={`${btn} border border-[#F0C7C7] bg-[#FDF1F1] text-[#D9736F] shadow-[0_2px_0_0_#F0C7C7]`}
             >
-              却下（未回答に戻す）
+              却下
             </button>
           </div>
         ) : (

@@ -17,9 +17,13 @@ export function cellStateOf(entry: ShiftEntry | undefined): CellState {
   if (!entry) return { kind: "none", type: "未定", startTime: null, endTime: null };
   const base = { type: entry.type, startTime: entry.startTime, endTime: entry.endTime, entry };
   if (entry.status === "confirmed") return { kind: "fixed", ...base };
-  if (entry.type === "欠勤") return { kind: "no", ...base };
+  // 却下(review モードで他人の希望を却下したもの)は「不可」と同じ見た目・同じ扱いにする
+  if (entry.type === "欠勤" || entry.type === "却下") return { kind: "no", ...base };
   return { kind: "want", ...base };
 }
+
+/** "no" セルの表示文字列。却下は不可と同じ見た目で文字列だけ変える。 */
+export const noLabel = (st: CellState): string => (st.type === "却下" ? "却下" : "不可");
 
 export interface Skin {
   box: string;

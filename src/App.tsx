@@ -157,16 +157,26 @@ function ShiftCalendar({
             uid,
           });
         }
-      } else if (op.kind === "clear" || op.kind === "reject") {
-        // clear は自分の分だけ、reject(却下)は他人の分も対象。
-        // どちらも確定済み(fixed)は対象外(削除するとFirestoreルールに拒否され、
-        // バッチに含まれる他の対象まで巻き込んで失敗するため)。
-        const scope = (op.kind === "clear" ? targets.filter((t) => t.memberId === currentMember.id) : targets)
-          .filter((t) => t.state.kind !== "fixed");
+      } else if (op.kind === "clear") {
+        // 未回答に戻す(削除)は自分の分だけ。確定済み(fixed)は対象外
+        // (削除するとFirestoreルールに拒否され、バッチに含まれる他の対象まで
+        // 巻き込んで失敗するため)。
+        const scope = targets.filter(
+          (t) => t.memberId === currentMember.id && t.state.kind !== "fixed",
+        );
         const byMember = new Map<string, string[]>();
         for (const t of scope) byMember.set(t.memberId, [...(byMember.get(t.memberId) ?? []), t.dateKey]);
         await Promise.all(
           [...byMember].map(([memberId, dates]) => deleteDesiredShiftsBulk(memberId, dates)),
+        );
+      } else if (op.kind === "reject") {
+        // 却下は削除せず type を "却下" に部分更新する(不可と同じ見た目・
+        // 時間帯を保った状態で「却下された」ことが分かるようにする)。
+        // 他人の分も対象、確定済み(fixed)は対象外。
+        await Promise.all(
+          targets
+            .filter((t) => t.entry && t.state.kind !== "fixed")
+            .map((t) => updateShiftEntryDetails(t.entry!.id, { type: "却下" })),
         );
       } else if (op.kind === "time") {
         await Promise.all(
@@ -205,6 +215,9 @@ function ShiftCalendar({
 
   async function handleBulk(op: BulkOp) {
     await applyOps([...selected].map(targetOf), op);
+    // 出勤希望/リモート希望は、終日にするか時間を入れるかまだ分からないため、
+    // 種類だけ反映してパネルと選択状態は残す(時間帯・不可・確定などの操作で確定的に閉じる)。
+    if (op.kind === "desired") return;
     setSelected(new Set());
   }
 
