@@ -397,7 +397,6 @@ export function ShiftListMatrix({
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-bold text-gray-900">
                     {mem.displayName}
-                    {isOwn ? "（自分）" : ""}
                   </span>
                   <span className="block whitespace-nowrap text-[10px] text-gray-400">
                     確定 {fixedCount} ・ 希望 {wantCount}

@@ -195,6 +195,7 @@ function ShiftCalendar({
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [selectedAttributes, setSelectedAttributes] = useState<Set<string>>(new Set());
+  const [showCurrentMemberOnly, setShowCurrentMemberOnly] = useState(false);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
@@ -583,11 +584,21 @@ function ShiftCalendar({
     return new Set([...selectedAttributes].filter((attribute) => available.has(attribute)));
   }, [activeMembers, selectedAttributes]);
   const filteredMembers = useMemo(() => {
+    if (showCurrentMemberOnly) {
+      return activeMembers.filter((member) => member.id === currentMember.id);
+    }
     return filterMembersByAttributes(activeMembers, effectiveSelectedAttributes);
-  }, [activeMembers, effectiveSelectedAttributes]);
+  }, [activeMembers, currentMember.id, effectiveSelectedAttributes, showCurrentMemberOnly]);
 
   function handleMemberFilterChange(attributes: Set<string>) {
+    setShowCurrentMemberOnly(false);
     setSelectedAttributes(attributes);
+    setSelected(new Set());
+  }
+
+  function handleSelectCurrentMember() {
+    setShowCurrentMemberOnly(true);
+    setSelectedAttributes(new Set());
     setSelected(new Set());
   }
 
@@ -648,7 +659,9 @@ function ShiftCalendar({
       <MemberFilter
         members={activeMembers}
         currentMemberId={currentMember.id}
+        showCurrentMemberOnly={showCurrentMemberOnly}
         selectedAttributes={effectiveSelectedAttributes}
+        onSelectCurrentMember={handleSelectCurrentMember}
         onChange={handleMemberFilterChange}
       />
 
