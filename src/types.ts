@@ -1,23 +1,31 @@
+export type ShiftStatus = "desired" | "confirmed";
+export type MemberRole = "admin" | "leader" | "member";
 export type ShiftType = "出勤" | "リモート" | "欠勤" | "未定" | "却下";
 
-export type ShiftStatus = "desired" | "confirmed";
-
-export interface Member {
-  /** Firestore doc ID for this member, which is the member's login email (lowercased). */
+export interface Group {
   id: string;
-  /** Auto-derived from the email's local part at signup (e.g. "yamada" from yamada@example.com). */
   name: string;
-  email: string;
-  color: string;
+  ownerId: string;
+  createdAt: number | null;
 }
 
-export interface ShiftEntry {
+export interface Member {
+  id: string;
+  email: string;
+  displayName: string;
+  color: string;
+  role: MemberRole;
+  active: boolean;
+  joinedAt: number | null;
+}
+
+export interface Shift {
   id: string;
   memberId: string;
-  date: string; // "YYYY-MM-DD"
+  date: string;
   status: ShiftStatus;
   type: ShiftType;
-  startTime: string | null; // "HH:mm"
+  startTime: string | null;
   endTime: string | null;
   createdBy: string;
   createdAt: number | null;

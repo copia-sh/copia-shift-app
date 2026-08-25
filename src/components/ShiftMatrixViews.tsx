@@ -5,13 +5,14 @@ import {
   TIME_CHOICES,
   boxOf,
   canTapCell,
-  cellStateOf,
+  cellStatesOf,
   daysOfMonth,
   hourValue,
   isSameDate,
   monthGridWeeks,
   noLabel,
   parseSelKey,
+  primaryCellState,
   selKey,
   shortRange,
   skinOf,
@@ -21,7 +22,7 @@ import {
   type SelKey,
   type ShiftMode,
 } from "./shiftVisual";
-import type { Member, ShiftEntry } from "../types";
+import type { Member, Shift } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
 
@@ -173,7 +174,7 @@ export function ShiftLegend({ mode = "single" }: { mode?: ShiftMode }) {
 interface ViewCommon {
   anchorDate: Date;
   members: Member[];
-  entries: ShiftEntry[];
+  shifts: Shift[];
   currentMemberId: string;
   mode: ShiftMode;
   selected: Set<SelKey>;
@@ -184,12 +185,16 @@ interface ViewCommon {
   density?: "compact" | "comfortable";
 }
 
-function useStateMap(entries: ShiftEntry[]) {
+function useStateMap(shifts: Shift[]) {
   return useMemo(() => {
-    const map = new Map<string, ShiftEntry>();
-    for (const e of entries) map.set(`${e.memberId}__${e.date}`, e);
+    const map = new Map<string, Shift[]>();
+    for (const s of shifts) {
+      const key = `${s.memberId}__${s.date}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
     return map;
-  }, [entries]);
+  }, [shifts]);
 }
 
 /* ------------------------------------------------- 一覧（縦=メンバー × 横=日付） */
@@ -197,7 +202,7 @@ function useStateMap(entries: ShiftEntry[]) {
 export function ShiftListMatrix({
   anchorDate,
   members,
-  entries,
+  shifts,
   currentMemberId,
   mode,
   selected,
@@ -210,7 +215,7 @@ export function ShiftListMatrix({
   const colW = showTimes ? (comfy ? 56 : 48) : comfy ? 42 : 34;
   const rowH = comfy ? 62 : 50;
   const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
-  const byKey = useStateMap(entries);
+  const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
 
@@ -219,7 +224,7 @@ export function ShiftListMatrix({
     const dow = day.getDay();
     const isToday = isSameDate(day, today);
     const fixed = members.filter(
-      (m) => cellStateOf(byKey.get(selKey(m.id, dateKey))).kind === "fixed",
+      (m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])).kind === "fixed",
     ).length;
     return {
       day,
@@ -235,7 +240,7 @@ export function ShiftListMatrix({
   /** モードで選択可能な行だけをまとめて選択する */
   const bulkKeys = (dateKey: string) =>
     members
-      .filter((m) => canTapCell(mode, m.id, currentMemberId, cellStateOf(byKey.get(selKey(m.id, dateKey)))))
+      .filter((m) => canTapCell(mode, m.id, currentMemberId, primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? []))))
       .map((m) => selKey(m.id, dateKey));
 
   return (
@@ -271,7 +276,7 @@ export function ShiftListMatrix({
 
         {members.map((mem) => {
           const isOwn = mem.id === currentMemberId;
-          const states = dayMeta.map((d) => cellStateOf(byKey.get(selKey(mem.id, d.dateKey))));
+          const states = dayMeta.map((d) => primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [])));
           const fixedCount = states.filter((s) => s.kind === "fixed").length;
           const wantCount = states.filter((s) => s.kind === "want").length;
           return (
@@ -301,7 +306,7 @@ export function ShiftListMatrix({
                 <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: mem.color }} />
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-bold text-gray-900">
-                    {mem.name}
+                    {mem.displayName}
                     {isOwn ? "（自分）" : ""}
                   </span>
                   <span className="block whitespace-nowrap text-[10px] text-gray-400">
@@ -374,7 +379,7 @@ export function ShiftListMatrix({
 export function ShiftMonthGrid({
   anchorDate,
   members,
-  entries,
+  shifts,
   currentMemberId,
   mode,
   selected,
@@ -385,7 +390,7 @@ export function ShiftMonthGrid({
 }: ViewCommon) {
   const comfy = density === "comfortable";
   const weeks = useMemo(() => monthGridWeeks(anchorDate), [anchorDate]);
-  const byKey = useStateMap(entries);
+  const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
 
@@ -409,7 +414,7 @@ export function ShiftMonthGrid({
             const dow = day.getDay();
             const inMonth = day.getMonth() === anchorDate.getMonth();
             const isToday = isSameDate(day, today);
-            const states: CellState[] = members.map((m) => cellStateOf(byKey.get(selKey(m.id, dateKey))));
+            const states: CellState[] = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])));
             const fixed = states.filter((s) => s.kind === "fixed").length;
             return (
               <div
@@ -486,7 +491,7 @@ export function ShiftMonthGrid({
                         } ${tappable ? "" : "cursor-default opacity-60"}`}
                       >
                         {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`truncate text-[10px] font-bold ${sk.fg}`}>{mem.name}</span>
+                        <span className={`truncate text-[10px] font-bold ${sk.fg}`}>{mem.displayName}</span>
                         <span className={`flex-none text-[9px] font-bold ${sk.sub}`}>{meta}</span>
                       </button>
                     );
@@ -506,7 +511,7 @@ export function ShiftMonthGrid({
 export function ShiftWeekView({
   anchorDate,
   members,
-  entries,
+  shifts,
   currentMemberId,
   mode,
   selected,
@@ -514,7 +519,7 @@ export function ShiftWeekView({
   onToggleMany,
 }: ViewCommon) {
   const days = useMemo(() => weekDaysOf(anchorDate), [anchorDate]);
-  const byKey = useStateMap(entries);
+  const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const gridCols = `${WEEK_GUTTER_W}px repeat(7, ${WEEK_DAY_W}px)`;
@@ -530,7 +535,7 @@ export function ShiftWeekView({
             const dateKey = toDateKey(day);
             const dow = day.getDay();
             const isToday = isSameDate(day, today);
-            const states = members.map((m) => cellStateOf(byKey.get(selKey(m.id, dateKey))));
+            const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])));
             return (
               <div
                 key={dateKey}
@@ -593,7 +598,7 @@ export function ShiftWeekView({
                         } ${tappable ? "" : "cursor-default opacity-60"}`}
                       >
                         {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`text-[9px] font-bold ${sk.fg}`}>{mem.name.slice(0, 2)}</span>
+                        <span className={`text-[9px] font-bold ${sk.fg}`}>{mem.displayName.slice(0, 2)}</span>
                         <span className={`text-[11px] font-bold ${sk.fg}`}>{sk.mark}</span>
                       </button>
                     );
@@ -631,7 +636,7 @@ export function ShiftWeekView({
                     <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
                   ))}
                   {members.map((mem, mi) => {
-                    const st = cellStateOf(byKey.get(selKey(mem.id, dateKey)));
+                    const st = primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? []));
                     if (!st.startTime || !st.endTime || (st.kind !== "fixed" && st.kind !== "want")) return null;
                     const sk = skinOf(st);
                     const k = selKey(mem.id, dateKey);
@@ -651,7 +656,7 @@ export function ShiftWeekView({
                         style={{ top, height, left: mi * WEEK_PERSON_W + 1, width: WEEK_PERSON_W - 2 }}
                       >
                         {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`text-[9px] font-bold leading-tight ${sk.fg}`}>{mem.name.slice(0, 2)}</span>
+                        <span className={`text-[9px] font-bold leading-tight ${sk.fg}`}>{mem.displayName.slice(0, 2)}</span>
                         <span className={`text-[8px] font-bold leading-tight ${sk.sub}`}>
                           {Number(st.startTime.slice(0, 2))}-{Number(st.endTime.slice(0, 2))}
                         </span>
@@ -673,7 +678,7 @@ export function ShiftWeekView({
 export function BulkEditToolbar({
   mode,
   selected,
-  entries,
+  shifts,
   startTime,
   endTime,
   busy,
@@ -684,7 +689,7 @@ export function BulkEditToolbar({
 }: {
   mode: ShiftMode;
   selected: Set<SelKey>;
-  entries: ShiftEntry[];
+  shifts: Shift[];
   startTime: string;
   endTime: string;
   busy: boolean;
@@ -693,12 +698,12 @@ export function BulkEditToolbar({
   onApply: (op: BulkOp) => void;
   onClear: () => void;
 }) {
-  const byKey = useStateMap(entries);
+  const byKey = useStateMap(shifts);
   if (selected.size === 0) return null;
   const keys = [...selected];
   const states = keys.map((k) => {
     const { memberId, dateKey } = parseSelKey(k);
-    return cellStateOf(byKey.get(selKey(memberId, dateKey)));
+    return primaryCellState(cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? []));
   });
   const dates = new Set(keys.map((k) => parseSelKey(k).dateKey));
   const people = new Set(keys.map((k) => parseSelKey(k).memberId));

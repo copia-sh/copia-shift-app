@@ -12,10 +12,11 @@ import {
   BulkEditToolbar,
 } from "./components/ShiftMatrixViews";
 import {
-  cellStateOf,
   canTapCell,
   nextInCycle,
   parseSelKey,
+  primaryCellState,
+  cellStatesOf,
   type BulkOp,
   type CellState,
   type SelKey,
@@ -23,7 +24,8 @@ import {
 } from "./components/shiftVisual";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
-import { useShiftEntriesInRange } from "./hooks/useShiftEntries";
+import { useShiftsInRange } from "./hooks/useShifts";
+import { useMyGroupIds } from "./hooks/useMyGroupIds";
 import { signOut } from "./firebase/auth";
 import {
   getMonthGridDays,
@@ -35,32 +37,53 @@ import {
   toDateKey,
 } from "./utils/date";
 import {
-  confirmShiftEntry,
-  deleteDesiredShiftsBulk,
-  registerDesiredShiftsBulk,
-  revertShiftEntryToDesired,
-  updateShiftEntryDetails,
-} from "./firebase/shiftEntries";
-import type { Member, ShiftEntry } from "./types";
+  createShiftsBulk,
+  deleteShiftsBulk,
+  confirmShift,
+  revertShiftToDesired,
+  updateShiftDetails,
+} from "./firebase/shifts";
+import type { Member, Shift } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
 function App() {
   const user = useAuthUser();
-  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
-  const members = useMembers(!!user, membersRefreshKey);
+  const groupIds = useMyGroupIds(user?.uid ?? null);
+  const groupId = groupIds?.[0] ?? null;
+
+  if (!user || !groupIds) {
+    return <LoginGate user={user} onMemberJoined={() => {}} />;
+  }
+
+  if (groupIds.length === 0) {
+    return (
+      <LoginGate user={user} onMemberJoined={() => {}}>
+        {() => (
+          <div className="flex h-screen items-center justify-center bg-gray-50">
+            <div className="text-center">
+              <p className="text-gray-600">所属しているグループがありません</p>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="mt-4 rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
+              >
+                ログアウト
+              </button>
+            </div>
+          </div>
+        )}
+      </LoginGate>
+    );
+  }
 
   return (
-    <LoginGate
-      user={user}
-      members={members}
-      onMemberJoined={() => setMembersRefreshKey((k) => k + 1)}
-    >
+    <LoginGate user={user} onMemberJoined={() => {}}>
       {(currentUser, currentMember) => (
         <ShiftCalendar
           uid={currentUser.uid}
           currentMember={currentMember}
-          members={members ?? []}
+          groupId={groupId}
         />
       )}
     </LoginGate>
@@ -70,18 +93,18 @@ function App() {
 interface Target {
   memberId: string;
   dateKey: string;
-  entry?: ShiftEntry;
+  shifts: Shift[];
   state: CellState;
 }
 
 function ShiftCalendar({
   uid,
   currentMember,
-  members,
+  groupId,
 }: {
   uid: string;
   currentMember: Member;
-  members: Member[];
+  groupId: string;
 }) {
   const [view, setView] = useState<ViewMode>("list");
   const [mode, setMode] = useState<ShiftMode>("single");
@@ -91,6 +114,8 @@ function ShiftCalendar({
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
 
+  const members = useMembers(groupId);
+
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
     return {
@@ -99,7 +124,7 @@ function ShiftCalendar({
     };
   }, [anchorDate, view]);
 
-  const entries = useShiftEntriesInRange(startKey, endKey);
+  const shifts = useShiftsInRange(groupId, startKey, endKey);
 
   function handlePrev() {
     setAnchorDate((d) => (view === "week" ? previousWeek(d) : previousMonth(d)));
@@ -111,7 +136,6 @@ function ShiftCalendar({
     setAnchorDate(new Date());
   }
 
-  // モードが変わったら選択はクリア(ONのボタンをもう一度押すと single に戻る)
   function changeMode(m: ShiftMode) {
     setMode(m);
     setSelected(new Set());
@@ -129,26 +153,24 @@ function ShiftCalendar({
     });
   }
 
-  /**
-   * 選択のクリアは呼び出し元の責任にする(このヘルパー内で常にクリアすると、
-   * single モードでタップ後にパネルを開いたままにする挙動と衝突するため)。
-   */
   async function applyOps(targets: Target[], op: BulkOp) {
     setBusy(true);
     try {
       if (op.kind === "desired" || op.kind === "unavailable") {
         const type = op.kind === "desired" ? op.type : "欠勤";
-        // 他人の希望は作れないルールなので、自分の分だけ適用
         const mine = targets.filter((t) => t.memberId === currentMember.id);
-        const existing = mine.filter((t) => t.entry);
-        const fresh = mine.filter((t) => !t.entry);
-        // 既存 → 種別だけ部分更新(時間帯を保持)
+        const existing = mine.filter((t) => t.shifts.length > 0);
+        const fresh = mine.filter((t) => t.shifts.length === 0);
+
         await Promise.all(
-          existing.map((t) => updateShiftEntryDetails(t.entry!.id, { type })),
+          existing.flatMap((t) =>
+            t.shifts.map((s) => updateShiftDetails(groupId, s.id, { type }))
+          ),
         );
-        // 未回答からの新規のみ register
+
         if (fresh.length > 0) {
-          await registerDesiredShiftsBulk({
+          await createShiftsBulk({
+            groupId,
             memberId: currentMember.id,
             dates: fresh.map((t) => t.dateKey),
             type,
@@ -158,48 +180,45 @@ function ShiftCalendar({
           });
         }
       } else if (op.kind === "clear") {
-        // 未回答に戻す(削除)は自分の分だけ。確定済み(fixed)は対象外
-        // (削除するとFirestoreルールに拒否され、バッチに含まれる他の対象まで
-        // 巻き込んで失敗するため)。
         const scope = targets.filter(
           (t) => t.memberId === currentMember.id && t.state.kind !== "fixed",
         );
-        const byMember = new Map<string, string[]>();
-        for (const t of scope) byMember.set(t.memberId, [...(byMember.get(t.memberId) ?? []), t.dateKey]);
-        await Promise.all(
-          [...byMember].map(([memberId, dates]) => deleteDesiredShiftsBulk(memberId, dates)),
-        );
+        const shiftIdsToDelete = scope.flatMap((t) => t.shifts.map((s) => s.id));
+        if (shiftIdsToDelete.length > 0) {
+          await deleteShiftsBulk(groupId, shiftIdsToDelete);
+        }
       } else if (op.kind === "reject") {
-        // 却下は削除せず type を "却下" に部分更新する(不可と同じ見た目・
-        // 時間帯を保った状態で「却下された」ことが分かるようにする)。
-        // 他人の分も対象、確定済み(fixed)は対象外。
+        const shiftIds = targets
+          .filter((t) => t.shifts.length > 0 && t.state.kind !== "fixed")
+          .flatMap((t) => t.shifts.map((s) => s.id));
         await Promise.all(
-          targets
-            .filter((t) => t.entry && t.state.kind !== "fixed")
-            .map((t) => updateShiftEntryDetails(t.entry!.id, { type: "却下" })),
+          shiftIds.map((id) =>
+            updateShiftDetails(groupId, id, { type: "却下" })
+          ),
         );
       } else if (op.kind === "time") {
+        const shiftIds = targets.flatMap((t) => t.shifts.map((s) => s.id));
         await Promise.all(
-          targets
-            .filter((t) => t.entry)
-            .map((t) =>
-              updateShiftEntryDetails(t.entry!.id, {
-                startTime: op.startTime,
-                endTime: op.endTime,
-              }),
-            ),
+          shiftIds.map((id) =>
+            updateShiftDetails(groupId, id, {
+              startTime: op.startTime,
+              endTime: op.endTime,
+            })
+          ),
         );
       } else if (op.kind === "confirm") {
+        const shiftIds = targets
+          .filter((t) => t.state.kind === "want")
+          .flatMap((t) => t.shifts.map((s) => s.id));
         await Promise.all(
-          targets
-            .filter((t) => t.state.kind === "want")
-            .map((t) => confirmShiftEntry(t.entry!.id, uid)),
+          shiftIds.map((id) => confirmShift(groupId, id, uid)),
         );
       } else if (op.kind === "revert") {
+        const shiftIds = targets
+          .filter((t) => t.state.kind === "fixed")
+          .flatMap((t) => t.shifts.map((s) => s.id));
         await Promise.all(
-          targets
-            .filter((t) => t.state.kind === "fixed")
-            .map((t) => revertShiftEntryToDesired(t.entry!.id)),
+          shiftIds.map((id) => revertShiftToDesired(groupId, id)),
         );
       }
     } finally {
@@ -209,14 +228,13 @@ function ShiftCalendar({
 
   function targetOf(k: SelKey): Target {
     const { memberId, dateKey } = parseSelKey(k);
-    const entry = entries?.find((e) => e.memberId === memberId && e.date === dateKey);
-    return { memberId, dateKey, entry, state: cellStateOf(entry) };
+    const shifts_ = (shifts ?? []).filter((s) => s.memberId === memberId && s.date === dateKey);
+    const state = primaryCellState(cellStatesOf(shifts_));
+    return { memberId, dateKey, shifts: shifts_, state };
   }
 
   async function handleBulk(op: BulkOp) {
     await applyOps([...selected].map(targetOf), op);
-    // 出勤希望/リモート希望は、終日にするか時間を入れるかまだ分からないため、
-    // 種類だけ反映してパネルと選択状態は残す(時間帯・不可・確定などの操作で確定的に閉じる)。
     if (op.kind === "desired") return;
     setSelected(new Set());
   }
@@ -226,12 +244,11 @@ function ShiftCalendar({
     if (!canTapCell(mode, memberId, currentMember.id, st)) return;
 
     if (mode === "single") {
-      setSelected(new Set([k])); // 下部パネルからも直接ジャンプできるよう選択しておく
-      const op = nextInCycle(st); // 未回答→出勤希望→リモート希望→不可→未回答
+      setSelected(new Set([k]));
+      const op = nextInCycle(st);
       if (op) await applyOps([targetOf(k)], op);
       return;
     }
-    // multi / review はトグル選択のみ(書き込みは下部パネル)
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
@@ -242,8 +259,8 @@ function ShiftCalendar({
 
   const common = {
     anchorDate,
-    members,
-    entries: entries ?? [],
+    members: members ?? [],
+    shifts: shifts ?? [],
     currentMemberId: currentMember.id,
     mode,
     selected,
@@ -257,7 +274,7 @@ function ShiftCalendar({
     <div className="min-h-screen bg-gray-50">
       <div className="flex items-center justify-end gap-3 px-4 pt-3">
         <ShiftModeToggle mode={mode} onChangeMode={changeMode} />
-        <span className="text-sm text-gray-500">{currentMember.name}</span>
+        <span className="text-sm text-gray-500">{currentMember.displayName}</span>
         <button
           type="button"
           onClick={() => signOut()}
@@ -282,7 +299,7 @@ function ShiftCalendar({
       <ShiftLegend mode={mode} />
 
       <main className="mx-auto max-w-7xl px-4 pb-32">
-        {entries === undefined ? (
+        {shifts === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : view === "list" ? (
           <ShiftListMatrix {...common} />
@@ -296,7 +313,7 @@ function ShiftCalendar({
       <BulkEditToolbar
         mode={mode}
         selected={selected}
-        entries={entries ?? []}
+        shifts={shifts ?? []}
         startTime={startTime}
         endTime={endTime}
         busy={busy}

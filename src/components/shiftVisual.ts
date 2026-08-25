@@ -1,4 +1,4 @@
-import type { ShiftEntry, ShiftType } from "../types";
+import type { Shift, ShiftType } from "../types";
 
 /** 表示状態: 未回答 / 希望 / 不可 / 確定（希望・確定は 出勤 か リモート の2種） */
 export type CellKind = "none" | "want" | "no" | "fixed";
@@ -7,19 +7,50 @@ export interface CellState {
   type: ShiftType; // 出勤 | リモート | 欠勤 | 未定
   startTime: string | null;
   endTime: string | null;
-  entry?: ShiftEntry;
+  shift?: Shift;
 }
 
 /** セルタップの意味を切り替えるモード */
 export type ShiftMode = "single" | "multi" | "review";
 
-export function cellStateOf(entry: ShiftEntry | undefined): CellState {
-  if (!entry) return { kind: "none", type: "未定", startTime: null, endTime: null };
-  const base = { type: entry.type, startTime: entry.startTime, endTime: entry.endTime, entry };
-  if (entry.status === "confirmed") return { kind: "fixed", ...base };
-  // 却下(review モードで他人の希望を却下したもの)は「不可」と同じ見た目・同じ扱いにする
-  if (entry.type === "欠勤" || entry.type === "却下") return { kind: "no", ...base };
+function cellStateOf(shift: Shift): CellState {
+  const base = { type: shift.type, startTime: shift.startTime, endTime: shift.endTime, shift };
+  if (shift.status === "confirmed") return { kind: "fixed", ...base };
+  if (shift.type === "欠勤" || shift.type === "却下") return { kind: "no", ...base };
   return { kind: "want", ...base };
+}
+
+/** そのセル（1メンバー×1日）の全セグメントを、開始時刻の早い順に返す。終日枠は先頭。 */
+export function cellStatesOf(shifts: Shift[]): CellState[] {
+  return shifts
+    .map(cellStateOf)
+    .sort((a, b) => {
+      const aIsAllDay = !a.startTime && !a.endTime;
+      const bIsAllDay = !b.startTime && !b.endTime;
+      if (aIsAllDay && !bIsAllDay) return -1;
+      if (!aIsAllDay && bIsAllDay) return 1;
+      if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+      return 0;
+    });
+}
+
+/** 既存の「1セル=1状態」の描画を維持するための代表値。セグメントが無ければ kind:"none"。
+ *  確定(fixed)が1つでもあれば確定を優先し、次に希望(want)、最後に不可(no)を返す。 */
+export function primaryCellState(states: CellState[]): CellState {
+  if (states.length === 0) return { kind: "none", type: "未定", startTime: null, endTime: null };
+  if (states.some((s) => s.kind === "fixed")) {
+    const fixed = states.find((s) => s.kind === "fixed")!;
+    return fixed;
+  }
+  if (states.some((s) => s.kind === "want")) {
+    const want = states.find((s) => s.kind === "want")!;
+    return want;
+  }
+  if (states.some((s) => s.kind === "no")) {
+    const no = states.find((s) => s.kind === "no")!;
+    return no;
+  }
+  return { kind: "none", type: "未定", startTime: null, endTime: null };
 }
 
 /** "no" セルの表示文字列。却下は不可と同じ見た目で文字列だけ変える。 */

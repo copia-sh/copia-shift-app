@@ -1,18 +1,15 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
-import { signInWithEmail, signOut, signUpWithEmail } from "../firebase/auth";
-import { createMemberProfile } from "../firebase/members";
-import type { Member } from "../types";
+import { signInWithEmail, signUpWithEmail } from "../firebase/auth";
 
 interface LoginGateProps {
   user: User | null | undefined;
-  members: Member[] | undefined;
-  onMemberJoined: () => void;
-  children: (currentUser: User, currentMember: Member) => React.ReactNode;
+  onMemberJoined?: () => void;
+  children?: (currentUser: User, currentMember: any) => React.ReactNode;
 }
 
-export function LoginGate({ user, members, onMemberJoined, children }: LoginGateProps) {
+export function LoginGate({ user, onMemberJoined: _onMemberJoined, children }: LoginGateProps) {
   if (user === undefined) {
     return <FullScreenMessage title="読み込み中..." />;
   }
@@ -21,18 +18,12 @@ export function LoginGate({ user, members, onMemberJoined, children }: LoginGate
     return <AuthForm />;
   }
 
-  if (members === undefined) {
-    return <FullScreenMessage title="読み込み中..." />;
+  if (!children) {
+    return <FullScreenMessage title="グループ機能は次のPhaseで実装します" />;
   }
 
-  const currentMember = members.find(
-    (m) => m.email.toLowerCase() === user.email?.toLowerCase(),
-  );
-
-  if (!currentMember) {
-    return <JoinTeamForm user={user} onMemberJoined={onMemberJoined} />;
-  }
-
+  // Return a placeholder with the current user and a dummy member
+  const currentMember = { id: user.uid, displayName: user.email ?? "User", email: user.email ?? "" };
   return <>{children(user, currentMember)}</>;
 }
 
@@ -147,63 +138,6 @@ function AuthForm() {
           </button>
         </form>
       </div>
-    </FullScreenMessage>
-  );
-}
-
-function JoinTeamForm({
-  user,
-  onMemberJoined,
-}: {
-  user: User;
-  onMemberJoined: () => void;
-}) {
-  const [inviteCode, setInviteCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await createMemberProfile({ email: user.email!, inviteCode });
-      onMemberJoined();
-    } catch {
-      setError("招待コードが正しくありません。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <FullScreenMessage title="チームに参加">
-      <p className="mb-2 text-sm text-gray-600">{user.email}</p>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-xs flex-col gap-2">
-        <input
-          type="text"
-          required
-          placeholder="招待コード"
-          value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          参加する
-        </button>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="mt-2 text-xs text-gray-400 hover:underline"
-        >
-          ログアウト
-        </button>
-      </form>
     </FullScreenMessage>
   );
 }
