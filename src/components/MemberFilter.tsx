@@ -77,7 +77,7 @@ export function MemberFilter({
             : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
         }`}
       >
-        自分だけ
+        自分
       </button>
       {attributeCounts.map(([attribute, count]) => {
         const selected = !showCurrentMemberOnly && selectedAttributes.has(attribute);
