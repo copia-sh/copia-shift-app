@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { Shift, ShiftType } from "../types";
-import { SKINS, TIME_CHOICES, validateSegments } from "./shiftVisual";
+import { TIME_CHOICES, validateSegments, skinStyle } from "./shiftVisual";
+import type { ShiftTheme } from "./shiftTheme";
 
 export interface SegmentEditorProps {
   dateKey: string;
   memberName: string;
   segments: Shift[];
-  shiftTypes: ShiftType[];
+  theme: ShiftTheme;
   busy: boolean;
   maxSegments?: number;
   onClose: () => void;
@@ -27,7 +28,7 @@ export function SegmentEditor({
   dateKey,
   memberName,
   segments,
-  shiftTypes,
+  theme,
   busy,
   maxSegments = 4,
   onClose,
@@ -47,7 +48,8 @@ export function SegmentEditor({
 
   const handleAddSegment = () => {
     if (canAdd) {
-      setEdits([...edits, { type: "出勤", startTime: "09:00", endTime: "17:00", isAllDay: false }]);
+      const defaultType = theme.types[0]?.key ?? "出勤";
+      setEdits([...edits, { type: defaultType, startTime: "09:00", endTime: "17:00", isAllDay: false }]);
       setError(null);
     }
   };
@@ -113,20 +115,25 @@ export function SegmentEditor({
             return (
               <div key={idx} className="flex items-center gap-2 rounded border border-gray-200 p-2">
                 <div className="flex gap-1">
-                  {shiftTypes.map((t) => {
-                    const skim = SKINS[t === "リモート" ? "wantRemote" : t === "欠勤" ? "no" : "wantWork"];
+                  {theme.types.map((typeDef) => {
+                    const sk = theme.skinFor({ kind: "want", type: typeDef.key, startTime: null, endTime: null }, seg.type === typeDef.key);
                     return (
                       <button
-                        key={t}
+                        key={typeDef.key}
                         type="button"
-                        onClick={() => handleChangeType(idx, t)}
-                        className={`px-2 py-1 text-[11px] font-bold rounded ${
-                          seg.type === t
-                            ? `${skim.box} ${skim.fg}`
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        onClick={() => handleChangeType(idx, typeDef.key)}
+                        className={`px-2 py-1 text-[11px] font-bold rounded border ${
+                          seg.type === typeDef.key
+                            ? ""
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
                         }`}
+                        style={
+                          seg.type === typeDef.key
+                            ? skinStyle(sk)
+                            : {}
+                        }
                       >
-                        {t === "リモート" ? "リ" : t.slice(0, 1)}
+                        {typeDef.label.slice(0, 1)}
                       </button>
                     );
                   })}

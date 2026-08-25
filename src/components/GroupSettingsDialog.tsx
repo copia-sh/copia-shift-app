@@ -1,24 +1,78 @@
 import { useState } from "react";
-import type { GroupSettings } from "../types";
+import type { GroupSettings, ShiftTypeDef } from "../types";
+
+const MAX_SHIFT_TYPES = 6;
 
 export interface GroupSettingsDialogProps {
   settings: GroupSettings;
+  shiftTypes: ShiftTypeDef[];
   busy: boolean;
   onClose: () => void;
   onSave: (patch: Partial<GroupSettings>) => void;
+  onSaveTypes: (types: ShiftTypeDef[]) => void;
 }
 
-export function GroupSettingsDialog({ settings, busy, onClose, onSave }: GroupSettingsDialogProps) {
+/** 種別の妥当性を検査する。問題があれば日本語のメッセージ、無ければ null。 */
+function validateTypes(types: ShiftTypeDef[]): string | null {
+  if (types.length === 0) return "種別は1つ以上必要です";
+  if (!types.some((t) => t.attendance === "available")) return "出られる種別が1つ以上必要です";
+  if (types.some((t) => t.label.trim() === "")) return "表示名を入力してください";
+  if (new Set(types.map((t) => t.key)).size !== types.length) return "種別が重複しています";
+  return null;
+}
+
+export function GroupSettingsDialog({
+  settings,
+  shiftTypes,
+  busy,
+  onClose,
+  onSave,
+  onSaveTypes,
+}: GroupSettingsDialogProps) {
   const [inviteCode, setInviteCode] = useState(settings.inviteCode);
   const [displayStartHour, setDisplayStartHour] = useState(settings.displayStartHour);
   const [displayEndHour, setDisplayEndHour] = useState(settings.displayEndHour);
   const [weekStartsOn, setWeekStartsOn] = useState(settings.weekStartsOn);
   const [maxSegmentsPerDay, setMaxSegmentsPerDay] = useState(settings.maxSegmentsPerDay);
+  const [types, setTypes] = useState<ShiftTypeDef[]>(shiftTypes);
   const [error, setError] = useState<string | null>(null);
+
+  /** 1行だけ差し替えた新しい配列にする（既存の行オブジェクトは書き換えない）。 */
+  const patchType = (index: number, patch: Partial<ShiftTypeDef>) => {
+    setTypes(types.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+    setError(null);
+  };
+
+  const addType = () => {
+    if (types.length >= MAX_SHIFT_TYPES) return;
+    setTypes([
+      ...types,
+      {
+        // key は自動生成する。label をキーにすると、改名したときに
+        // 既存のシフトが参照先を失ってしまう。
+        key: crypto.randomUUID().slice(0, 8),
+        label: "新しい種別",
+        color: "#7C8794",
+        attendance: "available",
+        mark: "△",
+      },
+    ]);
+    setError(null);
+  };
+
+  const removeType = (index: number) => {
+    setTypes(types.filter((_, i) => i !== index));
+    setError(null);
+  };
 
   const handleSave = () => {
     if (displayEndHour <= displayStartHour) {
       setError("終了時刻は開始時刻より後にしてください");
+      return;
+    }
+    const typeError = validateTypes(types);
+    if (typeError) {
+      setError(typeError);
       return;
     }
 
@@ -30,16 +84,17 @@ export function GroupSettingsDialog({ settings, busy, onClose, onSave }: GroupSe
       maxSegmentsPerDay,
     };
     onSave(patch);
+    onSaveTypes(types.map((t) => ({ ...t, label: t.label.trim() })));
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-xl bg-white p-5 shadow-xl">
         <div className="mb-4">
           <h2 className="text-lg font-bold text-gray-900">グループ設定</h2>
         </div>
 
-        <div className="space-y-4 mb-4">
+        <div className="mb-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">招待コード</label>
             <input
@@ -127,6 +182,78 @@ export function GroupSettingsDialog({ settings, busy, onClose, onSave }: GroupSe
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="mt-4 border-t border-gray-200 pt-4">
+            <label className="mb-2 block text-sm font-bold text-gray-700">シフト種別</label>
+            <div className="space-y-2">
+              {types.map((t, i) => (
+                <div
+                  key={t.key}
+                  className="flex flex-wrap items-center gap-2 rounded border border-gray-200 p-2"
+                >
+                  <input
+                    type="color"
+                    value={t.color}
+                    onChange={(e) => patchType(i, { color: e.target.value })}
+                    disabled={busy}
+                    aria-label="色"
+                    className="h-7 w-9 flex-none rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={t.label}
+                    onChange={(e) => patchType(i, { label: e.target.value })}
+                    disabled={busy}
+                    placeholder="表示名"
+                    className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={t.mark}
+                    maxLength={2}
+                    onChange={(e) => patchType(i, { mark: e.target.value })}
+                    disabled={busy}
+                    placeholder="記号"
+                    className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-sm"
+                  />
+                  <select
+                    value={t.attendance}
+                    onChange={(e) =>
+                      patchType(i, {
+                        attendance: e.target.value as ShiftTypeDef["attendance"],
+                      })
+                    }
+                    disabled={busy}
+                    className="rounded border border-gray-300 px-2 py-1 text-[13px]"
+                  >
+                    <option value="available">出られる</option>
+                    <option value="unavailable">出られない</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => removeType(i)}
+                    disabled={busy || types.length <= 1}
+                    className="rounded px-2 py-1 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-30"
+                    aria-label="この種別を削除"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addType}
+              disabled={busy || types.length >= MAX_SHIFT_TYPES}
+              className="mt-2 w-full rounded border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-bold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              ＋種別を追加
+            </button>
+            <p className="mt-1 text-[11px] text-gray-500">
+              種別を消しても、その種別で登録済みのシフトはそのまま残ります
+            </p>
           </div>
         </div>
 

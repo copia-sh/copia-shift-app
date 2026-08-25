@@ -36,13 +36,14 @@ import { useShiftsInRange } from "./hooks/useShifts";
 import { useMyGroupIds } from "./hooks/useMyGroupIds";
 import { useGroups } from "./hooks/useGroups";
 import { useGroupSettings } from "./hooks/useGroupSettings";
+import { useShiftTypes } from "./hooks/useShiftTypes";
 import { signOut } from "./firebase/auth";
 import {
   updateMemberRole,
   updateMemberActive,
   updateMemberDisplayName,
 } from "./firebase/members";
-import { updateGroupSettings } from "./firebase/settings";
+import { updateGroupSettings, updateShiftTypes } from "./firebase/settings";
 import {
   getMonthGridDays,
   getWeekDays,
@@ -59,8 +60,9 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import { DEFAULT_GROUP_SETTINGS } from "./types";
-import type { Member, Shift, Group, ShiftType, MemberRole, GroupSettings } from "./types";
+import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
+import { buildShiftTheme } from "./components/shiftTheme";
+import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -199,6 +201,11 @@ function ShiftCalendar({
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const settings = useGroupSettings(groupId);
+  const shiftTypes = useShiftTypes(groupId);
+
+  const theme = useMemo(() => {
+    return shiftTypes ? buildShiftTheme(shiftTypes) : null;
+  }, [shiftTypes]);
 
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate, settings?.weekStartsOn ?? 0) : getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0);
@@ -255,7 +262,7 @@ function ShiftCalendar({
     setBusy(true);
     try {
       if (op.kind === "desired" || op.kind === "unavailable") {
-        const type = op.kind === "desired" ? op.type : "欠勤";
+        const type = op.type;
         const mine = targets.filter((t) => t.memberId === currentMember.id);
         const existing = mine.filter((t) => t.shifts.length > 0);
         const fresh = mine.filter((t) => t.shifts.length === 0);
@@ -340,7 +347,8 @@ function ShiftCalendar({
   function targetOf(k: SelKey): Target {
     const { memberId, dateKey } = parseSelKey(k);
     const shifts_ = (shifts ?? []).filter((s) => s.memberId === memberId && s.date === dateKey);
-    const state = primaryCellState(cellStatesOf(shifts_));
+    const unavailableKeys = theme?.unavailableKeys ?? new Set();
+    const state = primaryCellState(cellStatesOf(shifts_, unavailableKeys));
     return { memberId, dateKey, shifts: shifts_, state };
   }
 
@@ -483,6 +491,16 @@ function ShiftCalendar({
     }
   }
 
+  function describeWriteError(err: unknown): string {
+    const denied =
+      err instanceof FirebaseError
+        ? err.code === "permission-denied"
+        : String(err).includes("permission-denied");
+    return denied
+      ? "この操作を行う権限がありません"
+      : "操作に失敗しました。もう一度お試しください。";
+  }
+
   async function handleSaveSettings(patch: Partial<GroupSettings>) {
     setBusy(true);
     try {
@@ -490,15 +508,20 @@ function ShiftCalendar({
       setOpError(null);
       setShowSettingsDialog(false);
     } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
+      setOpError(describeWriteError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveShiftTypes(types: ShiftTypeDef[]) {
+    setBusy(true);
+    try {
+      await updateShiftTypes(groupId, types);
+      setOpError(null);
+      setShowSettingsDialog(false);
+    } catch (err) {
+      setOpError(describeWriteError(err));
     } finally {
       setBusy(false);
     }
@@ -511,9 +534,11 @@ function ShiftCalendar({
     if (mode === "single") {
       setSelected(new Set([k]));
       const target = targetOf(k);
-      const cellStates = cellStatesOf(target.shifts);
+      const unavailableKeys = theme?.unavailableKeys ?? new Set();
+      const cellStates = cellStatesOf(target.shifts, unavailableKeys);
       if (isSimpleCell(cellStates)) {
-        const op = nextInCycle(st);
+        const cycleKeys = theme?.cycleKeys ?? [];
+        const op = nextInCycle(st, cycleKeys);
         if (op) await applyOps([target], op);
       }
       return;
@@ -536,6 +561,7 @@ function ShiftCalendar({
     // 未取得のうちは既定値で描く。ここで `settings!` と断言してしまうと、
     // 後で描画の分岐を動かしたときに undefined がそのまま流れてしまう。
     settings: settings ?? { inviteCode: "", ...DEFAULT_GROUP_SETTINGS },
+    theme,
     onCellTap,
     onToggleMany: toggleMany,
     showTimes: true,
@@ -605,7 +631,7 @@ function ShiftCalendar({
         onChangeGroup={onChangeGroup}
         onCreateNewGroup={onCreateNewGroup}
       />
-      <ShiftLegend mode={mode} />
+      <ShiftLegend mode={mode} theme={theme} />
 
       {opError && (
         <div className="mx-auto max-w-7xl px-4">
@@ -643,9 +669,10 @@ function ShiftCalendar({
         onClear={() => setSelected(new Set())}
         currentMemberId={currentMember.id}
         onOpenSegmentEditor={(k) => setEditingCell(k)}
+        theme={theme}
       />
 
-      {editingCell && settings && (
+      {editingCell && settings && theme && (
         <SegmentEditor
           dateKey={parseSelKey(editingCell).dateKey}
           memberName={currentMember.displayName}
@@ -654,7 +681,7 @@ function ShiftCalendar({
               s.memberId === parseSelKey(editingCell).memberId &&
               s.date === parseSelKey(editingCell).dateKey
           )}
-          shiftTypes={["出勤", "リモート", "欠勤"]}
+          theme={theme}
           busy={busy}
           maxSegments={settings.maxSegmentsPerDay}
           onClose={() => setEditingCell(null)}
@@ -688,9 +715,11 @@ function ShiftCalendar({
       {showSettingsDialog && settings && (
         <GroupSettingsDialog
           settings={settings}
+          shiftTypes={shiftTypes ?? DEFAULT_SHIFT_TYPES}
           busy={busy}
           onClose={() => setShowSettingsDialog(false)}
           onSave={handleSaveSettings}
+          onSaveTypes={handleSaveShiftTypes}
         />
       )}
     </div>

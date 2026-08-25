@@ -1,7 +1,7 @@
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./config";
-import type { GroupSettings } from "../types";
-import { DEFAULT_GROUP_SETTINGS } from "../types";
+import type { GroupSettings, ShiftTypeDef } from "../types";
+import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "../types";
 
 export function withDefaults(raw: Record<string, unknown> | undefined): GroupSettings {
   return {
@@ -39,5 +39,31 @@ export async function updateGroupSettings(
   // Firestore は undefined を受け付けないので、値のある項目だけ送る。
   const fields = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
   if (Object.keys(fields).length === 0) return;
-  await updateDoc(settingsRef, fields);
+  // updateDoc ではなく setDoc + merge。グループ作成より後に増えた設定項目は
+  // 既存グループのドキュメントに無いことがあり、updateDoc だと失敗する。
+  await setDoc(settingsRef, fields, { merge: true });
+}
+
+export function subscribeToShiftTypes(
+  groupId: string,
+  cb: (types: ShiftTypeDef[]) => void,
+): () => void {
+  const typesRef = doc(db, "groups", groupId, "settings", "shiftTypes");
+  return onSnapshot(
+    typesRef,
+    (snapshot) => {
+      const raw = snapshot.data();
+      const types = (raw?.types as ShiftTypeDef[] | undefined) ?? DEFAULT_SHIFT_TYPES;
+      cb(types);
+    },
+    () => {
+      cb(DEFAULT_SHIFT_TYPES);
+    },
+  );
+}
+
+export async function updateShiftTypes(groupId: string, types: ShiftTypeDef[]): Promise<void> {
+  const typesRef = doc(db, "groups", groupId, "settings", "shiftTypes");
+  // settings/shiftTypes はグループ作成時には作られないので、必ず setDoc で作る。
+  await setDoc(typesRef, { types });
 }

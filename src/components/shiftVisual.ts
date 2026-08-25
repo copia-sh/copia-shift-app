@@ -1,10 +1,12 @@
 import type { Shift, ShiftType } from "../types";
+export { skinStyle } from "./shiftTheme";
+export type { Skin } from "./shiftTheme";
 
 /** 表示状態: 未回答 / 希望 / 不可 / 確定（希望・確定は 出勤 か リモート の2種） */
 export type CellKind = "none" | "want" | "no" | "fixed";
 export interface CellState {
   kind: CellKind;
-  type: ShiftType; // 出勤 | リモート | 欠勤 | 未定
+  type: ShiftType;
   startTime: string | null;
   endTime: string | null;
   shift?: Shift;
@@ -13,17 +15,17 @@ export interface CellState {
 /** セルタップの意味を切り替えるモード */
 export type ShiftMode = "single" | "multi" | "review";
 
-function cellStateOf(shift: Shift): CellState {
+function cellStateOf(shift: Shift, unavailableKeys: Set<string>): CellState {
   const base = { type: shift.type, startTime: shift.startTime, endTime: shift.endTime, shift };
   if (shift.status === "confirmed") return { kind: "fixed", ...base };
-  if (shift.type === "欠勤" || shift.type === "却下") return { kind: "no", ...base };
+  if (unavailableKeys.has(shift.type)) return { kind: "no", ...base };
   return { kind: "want", ...base };
 }
 
 /** そのセル（1メンバー×1日）の全セグメントを、開始時刻の早い順に返す。終日枠は先頭。 */
-export function cellStatesOf(shifts: Shift[]): CellState[] {
+export function cellStatesOf(shifts: Shift[], unavailableKeys: Set<string>): CellState[] {
   return shifts
-    .map(cellStateOf)
+    .map((s) => cellStateOf(s, unavailableKeys))
     .sort((a, b) => {
       const aIsAllDay = !a.startTime && !a.endTime;
       const bIsAllDay = !b.startTime && !b.endTime;
@@ -37,7 +39,7 @@ export function cellStatesOf(shifts: Shift[]): CellState[] {
 /** 既存の「1セル=1状態」の描画を維持するための代表値。セグメントが無ければ kind:"none"。
  *  確定(fixed)が1つでもあれば確定を優先し、次に希望(want)、最後に不可(no)を返す。 */
 export function primaryCellState(states: CellState[]): CellState {
-  if (states.length === 0) return { kind: "none", type: "未定", startTime: null, endTime: null };
+  if (states.length === 0) return { kind: "none", type: "", startTime: null, endTime: null };
   if (states.some((s) => s.kind === "fixed")) {
     const fixed = states.find((s) => s.kind === "fixed")!;
     return fixed;
@@ -50,83 +52,8 @@ export function primaryCellState(states: CellState[]): CellState {
     const no = states.find((s) => s.kind === "no")!;
     return no;
   }
-  return { kind: "none", type: "未定", startTime: null, endTime: null };
+  return { kind: "none", type: "", startTime: null, endTime: null };
 }
-
-/** "no" セルの表示文字列。却下は不可と同じ見た目で文字列だけ変える。 */
-export const noLabel = (st: CellState): string => (st.type === "却下" ? "却下" : "不可");
-
-export interface Skin {
-  box: string;
-  /** 選択中: 同じ色味を一段濃くするだけ（枠線の色は足さない） */
-  boxSelected: string;
-  fg: string;
-  sub: string;
-  mark: string;
-  label: string;
-}
-
-/** 出勤=ブランドブルー / リモート=ティール / 不可=コーラル。確定はベタ塗り+押し込みシャドウ、希望は淡色+破線。 */
-export const SKINS = {
-  fixedWork: {
-    box: "bg-[#248DD4] border border-[#248DD4] shadow-[0_2px_0_0_#0863A0]",
-    boxSelected: "bg-[#1B6FA8] border border-[#1B6FA8] shadow-[0_2px_0_0_#0A4E7C]",
-    fg: "text-white",
-    sub: "text-white/90",
-    mark: "✓",
-    label: "出勤",
-  },
-  fixedRemote: {
-    box: "bg-[#1F8A98] border border-[#1F8A98] shadow-[0_2px_0_0_#14646E]",
-    boxSelected: "bg-[#166C77] border border-[#166C77] shadow-[0_2px_0_0_#0E4C55]",
-    fg: "text-white",
-    sub: "text-white/90",
-    mark: "R",
-    label: "リモート",
-  },
-  wantWork: {
-    box: "bg-[#EAF5FD] border-[1.5px] border-dashed border-[#248DD4]",
-    boxSelected: "bg-[#BFE3FA] border-[1.5px] border-dashed border-[#0863A0]",
-    fg: "text-[#0863A0]",
-    sub: "text-[#0863A0]/85",
-    mark: "○",
-    label: "出勤希望",
-  },
-  wantRemote: {
-    box: "bg-[#E6F4F5] border-[1.5px] border-dashed border-[#1F8A98]",
-    boxSelected: "bg-[#BCE0E4] border-[1.5px] border-dashed border-[#14646E]",
-    fg: "text-[#14646E]",
-    sub: "text-[#14646E]/85",
-    mark: "R",
-    label: "リモート希望",
-  },
-  no: {
-    box: "bg-[#FDF1F1] border border-[#F0C7C7]",
-    boxSelected: "bg-[#F6D8D6] border border-[#E0A9A6]",
-    fg: "text-[#D9736F]",
-    sub: "text-[#D9736F]",
-    mark: "×",
-    label: "不可",
-  },
-  none: {
-    box: "bg-white border border-dashed border-[#E3E3E3]",
-    boxSelected: "bg-[#EAF5FD] border border-dashed border-[#9FCDEB]",
-    fg: "text-[#C8CDD2]",
-    sub: "text-[#C8CDD2]",
-    mark: "·",
-    label: "未回答",
-  },
-} satisfies Record<string, Skin>;
-
-export function skinOf(st: CellState): Skin {
-  if (st.kind === "fixed") return st.type === "リモート" ? SKINS.fixedRemote : SKINS.fixedWork;
-  if (st.kind === "want") return st.type === "リモート" ? SKINS.wantRemote : SKINS.wantWork;
-  if (st.kind === "no") return SKINS.no;
-  return SKINS.none;
-}
-
-/** 選択中なら濃い方の背景を返す */
-export const boxOf = (sk: Skin, isSelected: boolean) => (isSelected ? sk.boxSelected : sk.box);
 
 /** そのモードでこのセルがタップできるか */
 export function canTapCell(mode: ShiftMode, memberId: string, currentMemberId: string, st: CellState): boolean {
@@ -137,13 +64,25 @@ export function canTapCell(mode: ShiftMode, memberId: string, currentMemberId: s
 
 /**
  * single モードの1段階サイクル:
- * 未回答 → 出勤希望 → リモート希望 → 不可 → 未回答
+ * 未回答 → cycleKeys[0] → cycleKeys[1] → ... → 未回答
  * 確定済みセルは single では書き換えない（確定選択モードで扱う）。
  */
-export function nextInCycle(st: CellState): BulkOp | null {
-  if (st.kind === "none") return { kind: "desired", type: "出勤" };
-  if (st.kind === "want") return st.type === "リモート" ? { kind: "unavailable" } : { kind: "desired", type: "リモート" };
-  if (st.kind === "no") return { kind: "clear" };
+export function nextInCycle(st: CellState, cycleKeys: string[]): BulkOp | null {
+  if (cycleKeys.length === 0) return null;
+
+  if (st.kind === "none") return { kind: "desired", type: cycleKeys[0] };
+
+  if (st.kind === "want" || st.kind === "no") {
+    const currentIdx = cycleKeys.indexOf(st.type);
+    if (currentIdx === -1) {
+      return { kind: "clear" };
+    }
+    if (currentIdx < cycleKeys.length - 1) {
+      return { kind: "desired", type: cycleKeys[currentIdx + 1] };
+    }
+    return { kind: "clear" };
+  }
+
   return null; // fixed
 }
 
@@ -166,8 +105,8 @@ export const parseSelKey = (k: SelKey) => {
 
 /** まとめて編集の操作 */
 export type BulkOp =
-  | { kind: "desired"; type: "出勤" | "リモート" }
-  | { kind: "unavailable" }
+  | { kind: "desired"; type: string }
+  | { kind: "unavailable"; type: string }
   | { kind: "clear" }
   | { kind: "confirm" }
   | { kind: "revert" }

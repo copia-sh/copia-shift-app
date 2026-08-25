@@ -3,7 +3,6 @@ import { toDateKey } from "../utils/date";
 import {
   DOW_LABELS,
   TIME_CHOICES,
-  boxOf,
   canTapCell,
   cellStatesOf,
   daysOfMonth,
@@ -11,19 +10,20 @@ import {
   hourValue,
   isSameDate,
   monthGridWeeks,
-  noLabel,
   parseSelKey,
   primaryCellState,
   selKey,
   shortRange,
-  skinOf,
   weekDaysOf,
   cellBoxes,
+  skinStyle,
+  type Skin,
   type BulkOp,
   type CellState,
   type SelKey,
   type ShiftMode,
 } from "./shiftVisual";
+import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
 import type { GroupSettings, Member, Shift, Group } from "../types";
 
@@ -166,20 +166,49 @@ const MODE_HINT: Record<ShiftMode, string> = {
   review: "誰のセルでも選択 → 確定 / 取消 / 却下",
 };
 
-export function ShiftLegend({ mode = "single" }: { mode?: ShiftMode }) {
-  const items = [
-    ["出勤（確定）", "bg-[#248DD4] shadow-[0_2px_0_0_#0863A0]"],
-    ["リモート（確定）", "bg-[#1F8A98] shadow-[0_2px_0_0_#14646E]"],
-    ["希望", "bg-[#EAF5FD] border-[1.5px] border-dashed border-[#248DD4]"],
-    ["不可", "bg-[#FDF1F1] border border-[#F0C7C7]"],
-    ["却下", "bg-[#FDF1F1] border border-[#F0C7C7]"],
-    ["未回答", "bg-white border border-dashed border-[#E3E3E3]"],
-  ] as const;
+export function ShiftLegend({
+  mode = "single",
+  theme,
+}: {
+  mode?: ShiftMode;
+  theme?: ShiftTheme | null;
+}) {
+  const items: { label: string; skin: Skin }[] = [];
+
+  if (theme) {
+    for (const type of theme.types) {
+      const fixed = theme.skinFor({ kind: "fixed", type: type.key, startTime: null, endTime: null }, false);
+      items.push({ label: fixed.label, skin: fixed });
+
+      if (type.attendance === "available") {
+        const want = theme.skinFor({ kind: "want", type: type.key, startTime: null, endTime: null }, false);
+        items.push({ label: want.label, skin: want });
+      }
+    }
+  }
+
+  const none = theme
+    ? theme.skinFor({ kind: "none", type: "", startTime: null, endTime: null }, false)
+    : {
+        bg: "#ffffff",
+        border: "#E3E3E3",
+        borderStyle: "dashed" as const,
+        borderWidth: "1px",
+        fg: "#C8CDD2",
+        shadow: "",
+        mark: "·",
+        label: "未回答",
+      };
+  items.push({ label: none.label, skin: none });
+
   return (
     <div className="flex flex-wrap items-center gap-3.5 px-4 pb-2.5">
-      {items.map(([label, cls]) => (
+      {items.map(({ label, skin }) => (
         <div key={label} className="flex items-center gap-1.5">
-          <span className={`inline-block h-3.5 w-3.5 rounded-[3px] ${cls}`} />
+          <span
+            className="inline-block h-3.5 w-3.5 rounded-[3px] border"
+            style={skinStyle(skin)}
+          />
           <span className="text-[11px] font-bold text-gray-600">{label}</span>
         </div>
       ))}
@@ -196,6 +225,7 @@ interface ViewCommon {
   mode: ShiftMode;
   selected: Set<SelKey>;
   settings: GroupSettings;
+  theme: ShiftTheme | null;
   /** モードごとの分岐は App.tsx 側で行う */
   onCellTap: (key: SelKey, state: CellState) => void;
   onToggleMany: (keys: SelKey[]) => void;
@@ -225,6 +255,7 @@ export function ShiftListMatrix({
   mode,
   selected,
   settings,
+  theme,
   onCellTap,
   onToggleMany,
   showTimes = true,
@@ -237,13 +268,14 @@ export function ShiftListMatrix({
   const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
 
   const dayMeta = days.map((day) => {
     const dateKey = toDateKey(day);
     const dow = day.getDay();
     const isToday = isSameDate(day, today);
     const fixed = members.filter(
-      (m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])).kind === "fixed",
+      (m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)).kind === "fixed",
     ).length;
     return {
       day,
@@ -259,7 +291,7 @@ export function ShiftListMatrix({
   /** モードで選択可能な行だけをまとめて選択する */
   const bulkKeys = (dateKey: string) =>
     members
-      .filter((m) => canTapCell(mode, m.id, currentMemberId, primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? []))))
+      .filter((m) => canTapCell(mode, m.id, currentMemberId, primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys))))
       .map((m) => selKey(m.id, dateKey));
 
   return (
@@ -295,7 +327,7 @@ export function ShiftListMatrix({
 
         {members.map((mem) => {
           const isOwn = mem.id === currentMemberId;
-          const states = dayMeta.map((d) => primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [])));
+          const states = dayMeta.map((d) => primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [], unavailableKeys)));
           const fixedCount = states.filter((s) => s.kind === "fixed").length;
           const wantCount = states.filter((s) => s.kind === "want").length;
           return (
@@ -336,13 +368,14 @@ export function ShiftListMatrix({
 
               {dayMeta.map((d) => {
                 const cellStates = byKey.get(selKey(mem.id, d.dateKey)) ?? [];
-                const allStates = cellStatesOf(cellStates);
+                const allStates = cellStatesOf(cellStates, unavailableKeys);
                 const st = primaryCellState(allStates);
                 const k = selKey(mem.id, d.dateKey);
                 const isSel = selected.has(k);
                 const tappable = canTapCell(mode, mem.id, currentMemberId, st);
                 const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
                 const isSimple = allStates.length <= 1;
+                const sk = theme ? theme.skinFor(st, isSel) : null;
                 return (
                   <button
                     key={d.dateKey}
@@ -356,11 +389,15 @@ export function ShiftListMatrix({
                   >
                     {boxes.length === 0 ? (
                       <span
-                        className={`relative flex flex-col items-center justify-center gap-px rounded leading-none ${boxOf(skinOf(st), isSel)}`}
-                        style={{ width: colW - 4, height: rowH - 8 }}
+                        className="relative flex flex-col items-center justify-center gap-px rounded leading-none border"
+                        style={{
+                          width: colW - 4,
+                          height: rowH - 8,
+                          ...(sk ? skinStyle(sk) : {}),
+                        }}
                       >
-                        {isSel && <SelectedBadge fg={skinOf(st).fg} />}
-                        <span className={`text-[11px] font-bold ${skinOf(st).fg}`}>{skinOf(st).mark}</span>
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                        {sk && <span className="text-[11px] font-bold" style={{ color: sk.fg }}>{sk.mark}</span>}
                       </span>
                     ) : (
                       <span
@@ -368,25 +405,29 @@ export function ShiftListMatrix({
                         style={{ width: colW - 4, height: rowH - 8 }}
                       >
                         {boxes.map((box, bi) => {
-                          const sk = skinOf(box.state);
+                          const boxSk = theme ? theme.skinFor(box.state, isSel) : null;
                           const showMark = box.widthPct >= 30;
                           return (
                             <span
                               key={bi}
-                              className={`absolute top-0 bottom-0 rounded flex items-center justify-center overflow-hidden ${boxOf(sk, isSel)}`}
+                              className="absolute top-0 bottom-0 rounded flex items-center justify-center overflow-hidden border"
                               style={{
                                 left: `${box.leftPct}%`,
                                 width: `${box.widthPct}%`,
+                                ...(boxSk ? skinStyle(boxSk) : {}),
                               }}
                             >
-                              {showMark && <span className={`text-[11px] font-bold ${sk.fg}`}>{sk.mark}</span>}
+                              {showMark && boxSk && <span className="text-[11px] font-bold" style={{ color: boxSk.fg }}>{boxSk.mark}</span>}
                             </span>
                           );
                         })}
-                        {isSel && <SelectedBadge fg={skinOf(st).fg} />}
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
                         {isSimple && showTimes && (
                           <span
-                            className={`absolute inset-0 flex flex-col items-center justify-center gap-px rounded pointer-events-none text-[8px] font-bold ${skinOf(st).sub}`}
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-px rounded pointer-events-none text-[8px] font-bold"
+                            style={{
+                              color: sk?.fg ?? "#C8CDD2",
+                            }}
                           >
                             {shortRange(st)}
                           </span>
@@ -436,6 +477,7 @@ export function ShiftMonthGrid({
   mode,
   selected,
   settings,
+  theme,
   onCellTap,
   onToggleMany,
   showTimes = true,
@@ -446,6 +488,7 @@ export function ShiftMonthGrid({
   const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
 
   const dowLabels = dowLabelsFrom(settings.weekStartsOn);
   return (
@@ -471,7 +514,7 @@ export function ShiftMonthGrid({
             const dow = day.getDay();
             const inMonth = day.getMonth() === anchorDate.getMonth();
             const isToday = isSameDate(day, today);
-            const states: CellState[] = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])));
+            const states: CellState[] = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)));
             const fixed = states.filter((s) => s.kind === "fixed").length;
             return (
               <div
@@ -529,47 +572,48 @@ export function ShiftMonthGrid({
                 <div className="flex flex-col gap-0.5">
                   {members.map((mem) => {
                     const cellStates = byKey.get(selKey(mem.id, dateKey)) ?? [];
-                    const allStates = cellStatesOf(cellStates);
+                    const allStates = cellStatesOf(cellStates, unavailableKeys);
                     const st = primaryCellState(allStates);
-                    const sk = skinOf(st);
+                    const sk = theme ? theme.skinFor(st, false) : null;
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
                     const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
                     const isSimple = allStates.length <= 1;
-                    const meta = (showTimes && shortRange(st)) || (st.kind === "no" ? noLabel(st) : sk.label);
+                    const meta = (showTimes && shortRange(st)) || (sk?.label ?? "");
                     const isOwn = mem.id === currentMemberId;
+                    const skForSel = theme ? theme.skinFor(st, isSel) : null;
                     return (
                       <button
                         key={mem.id}
                         type="button"
                         disabled={!tappable}
                         onClick={() => onCellTap(k, st)}
-                        className={`relative flex items-center justify-between gap-1 rounded px-1.5 leading-none ${
+                        className={`relative flex items-center justify-between gap-1 rounded px-1.5 leading-none border ${
                           comfy ? "py-1" : "py-0.5"
-                        } ${
-                          boxes.length === 0
-                            ? boxOf(sk, isSel)
-                            : isSimple
-                              ? boxOf(sk, isSel)
-                              : "bg-white border border-gray-200"
                         } ${
                           isOwn && !isSel ? "shadow-[inset_0_0_0_2px_rgba(36,141,212,0.2)]" : ""
                         } ${tappable ? "" : "cursor-default opacity-60"}`}
+                        style={{
+                          ...(boxes.length === 0 || isSimple ? (skForSel ? skinStyle(skForSel) : {}) : { backgroundColor: "#fff", borderColor: "#e5e7eb" }),
+                        }}
                       >
-                        {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`truncate text-[10px] font-bold ${sk.fg}`}>{mem.displayName}</span>
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                        <span className="truncate text-[10px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName}</span>
                         {boxes.length === 0 || isSimple ? (
-                          <span className={`flex-none text-[9px] font-bold ${sk.sub}`}>{meta}</span>
+                          <span className="flex-none text-[9px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{meta}</span>
                         ) : (
                           <div className="flex-none flex gap-0.5 h-3 w-12">
                             {boxes.map((box, bi) => {
-                              const bsk = skinOf(box.state);
+                              const bsk = theme ? theme.skinFor(box.state, false) : null;
                               return (
                                 <span
                                   key={bi}
-                                  className={`rounded-sm flex-shrink-0 ${bsk.box}`}
-                                  style={{ width: `${box.widthPct / 12}%` }}
+                                  className="rounded-sm flex-shrink-0 border"
+                                  style={{
+                                    width: `${box.widthPct / 12}%`,
+                                    ...(bsk ? skinStyle(bsk) : {}),
+                                  }}
                                 />
                               );
                             })}
@@ -598,6 +642,7 @@ export function ShiftWeekView({
   mode,
   selected,
   settings,
+  theme,
   onCellTap,
   onToggleMany,
 }: ViewCommon) {
@@ -605,6 +650,7 @@ export function ShiftWeekView({
   const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
   const weekDayW = WEEK_PERSON_W * Math.max(1, members.length);
   const gridCols = `${WEEK_GUTTER_W}px repeat(7, ${weekDayW}px)`;
   const totalW = WEEK_GUTTER_W + weekDayW * 7;
@@ -620,7 +666,7 @@ export function ShiftWeekView({
             const dateKey = toDateKey(day);
             const dow = day.getDay();
             const isToday = isSameDate(day, today);
-            const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])));
+            const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)));
             const dowLabel = dowLabelsFrom(settings.weekStartsOn)[di];
             return (
               <div
@@ -668,24 +714,26 @@ export function ShiftWeekView({
                 <div className="mt-1.5 grid grid-cols-4 gap-0.5">
                   {members.map((mem, mi) => {
                     const st = states[mi];
-                    const sk = skinOf(st);
+                    const sk = theme ? theme.skinFor(st, false) : null;
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
                     const isOwn = mem.id === currentMemberId;
+                    const skForSel = theme ? theme.skinFor(st, isSel) : null;
                     return (
                       <button
                         key={mem.id}
                         type="button"
                         disabled={!tappable}
                         onClick={() => onCellTap(k, st)}
-                        className={`relative flex flex-col items-center gap-px rounded py-1 leading-none ${boxOf(sk, isSel)} ${
+                        className={`relative flex flex-col items-center gap-px rounded py-1 leading-none border ${
                           isOwn && !isSel ? "shadow-[inset_0_0_0_2px_rgba(36,141,212,0.25)]" : ""
                         } ${tappable ? "" : "cursor-default opacity-60"}`}
+                        style={skForSel ? skinStyle(skForSel) : {}}
                       >
-                        {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`text-[9px] font-bold ${sk.fg}`}>{mem.displayName.slice(0, 2)}</span>
-                        <span className={`text-[11px] font-bold ${sk.fg}`}>{sk.mark}</span>
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                        <span className="text-[9px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
+                        <span className="text-[11px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{sk?.mark ?? "·"}</span>
                       </button>
                     );
                   })}
@@ -722,28 +770,29 @@ export function ShiftWeekView({
                     <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
                   ))}
                   {members.map((mem, mi) => {
-                    const st = primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? []));
+                    const st = primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? [], unavailableKeys));
                     if (!st.startTime || !st.endTime || (st.kind !== "fixed" && st.kind !== "want")) return null;
-                    const sk = skinOf(st);
+                    const sk = theme ? theme.skinFor(st, false) : null;
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
                     const top = (hourValue(st.startTime) - settings.displayStartHour) * HOUR_H;
                     const height = Math.max((hourValue(st.endTime) - hourValue(st.startTime)) * HOUR_H - 3, 24);
+                    const skForSel = theme ? theme.skinFor(st, isSel) : null;
                     return (
                       <button
                         key={mem.id}
                         type="button"
                         disabled={!tappable}
                         onClick={() => onCellTap(k, st)}
-                        className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left ${boxOf(sk, isSel)} ${
+                        className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
                           tappable ? "" : "cursor-default opacity-60"
                         }`}
-                        style={{ top, height, left: mi * WEEK_PERSON_W + 1, width: WEEK_PERSON_W - 2 }}
+                        style={{ top, height, left: mi * WEEK_PERSON_W + 1, width: WEEK_PERSON_W - 2, ...(skForSel ? skinStyle(skForSel) : {}) }}
                       >
-                        {isSel && <SelectedBadge fg={sk.fg} />}
-                        <span className={`text-[9px] font-bold leading-tight ${sk.fg}`}>{mem.displayName.slice(0, 2)}</span>
-                        <span className={`text-[8px] font-bold leading-tight ${sk.sub}`}>
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                        <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
+                        <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
                           {Number(st.startTime.slice(0, 2))}-{Number(st.endTime.slice(0, 2))}
                         </span>
                       </button>
@@ -774,6 +823,7 @@ export function BulkEditToolbar({
   onClear,
   currentMemberId,
   onOpenSegmentEditor,
+  theme,
 }: {
   mode: ShiftMode;
   selected: Set<SelKey>;
@@ -787,8 +837,10 @@ export function BulkEditToolbar({
   onClear: () => void;
   currentMemberId?: string;
   onOpenSegmentEditor?: (k: SelKey) => void;
+  theme?: ShiftTheme | null;
 }) {
   const byKey = useStateMap(shifts);
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
   // 「時間で分ける」の対象になるセル。single モードで自分のセルを1つだけ
   // 選んでいるときのみ非 null。
   const editableSelfCellKey = (() => {
@@ -800,7 +852,7 @@ export function BulkEditToolbar({
   const keys = [...selected];
   const states = keys.map((k) => {
     const { memberId, dateKey } = parseSelKey(k);
-    return primaryCellState(cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? []));
+    return primaryCellState(cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? [], unavailableKeys));
   });
   const dates = new Set(keys.map((k) => parseSelKey(k).dateKey));
   const people = new Set(keys.map((k) => parseSelKey(k).memberId));
@@ -857,30 +909,38 @@ export function BulkEditToolbar({
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onApply({ kind: "desired", type: "出勤" })}
-                className={`${btn} border-[1.5px] border-dashed border-[#248DD4] bg-[#EAF5FD] text-[#0863A0] shadow-[0_2px_0_0_#C6E3F7]`}
-              >
-                出勤希望
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onApply({ kind: "desired", type: "リモート" })}
-                className={`${btn} border-[1.5px] border-dashed border-[#1F8A98] bg-[#E6F4F5] text-[#14646E] shadow-[0_2px_0_0_#C3E4E7]`}
-              >
-                リモート希望
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onApply({ kind: "unavailable" })}
-                className={`${btn} bg-[#F07474] text-white shadow-[0_2px_0_0_#DA5E5E]`}
-              >
-                不可
-              </button>
+              {theme &&
+                theme.types.map((type) => {
+                  const sk = theme.skinFor(
+                    type.attendance === "available"
+                      ? { kind: "want", type: type.key, startTime: null, endTime: null }
+                      : { kind: "no", type: type.key, startTime: null, endTime: null },
+                    false,
+                  );
+                  const label =
+                    type.attendance === "available" ? `${type.label}希望` : type.label;
+                  return (
+                    <button
+                      key={type.key}
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        onApply(
+                          type.attendance === "available"
+                            ? { kind: "desired", type: type.key }
+                            : { kind: "unavailable", type: type.key }
+                        )
+                      }
+                      className={`${btn} border`}
+                      style={{
+                        ...skinStyle(sk),
+                        boxShadow: `0 2px 0 0 ${sk.border}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               <button
                 type="button"
                 disabled={busy}
