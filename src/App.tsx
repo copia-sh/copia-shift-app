@@ -20,11 +20,13 @@ import {
   parseSelKey,
   primaryCellState,
   cellStatesOf,
+  isSimpleCell,
   type BulkOp,
   type CellState,
   type SelKey,
   type ShiftMode,
 } from "./components/shiftVisual";
+import { SegmentEditor } from "./components/SegmentEditor";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
@@ -47,7 +49,7 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import type { Member, Shift, Group } from "./types";
+import type { Member, Shift, Group, ShiftType } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -181,6 +183,7 @@ function ShiftCalendar({
   const [busy, setBusy] = useState(false);
   const [opError, setOpError] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [editingCell, setEditingCell] = useState<SelKey | null>(null);
 
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
@@ -323,6 +326,58 @@ function ShiftCalendar({
     return { memberId, dateKey, shifts: shifts_, state };
   }
 
+  async function handleSegmentSave(
+    k: SelKey,
+    next: { id?: string; type: string; startTime: string | null; endTime: string | null }[]
+  ) {
+    setBusy(true);
+    try {
+      const target = targetOf(k);
+      const existing = new Set(target.shifts.map((s) => s.id));
+      const nextIds = new Set(next.filter((n) => n.id).map((n) => n.id!));
+
+      for (const seg of next) {
+        if (seg.id) {
+          await updateShiftDetails(groupId, seg.id, {
+            type: seg.type as ShiftType,
+            startTime: seg.startTime,
+            endTime: seg.endTime,
+          });
+        } else {
+          await createShiftsBulk({
+            groupId,
+            memberId: currentMember.id,
+            dates: [target.dateKey],
+            type: seg.type as ShiftType,
+            startTime: seg.startTime,
+            endTime: seg.endTime,
+            uid,
+          });
+        }
+      }
+
+      const toDelete = [...existing].filter((id) => !nextIds.has(id));
+      if (toDelete.length > 0) {
+        await deleteShiftsBulk(groupId, toDelete);
+      }
+
+      setOpError(null);
+      setEditingCell(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。通信状況を確認してもう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleBulk(op: BulkOp) {
     await applyOps([...selected].map(targetOf), op);
     if (op.kind === "desired") return;
@@ -335,8 +390,12 @@ function ShiftCalendar({
 
     if (mode === "single") {
       setSelected(new Set([k]));
-      const op = nextInCycle(st);
-      if (op) await applyOps([targetOf(k)], op);
+      const target = targetOf(k);
+      const cellStates = cellStatesOf(target.shifts);
+      if (isSimpleCell(cellStates)) {
+        const op = nextInCycle(st);
+        if (op) await applyOps([target], op);
+      }
       return;
     }
     setSelected((prev) => {
@@ -435,7 +494,27 @@ function ShiftCalendar({
         onChangeEnd={setEndTime}
         onApply={handleBulk}
         onClear={() => setSelected(new Set())}
+        currentMemberId={currentMember.id}
+        onOpenSegmentEditor={(k) => setEditingCell(k)}
       />
+
+      {editingCell && (
+        <SegmentEditor
+          dateKey={parseSelKey(editingCell).dateKey}
+          memberName={currentMember.displayName}
+          segments={(shifts ?? []).filter(
+            (s) =>
+              s.memberId === parseSelKey(editingCell).memberId &&
+              s.date === parseSelKey(editingCell).dateKey
+          )}
+          shiftTypes={["出勤", "リモート", "欠勤"]}
+          busy={busy}
+          onClose={() => setEditingCell(null)}
+          onSave={async (next) => {
+            await handleSegmentSave(editingCell, next);
+          }}
+        />
+      )}
     </div>
   );
 }

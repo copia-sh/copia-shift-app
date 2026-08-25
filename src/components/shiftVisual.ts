@@ -219,3 +219,133 @@ export function weekDaysOf(anchor: Date): Date[] {
 }
 
 export const isSameDate = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+/** 表示時間帯の既定値。Phase 4 でグループ設定から与えられるようにする。 */
+export const DISPLAY_START_HOUR = 9;
+export const DISPLAY_END_HOUR = 20;
+
+export interface SegmentBox {
+  state: CellState;
+  /** セル幅に対する左端の位置(%) 0..100 */
+  leftPct: number;
+  /** セル幅に対する幅(%) 0..100 */
+  widthPct: number;
+}
+
+/** これより細い枠は潰れて見えないので、最低これだけの幅を確保する。 */
+export const MIN_SEGMENT_WIDTH_PCT = 6;
+
+/**
+ * セル内に並べるセグメントの位置を、実時間の比率で計算する。
+ * - 終日枠（startTime と endTime が両方 null）は leftPct:0 / widthPct:100
+ * - 時間枠は表示時間帯を 0..100 にマップする
+ * - 表示時間帯からはみ出す部分は 0..100 に丸める
+ * - 丸めた結果の幅が MIN_SEGMENT_WIDTH_PCT 未満なら最小幅を確保する（潰れて見えなくなるのを防ぐ）
+ * - leftPct + widthPct は必ず 100 以下になる
+ * - 戻り値は leftPct の昇順
+ */
+export function segmentLayout(
+  states: CellState[],
+  startHour = DISPLAY_START_HOUR,
+  endHour = DISPLAY_END_HOUR,
+): SegmentBox[] {
+  const displayRange = endHour - startHour;
+  return states
+    .map((state): SegmentBox => {
+      if (!state.startTime || !state.endTime) {
+        return { state, leftPct: 0, widthPct: 100 };
+      }
+      const toPct = (h: number) =>
+        Math.max(0, Math.min(100, ((h - startHour) / displayRange) * 100));
+      let leftPct = toPct(hourValue(state.startTime));
+      let widthPct = toPct(hourValue(state.endTime)) - leftPct;
+      if (widthPct < MIN_SEGMENT_WIDTH_PCT) {
+        widthPct = MIN_SEGMENT_WIDTH_PCT;
+        // 最小幅を足すぶん、左に引き戻す。そうしないと表示時間帯の外へ出た枠で
+        // leftPct + widthPct が 100 を超え、セルからはみ出して描画される。
+        leftPct = Math.min(leftPct, 100 - MIN_SEGMENT_WIDTH_PCT);
+      }
+      return { state, leftPct, widthPct };
+    })
+    .sort((a, b) => a.leftPct - b.leftPct);
+}
+
+/**
+ * セル描画に使う箱を返す。
+ * セグメントが1件以下のときは、時間帯を持っていてもセル全体を埋める
+ * （従来の見た目を保つため。時間は文字で示す）。2件以上のときだけ、
+ * 実時間の比率で横に分割する。
+ */
+export function cellBoxes(
+  states: CellState[],
+  startHour = DISPLAY_START_HOUR,
+  endHour = DISPLAY_END_HOUR,
+): SegmentBox[] {
+  if (states.length <= 1) {
+    return states.map((state) => ({ state, leftPct: 0, widthPct: 100 }));
+  }
+  return segmentLayout(states, startHour, endHour);
+}
+
+/**
+ * セグメント構成の妥当性を検査する。問題があれば日本語のメッセージ、無ければ null。
+ * 検査項目（この順でメッセージを返す）:
+ *  1. 開始が終了以降 → 「終了時刻は開始時刻より後にしてください」
+ *  2. 終日枠が2つ以上 → 「終日の枠は1つまでです」
+ *  3. 終日枠と時間枠が混在 → 「終日の枠と時間指定の枠は同時に登録できません」
+ *  4. 時間枠どうしが重なる → 「時間帯が重なっています」
+ *  5. 件数が max を超える → 「1日に登録できる枠は最大{max}件です」
+ * 境界が接するだけ（9-13 と 13-18）は重なりとみなさない。
+ */
+export function validateSegments(
+  segments: { startTime: string | null; endTime: string | null }[],
+  max = 4,
+): string | null {
+  for (const seg of segments) {
+    if (seg.startTime && seg.endTime && seg.startTime >= seg.endTime) {
+      return "終了時刻は開始時刻より後にしてください";
+    }
+  }
+
+  const allDayCount = segments.filter((s) => !s.startTime && !s.endTime).length;
+  if (allDayCount >= 2) {
+    return "終日の枠は1つまでです";
+  }
+
+  const hasAllDay = allDayCount === 1;
+  const hasTimeFrame = segments.some((s) => s.startTime || s.endTime);
+  if (hasAllDay && hasTimeFrame) {
+    return "終日の枠と時間指定の枠は同時に登録できません";
+  }
+
+  const timeFrames = segments.filter((s) => s.startTime && s.endTime);
+  for (let i = 0; i < timeFrames.length; i++) {
+    for (let j = i + 1; j < timeFrames.length; j++) {
+      const a = timeFrames[i];
+      const b = timeFrames[j];
+      const aStart = hourValue(a.startTime!);
+      const aEnd = hourValue(a.endTime!);
+      const bStart = hourValue(b.startTime!);
+      const bEnd = hourValue(b.endTime!);
+      if (!(aEnd <= bStart || bEnd <= aStart)) {
+        return "時間帯が重なっています";
+      }
+    }
+  }
+
+  if (segments.length > max) {
+    return `1日に登録できる枠は最大${max}件です`;
+  }
+
+  return null;
+}
+
+/** タップサイクルで安全に回せる構成か（0件、または終日枠1件のみ） */
+export function isSimpleCell(states: CellState[]): boolean {
+  if (states.length === 0) return true;
+  if (states.length === 1) {
+    const s = states[0];
+    return !s.startTime && !s.endTime;
+  }
+  return false;
+}

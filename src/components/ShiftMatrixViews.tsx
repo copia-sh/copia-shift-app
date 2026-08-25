@@ -17,6 +17,7 @@ import {
   shortRange,
   skinOf,
   weekDaysOf,
+  cellBoxes,
   type BulkOp,
   type CellState,
   type SelKey,
@@ -329,32 +330,65 @@ export function ShiftListMatrix({
                 </span>
               </button>
 
-              {dayMeta.map((d, di) => {
-                const st = states[di];
-                const sk = skinOf(st);
+              {dayMeta.map((d) => {
+                const cellStates = byKey.get(selKey(mem.id, d.dateKey)) ?? [];
+                const allStates = cellStatesOf(cellStates);
+                const st = primaryCellState(allStates);
                 const k = selKey(mem.id, d.dateKey);
                 const isSel = selected.has(k);
                 const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                const time = showTimes ? shortRange(st) : null;
+                const boxes = cellBoxes(allStates);
+                const isSimple = allStates.length <= 1;
                 return (
                   <button
                     key={d.dateKey}
                     type="button"
                     disabled={!tappable}
                     onClick={() => onCellTap(k, st)}
-                    className={`flex flex-none items-center justify-center border-l border-[#EFF1F3] ${
+                    className={`relative flex flex-none items-center justify-center border-l border-[#EFF1F3] ${
                       tappable ? "" : "cursor-default opacity-60"
                     }`}
                     style={{ width: colW, background: d.bg }}
                   >
-                    <span
-                      className={`relative flex flex-col items-center justify-center gap-px rounded leading-none ${boxOf(sk, isSel)}`}
-                      style={{ width: colW - 4, height: rowH - 8 }}
-                    >
-                      {isSel && <SelectedBadge fg={sk.fg} />}
-                      <span className={`text-[11px] font-bold ${sk.fg}`}>{sk.mark}</span>
-                      {time && <span className={`text-[8px] font-bold ${sk.sub}`}>{time}</span>}
-                    </span>
+                    {boxes.length === 0 ? (
+                      <span
+                        className={`relative flex flex-col items-center justify-center gap-px rounded leading-none ${boxOf(skinOf(st), isSel)}`}
+                        style={{ width: colW - 4, height: rowH - 8 }}
+                      >
+                        {isSel && <SelectedBadge fg={skinOf(st).fg} />}
+                        <span className={`text-[11px] font-bold ${skinOf(st).fg}`}>{skinOf(st).mark}</span>
+                      </span>
+                    ) : (
+                      <span
+                        className="relative rounded"
+                        style={{ width: colW - 4, height: rowH - 8 }}
+                      >
+                        {boxes.map((box, bi) => {
+                          const sk = skinOf(box.state);
+                          const showMark = box.widthPct >= 30;
+                          return (
+                            <span
+                              key={bi}
+                              className={`absolute top-0 bottom-0 rounded flex items-center justify-center overflow-hidden ${boxOf(sk, isSel)}`}
+                              style={{
+                                left: `${box.leftPct}%`,
+                                width: `${box.widthPct}%`,
+                              }}
+                            >
+                              {showMark && <span className={`text-[11px] font-bold ${sk.fg}`}>{sk.mark}</span>}
+                            </span>
+                          );
+                        })}
+                        {isSel && <SelectedBadge fg={skinOf(st).fg} />}
+                        {isSimple && showTimes && (
+                          <span
+                            className={`absolute inset-0 flex flex-col items-center justify-center gap-px rounded pointer-events-none text-[8px] font-bold ${skinOf(st).sub}`}
+                          >
+                            {shortRange(st)}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -484,12 +518,16 @@ export function ShiftMonthGrid({
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  {members.map((mem, mi) => {
-                    const st = states[mi];
+                  {members.map((mem) => {
+                    const cellStates = byKey.get(selKey(mem.id, dateKey)) ?? [];
+                    const allStates = cellStatesOf(cellStates);
+                    const st = primaryCellState(allStates);
                     const sk = skinOf(st);
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
+                    const boxes = cellBoxes(allStates);
+                    const isSimple = allStates.length <= 1;
                     const meta = (showTimes && shortRange(st)) || (st.kind === "no" ? noLabel(st) : sk.label);
                     const isOwn = mem.id === currentMemberId;
                     return (
@@ -500,13 +538,34 @@ export function ShiftMonthGrid({
                         onClick={() => onCellTap(k, st)}
                         className={`relative flex items-center justify-between gap-1 rounded px-1.5 leading-none ${
                           comfy ? "py-1" : "py-0.5"
-                        } ${boxOf(sk, isSel)} ${
+                        } ${
+                          boxes.length === 0
+                            ? boxOf(sk, isSel)
+                            : isSimple
+                              ? boxOf(sk, isSel)
+                              : "bg-white border border-gray-200"
+                        } ${
                           isOwn && !isSel ? "shadow-[inset_0_0_0_2px_rgba(36,141,212,0.2)]" : ""
                         } ${tappable ? "" : "cursor-default opacity-60"}`}
                       >
                         {isSel && <SelectedBadge fg={sk.fg} />}
                         <span className={`truncate text-[10px] font-bold ${sk.fg}`}>{mem.displayName}</span>
-                        <span className={`flex-none text-[9px] font-bold ${sk.sub}`}>{meta}</span>
+                        {boxes.length === 0 || isSimple ? (
+                          <span className={`flex-none text-[9px] font-bold ${sk.sub}`}>{meta}</span>
+                        ) : (
+                          <div className="flex-none flex gap-0.5 h-3 w-12">
+                            {boxes.map((box, bi) => {
+                              const bsk = skinOf(box.state);
+                              return (
+                                <span
+                                  key={bi}
+                                  className={`rounded-sm flex-shrink-0 ${bsk.box}`}
+                                  style={{ width: `${box.widthPct / 12}%` }}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -700,6 +759,8 @@ export function BulkEditToolbar({
   onChangeEnd,
   onApply,
   onClear,
+  currentMemberId,
+  onOpenSegmentEditor,
 }: {
   mode: ShiftMode;
   selected: Set<SelKey>;
@@ -711,8 +772,17 @@ export function BulkEditToolbar({
   onChangeEnd: (v: string) => void;
   onApply: (op: BulkOp) => void;
   onClear: () => void;
+  currentMemberId?: string;
+  onOpenSegmentEditor?: (k: SelKey) => void;
 }) {
   const byKey = useStateMap(shifts);
+  // 「時間で分ける」の対象になるセル。single モードで自分のセルを1つだけ
+  // 選んでいるときのみ非 null。
+  const editableSelfCellKey = (() => {
+    if (mode !== "single" || selected.size !== 1 || !currentMemberId) return null;
+    const [k] = [...selected];
+    return parseSelKey(k).memberId === currentMemberId ? k : null;
+  })();
   if (selected.size === 0) return null;
   const keys = [...selected];
   const states = keys.map((k) => {
@@ -809,6 +879,21 @@ export function BulkEditToolbar({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-gray-200 pt-2">
+              {/* 自分のセルを1つだけ選んでいるときにだけ出す。押しても何も起きない
+                  ボタンを見せないよう、所有者の判定を描画時に済ませておく。 */}
+              {editableSelfCellKey && onOpenSegmentEditor && (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onOpenSegmentEditor(editableSelfCellKey)}
+                    className={`${btn} border border-[#248DD4] bg-white text-[#248DD4]`}
+                  >
+                    時間で分ける
+                  </button>
+                  <div className="border-l border-gray-300" style={{ height: "20px" }} />
+                </>
+              )}
               <span className="text-[11px] font-bold text-gray-400">時間帯</span>
               <select
                 value={startTime}
