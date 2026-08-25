@@ -51,9 +51,11 @@ function SelectedBadge({ fg }: { fg: string }) {
 /** 複数選択 / 確定選択 のモード切替。どちらもOFFなら single。 */
 export function ShiftModeToggle({
   mode,
+  canConfirm,
   onChangeMode,
 }: {
   mode: ShiftMode;
+  canConfirm: boolean;
   onChangeMode: (m: ShiftMode) => void;
 }) {
   const items = [
@@ -63,6 +65,7 @@ export function ShiftModeToggle({
   return (
     <div className="flex items-center gap-1.5">
       {items.map(([id, text]) => {
+        if (id === "review" && !canConfirm) return null;
         const on = mode === id;
         return (
           <button

@@ -1,6 +1,6 @@
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, updateDoc, doc } from "firebase/firestore";
 import { db } from "./config";
-import type { Member } from "../types";
+import type { Member, MemberRole } from "../types";
 
 const COLOR_PALETTE = [
   "#ef4444",
@@ -44,4 +44,31 @@ export function subscribeToMembers(
       callback([]);
     },
   );
+}
+
+export async function updateMemberRole(
+  groupId: string,
+  memberId: string,
+  role: MemberRole,
+): Promise<void> {
+  const memberRef = doc(db, "groups", groupId, "members", memberId);
+  await updateDoc(memberRef, { role });
+}
+
+export async function updateMemberActive(
+  groupId: string,
+  memberId: string,
+  active: boolean,
+): Promise<void> {
+  const memberRef = doc(db, "groups", groupId, "members", memberId);
+  await updateDoc(memberRef, { active });
+}
+
+export async function updateMemberDisplayName(
+  groupId: string,
+  memberId: string,
+  displayName: string,
+): Promise<void> {
+  const memberRef = doc(db, "groups", groupId, "members", memberId);
+  await updateDoc(memberRef, { displayName });
 }

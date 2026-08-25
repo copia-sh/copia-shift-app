@@ -27,12 +27,19 @@ import {
   type ShiftMode,
 } from "./components/shiftVisual";
 import { SegmentEditor } from "./components/SegmentEditor";
+import { ProfileDialog } from "./components/ProfileDialog";
+import { MemberAdmin } from "./components/MemberAdmin";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
 import { useMyGroupIds } from "./hooks/useMyGroupIds";
 import { useGroups } from "./hooks/useGroups";
 import { signOut } from "./firebase/auth";
+import {
+  updateMemberRole,
+  updateMemberActive,
+  updateMemberDisplayName,
+} from "./firebase/members";
 import {
   getMonthGridDays,
   getWeekDays,
@@ -49,7 +56,7 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import type { Member, Shift, Group, ShiftType } from "./types";
+import type { Member, Shift, Group, ShiftType, MemberRole } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -184,6 +191,8 @@ function ShiftCalendar({
   const [opError, setOpError] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [editingCell, setEditingCell] = useState<SelKey | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showMemberAdmin, setShowMemberAdmin] = useState(false);
 
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
@@ -216,7 +225,10 @@ function ShiftCalendar({
     }
   }
 
+  const canConfirm = currentMember.role === "admin" || currentMember.role === "leader";
+
   function changeMode(m: ShiftMode) {
+    if (m === "review" && !canConfirm) return;
     setMode(m);
     setSelected(new Set());
   }
@@ -384,6 +396,87 @@ function ShiftCalendar({
     setSelected(new Set());
   }
 
+  async function handleSaveProfile(displayName: string) {
+    setBusy(true);
+    try {
+      await updateMemberDisplayName(groupId, currentMember.id, displayName);
+      setOpError(null);
+      setShowProfileDialog(false);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMemberRoleChange(memberId: string, role: MemberRole) {
+    setBusy(true);
+    try {
+      await updateMemberRole(groupId, memberId, role);
+      setOpError(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMemberActiveChange(memberId: string, active: boolean) {
+    setBusy(true);
+    try {
+      await updateMemberActive(groupId, memberId, active);
+      setOpError(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMemberDisplayNameChange(memberId: string, displayName: string) {
+    setBusy(true);
+    try {
+      await updateMemberDisplayName(groupId, memberId, displayName);
+      setOpError(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onCellTap(k: SelKey, st: CellState) {
     const { memberId } = parseSelKey(k);
     if (!canTapCell(mode, memberId, currentMember.id, st)) return;
@@ -422,7 +515,7 @@ function ShiftCalendar({
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex items-center justify-end gap-3 px-4 pt-3">
-        <ShiftModeToggle mode={mode} onChangeMode={changeMode} />
+        <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         {currentMember.role === "admin" && (
           <button
             type="button"
@@ -432,7 +525,22 @@ function ShiftCalendar({
             {inviteLinkCopied ? "コピーしました" : "招待リンク"}
           </button>
         )}
-        <span className="text-sm text-gray-500">{currentMember.displayName}</span>
+        {currentMember.role === "admin" && (
+          <button
+            type="button"
+            onClick={() => setShowMemberAdmin(true)}
+            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+          >
+            メンバー
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowProfileDialog(true)}
+          className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+        >
+          {currentMember.displayName}
+        </button>
         <button
           type="button"
           onClick={() => signOut()}
@@ -513,6 +621,27 @@ function ShiftCalendar({
           onSave={async (next) => {
             await handleSegmentSave(editingCell, next);
           }}
+        />
+      )}
+
+      {showProfileDialog && (
+        <ProfileDialog
+          member={currentMember}
+          busy={busy}
+          onClose={() => setShowProfileDialog(false)}
+          onSave={handleSaveProfile}
+        />
+      )}
+
+      {showMemberAdmin && (
+        <MemberAdmin
+          members={members}
+          currentMemberId={currentMember.id}
+          busy={busy}
+          onClose={() => setShowMemberAdmin(false)}
+          onChangeRole={handleMemberRoleChange}
+          onChangeActive={handleMemberActiveChange}
+          onChangeDisplayName={handleMemberDisplayNameChange}
         />
       )}
     </div>
