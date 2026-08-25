@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { createGroup, joinGroup } from "../firebase/groups";
+import { signOut } from "../firebase/auth";
 
 interface GroupSetupProps {
   user: User;
@@ -20,6 +21,20 @@ export function GroupSetup({ user, onDone }: GroupSetupProps) {
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-6 text-center">
       <h1 className="text-2xl font-semibold text-gray-900">グループの管理</h1>
       <div className="w-full max-w-xs">
+        <div className="mb-4 rounded-lg border border-[#B9DCF3] bg-[#EAF5FC] px-3 py-2.5 text-left">
+          <p className="text-[11px] font-bold text-[#0863A0]">ログイン中のアカウント</p>
+          <p className="mt-0.5 truncate text-sm text-gray-800" title={user.email ?? ""}>
+            {user.email}
+          </p>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            disabled={busy}
+            className="mt-2 text-[12px] font-bold text-[#0863A0] hover:underline disabled:opacity-50"
+          >
+            別のアカウントでログイン
+          </button>
+        </div>
         <div className="mb-4 flex overflow-hidden rounded-md border border-gray-300">
           <button
             type="button"

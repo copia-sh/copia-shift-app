@@ -87,6 +87,9 @@ function AuthForm() {
   return (
     <FullScreenMessage title="Copia シフト管理">
       <div className="w-full max-w-xs">
+        <p className="mb-4 text-sm leading-6 text-gray-600">
+          すでにグループに所属している方は、登録済みのメールアドレスとパスワードでログインしてください。
+        </p>
         <div className="mb-4 flex overflow-hidden rounded-md border border-gray-300">
           <button
             type="button"
@@ -104,7 +107,7 @@ function AuthForm() {
               mode === "signup" ? "bg-blue-600 text-white" : "text-gray-600"
             }`}
           >
-            新規登録
+            初めての方
           </button>
         </div>
 
@@ -132,7 +135,7 @@ function AuthForm() {
             disabled={busy}
             className="mt-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {mode === "signup" ? "登録する" : "ログイン"}
+            {mode === "signup" ? "アカウントを登録" : "ログイン"}
           </button>
         </form>
       </div>
