@@ -72,3 +72,20 @@ export const DEFAULT_GROUP_SETTINGS: Omit<GroupSettings, "inviteCode"> = {
   weekStartsOn: 0,
   maxSegmentsPerDay: 4,
 };
+
+/**
+ * 保存値に既定値を埋めて GroupSettings にする。
+ * 未設定のときだけ既定値を使う（`??` なので 0 や false は潰れない）。
+ *
+ * Firestore アクセス層ではなくここに置いている: 純粋関数なので、
+ * Firebase の初期化なしにテストできるようにするため。
+ */
+export function withDefaults(raw: Record<string, unknown> | undefined): GroupSettings {
+  return {
+    inviteCode: (raw?.inviteCode as string) ?? "",
+    displayStartHour: (raw?.displayStartHour as number) ?? DEFAULT_GROUP_SETTINGS.displayStartHour,
+    displayEndHour: (raw?.displayEndHour as number) ?? DEFAULT_GROUP_SETTINGS.displayEndHour,
+    weekStartsOn: (raw?.weekStartsOn as 0 | 1) ?? DEFAULT_GROUP_SETTINGS.weekStartsOn,
+    maxSegmentsPerDay: (raw?.maxSegmentsPerDay as number) ?? DEFAULT_GROUP_SETTINGS.maxSegmentsPerDay,
+  };
+}

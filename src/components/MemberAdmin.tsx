@@ -4,6 +4,7 @@ import type { Member, MemberRole } from "../types";
 export interface MemberAdminProps {
   members: Member[];
   currentMemberId: string;
+  canManage: boolean;
   busy: boolean;
   onClose: () => void;
   onChangeRole: (memberId: string, role: MemberRole) => void;
@@ -14,6 +15,7 @@ export interface MemberAdminProps {
 export function MemberAdmin({
   members,
   currentMemberId,
+  canManage,
   busy,
   onClose,
   onChangeRole,
@@ -68,7 +70,7 @@ export function MemberAdmin({
             value={displayName}
             onChange={(e) => setEditedNames({ ...editedNames, [member.id]: e.target.value })}
             onBlur={() => handleDisplayNameBlur(member.id, member.displayName)}
-            disabled={busy}
+            disabled={busy || !canManage}
             className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
           />
           <span className="max-w-[45%] truncate text-[11px] text-gray-400">{member.email}</span>
@@ -78,7 +80,7 @@ export function MemberAdmin({
           <select
             value={member.role}
             onChange={(e) => onChangeRole(member.id, e.target.value as MemberRole)}
-            disabled={busy || isCurrentUser}
+            disabled={busy || !canManage || isCurrentUser}
             className="rounded border border-gray-200 bg-white px-2 py-1 text-[13px] text-gray-900 disabled:opacity-50"
           >
             <option value="admin">管理者</option>
@@ -91,7 +93,7 @@ export function MemberAdmin({
               type="checkbox"
               checked={member.active}
               onChange={(e) => onChangeActive(member.id, e.target.checked)}
-              disabled={busy || cannotDeactivate}
+              disabled={busy || !canManage || cannotDeactivate}
               className="h-4 w-4 disabled:opacity-50"
             />
             <span className="text-[13px] text-gray-700">在籍</span>
@@ -100,7 +102,7 @@ export function MemberAdmin({
           {isCurrentUser && (
             <span className="text-[11px] text-gray-400">自分のロールは変更できません</span>
           )}
-          {cannotDeactivate && !isCurrentUser && (
+          {cannotDeactivate && (
             <span className="text-[11px] text-gray-400">最後の管理者は外せません</span>
           )}
         </div>
@@ -114,6 +116,12 @@ export function MemberAdmin({
         <div className="mb-4">
           <h2 className="text-lg font-bold text-gray-900">メンバー管理</h2>
         </div>
+
+        {!canManage && (
+          <p className="mb-3 rounded-md bg-[#D1E9F9] px-3 py-2 text-[11px] font-bold text-[#0863A0]">
+            表示名・役職・在籍の変更は管理者のみ行えます
+          </p>
+        )}
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {activeMembers.map(renderMemberRow)}

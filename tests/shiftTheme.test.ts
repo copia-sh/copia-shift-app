@@ -72,14 +72,14 @@ describe("shiftTheme - buildShiftTheme", () => {
     expect(def.color).toBe("#999999");
   });
 
-  it("skinFor fixed state has white text and shadow", () => {
+  it("skinFor fixed state has white text and no shadow", () => {
     const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
     const skin = theme.skinFor(
       { kind: "fixed", type: "出勤", startTime: null, endTime: null },
       false,
     );
     expect(skin.fg).toBe("#ffffff");
-    expect(skin.shadow).toBeTruthy();
+    expect(skin.shadow).toBe("");
     expect(skin.mark).toBe("✓");
     expect(skin.label).toBe("出勤");
   });
@@ -112,6 +112,24 @@ describe("shiftTheme - buildShiftTheme", () => {
       false,
     );
     expect(skin.label).toBe("却下");
+  });
+
+  it("defOf REJECTED_TYPE has orange color", () => {
+    const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
+    const def = theme.defOf(REJECTED_TYPE);
+    expect(def.color).toBe("#E08A2E");
+    expect(def.label).toBe("却下");
+    expect(def.mark).toBe("×");
+  });
+
+  it("skinFor no state with REJECTED_TYPE has orange background", () => {
+    const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
+    const skin = theme.skinFor(
+      { kind: "no", type: REJECTED_TYPE, startTime: null, endTime: null },
+      false,
+    );
+    expect(skin.fg).toBe("#E08A2E");
+    expect(skin.mark).toBe("×");
   });
 
   it("skinFor none state has gray color", () => {

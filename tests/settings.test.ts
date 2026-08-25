@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { withDefaults } from "../src/firebase/settings";
+import { withDefaults } from "../src/types";
 
 describe("withDefaults", () => {
   it("returns all defaults when raw is undefined", () => {

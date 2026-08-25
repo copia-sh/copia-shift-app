@@ -1,17 +1,12 @@
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./config";
 import type { GroupSettings, ShiftTypeDef } from "../types";
-import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "../types";
+import { DEFAULT_SHIFT_TYPES, withDefaults } from "../types";
 
-export function withDefaults(raw: Record<string, unknown> | undefined): GroupSettings {
-  return {
-    inviteCode: (raw?.inviteCode as string) ?? "",
-    displayStartHour: (raw?.displayStartHour as number) ?? DEFAULT_GROUP_SETTINGS.displayStartHour,
-    displayEndHour: (raw?.displayEndHour as number) ?? DEFAULT_GROUP_SETTINGS.displayEndHour,
-    weekStartsOn: (raw?.weekStartsOn as 0 | 1) ?? DEFAULT_GROUP_SETTINGS.weekStartsOn,
-    maxSegmentsPerDay: (raw?.maxSegmentsPerDay as number) ?? DEFAULT_GROUP_SETTINGS.maxSegmentsPerDay,
-  };
-}
+// 既存の import 経路を保つための再エクスポート。実体は types.ts にある
+// （純粋関数なので、Firebase を初期化せずにテストできるようにするため）。
+export { withDefaults };
+
 
 export function subscribeToGroupSettings(
   groupId: string,

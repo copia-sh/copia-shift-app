@@ -46,11 +46,8 @@ import {
 import { updateGroupSettings, updateShiftTypes } from "./firebase/settings";
 import {
   getMonthGridDays,
-  getWeekDays,
   nextMonth,
-  nextWeek,
   previousMonth,
-  previousWeek,
   toDateKey,
 } from "./utils/date";
 import {
@@ -65,6 +62,9 @@ import { buildShiftTheme } from "./components/shiftTheme";
 import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
 type ViewMode = "list" | "month" | "week";
+
+const HEADER_BTN =
+  "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
 
 function App() {
   const user = useAuthUser();
@@ -208,20 +208,20 @@ function ShiftCalendar({
   }, [shiftTypes]);
 
   const { startKey, endKey } = useMemo(() => {
-    const days = view === "week" ? getWeekDays(anchorDate, settings?.weekStartsOn ?? 0) : getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0);
+    const days = getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0);
     return {
       startKey: toDateKey(days[0]),
       endKey: toDateKey(days[days.length - 1]),
     };
-  }, [anchorDate, view, settings?.weekStartsOn]);
+  }, [anchorDate, settings?.weekStartsOn]);
 
   const shifts = useShiftsInRange(groupId, startKey, endKey);
 
   function handlePrev() {
-    setAnchorDate((d) => (view === "week" ? previousWeek(d) : previousMonth(d)));
+    setAnchorDate((d) => previousMonth(d));
   }
   function handleNext() {
-    setAnchorDate((d) => (view === "week" ? nextWeek(d) : nextMonth(d)));
+    setAnchorDate((d) => nextMonth(d));
   }
   function handleToday() {
     setAnchorDate(new Date());
@@ -551,9 +551,13 @@ function ShiftCalendar({
     });
   }
 
+  const activeMembers = useMemo(() => {
+    return (members ?? []).filter((m) => m.active);
+  }, [members]);
+
   const common = {
     anchorDate,
-    members: members ?? [],
+    members: activeMembers,
     shifts: shifts ?? [],
     currentMemberId: currentMember.id,
     mode,
@@ -569,58 +573,31 @@ function ShiftCalendar({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex items-center justify-end gap-3 px-4 pt-3">
+    <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
+      {/* 1段目: モードと管理系。テキストボタンは 13px/700 / #6B7280 / padding 6px 10px */}
+      <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         {currentMember.role === "admin" && (
-          <button
-            type="button"
-            onClick={handleCopyInviteLink}
-            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-          >
-            {inviteLinkCopied ? "コピーしました" : "招待リンク"}
-          </button>
-        )}
-        {currentMember.role === "admin" && (
-          <button
-            type="button"
-            onClick={() => setShowSettingsDialog(true)}
-            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-          >
+          <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
             設定
           </button>
         )}
         {currentMember.role === "admin" && (
-          <button
-            type="button"
-            onClick={() => setShowMemberAdmin(true)}
-            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-          >
+          <button type="button" onClick={() => setShowMemberAdmin(true)} className={HEADER_BTN}>
             メンバー
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowProfileDialog(true)}
-          className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-        >
+        <button type="button" onClick={() => setShowProfileDialog(true)} className={HEADER_BTN}>
           {currentMember.displayName}
         </button>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
-        >
+        <button type="button" onClick={() => signOut()} className={HEADER_BTN}>
           ログアウト
         </button>
       </div>
 
       <CalendarNav
-        label={
-          view === "week"
-            ? `${format(anchorDate, "M月d日", { locale: ja })}の週`
-            : format(anchorDate, "yyyy年M月", { locale: ja })
-        }
+        // 週表示でも月単位で動かすので、ラベルは常に「YYYY年M月」
+        label={format(anchorDate, "yyyy年M月", { locale: ja })}
         view={view}
         onPrev={handlePrev}
         onNext={handleNext}
@@ -634,7 +611,7 @@ function ShiftCalendar({
       <ShiftLegend mode={mode} theme={theme} />
 
       {opError && (
-        <div className="mx-auto max-w-7xl px-4">
+        <div className="mx-auto max-w-[1400px] px-5">
           <p
             role="alert"
             className="rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2 text-[12px] font-bold text-[#D9736F]"
@@ -644,7 +621,7 @@ function ShiftCalendar({
         </div>
       )}
 
-      <main className="mx-auto max-w-7xl px-4 pb-32">
+      <main className="mx-auto max-w-[1400px] px-5 pb-[140px]">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : view === "list" ? (
@@ -704,6 +681,7 @@ function ShiftCalendar({
         <MemberAdmin
           members={members}
           currentMemberId={currentMember.id}
+          canManage={currentMember.role === "admin"}
           busy={busy}
           onClose={() => setShowMemberAdmin(false)}
           onChangeRole={handleMemberRoleChange}
@@ -716,6 +694,9 @@ function ShiftCalendar({
         <GroupSettingsDialog
           settings={settings}
           shiftTypes={shiftTypes ?? DEFAULT_SHIFT_TYPES}
+          inviteUrl={`${window.location.origin}${window.location.pathname}?g=${groupId}`}
+          inviteLinkCopied={inviteLinkCopied}
+          onCopyInviteLink={handleCopyInviteLink}
           busy={busy}
           onClose={() => setShowSettingsDialog(false)}
           onSave={handleSaveSettings}

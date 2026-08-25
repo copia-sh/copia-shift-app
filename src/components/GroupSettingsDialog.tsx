@@ -6,8 +6,11 @@ const MAX_SHIFT_TYPES = 6;
 export interface GroupSettingsDialogProps {
   settings: GroupSettings;
   shiftTypes: ShiftTypeDef[];
+  inviteUrl: string;
+  inviteLinkCopied: boolean;
   busy: boolean;
   onClose: () => void;
+  onCopyInviteLink: () => void;
   onSave: (patch: Partial<GroupSettings>) => void;
   onSaveTypes: (types: ShiftTypeDef[]) => void;
 }
@@ -24,8 +27,11 @@ function validateTypes(types: ShiftTypeDef[]): string | null {
 export function GroupSettingsDialog({
   settings,
   shiftTypes,
+  inviteUrl,
+  inviteLinkCopied,
   busy,
   onClose,
+  onCopyInviteLink,
   onSave,
   onSaveTypes,
 }: GroupSettingsDialogProps) {
@@ -95,6 +101,25 @@ export function GroupSettingsDialog({
         </div>
 
         <div className="mb-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
+          <div>
+            <label className="mb-1 block text-sm font-bold text-gray-700">招待リンク</label>
+            <div className="flex gap-2">
+              <div
+                className="min-w-0 flex-1 truncate rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-[12px] text-gray-500"
+                title={inviteUrl}
+              >
+                {inviteUrl}
+              </div>
+              <button
+                type="button"
+                onClick={onCopyInviteLink}
+                className="flex-none rounded-md border border-[#248DD4] bg-white px-3 text-[12px] font-bold text-[#248DD4]"
+              >
+                {inviteLinkCopied ? "コピーしました" : "リンクをコピー"}
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">招待コード</label>
             <input
@@ -258,7 +283,7 @@ export function GroupSettingsDialog({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-[12px] font-bold text-red-700">
+          <div className="mb-4 rounded border border-[#FECACA] bg-[#FEF2F2] p-3 text-[12px] font-bold text-[#B91C1C]">
             {error}
           </div>
         )}

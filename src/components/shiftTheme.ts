@@ -80,7 +80,7 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
       return {
         key,
         label: "却下",
-        color: "#D9736F",
+        color: "#E08A2E",
         attendance: "unavailable",
         mark: "×",
       };
@@ -141,7 +141,7 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
         borderStyle: "solid",
         borderWidth: "1px",
         fg: "#ffffff",
-        shadow: `0 2px 0 0 ${darken(baseColor, 0.4)}`,
+        shadow: "",
         mark: "✓",
         label: def.label,
       };
