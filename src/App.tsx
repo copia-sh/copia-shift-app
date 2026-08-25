@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { User } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { LoginGate } from "./components/LoginGate";
+import { GroupSetup } from "./components/GroupSetup";
 import {
   ShiftModeToggle,
   CalendarNav,
@@ -27,6 +29,7 @@ import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
 import { useMyGroupIds } from "./hooks/useMyGroupIds";
+import { useGroups } from "./hooks/useGroups";
 import { signOut } from "./firebase/auth";
 import {
   getMonthGridDays,
@@ -44,7 +47,7 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import type { Member, Shift } from "./types";
+import type { Member, Shift, Group } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -76,19 +79,55 @@ function Notice({ message }: { message: string }) {
  * currentMember は必ず Firestore 上の実データから引く（role や active を
  * 権限判定に使うため、認証情報から組み立てた偽物を渡してはいけない）。
  */
+const GROUP_STORAGE_KEY = "copia-shift:groupId";
+
+/** localStorage はプライベートブラウズ等で例外を投げうるので、失敗しても無視する。 */
+function readStoredGroupId(): string | null {
+  try {
+    return localStorage.getItem(GROUP_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+function storeGroupId(id: string) {
+  try {
+    localStorage.setItem(GROUP_STORAGE_KEY, id);
+  } catch {
+    /* 保存できなくても動作に影響はない */
+  }
+}
+
 function GroupGate({ user }: { user: User }) {
   const groupIds = useMyGroupIds(user.uid);
-  const groupId = groupIds?.[0] ?? null;
+  const groups = useGroups(groupIds);
+  // 「ユーザーが明示的に選んだグループ」だけを state に持つ。実際に表示する
+  // グループは groupIds から毎レンダー導出する（effect で state を書き戻すと、
+  // 再購読のたびに画面が一瞬 undefined に落ちてフォームが失われる）。
+  const [pickedGroupId, setPickedGroupId] = useState<string | null>(readStoredGroupId);
+  const [showSetup, setShowSetup] = useState(false);
+
+  const groupId =
+    pickedGroupId && groupIds?.includes(pickedGroupId) ? pickedGroupId : (groupIds?.[0] ?? null);
+
+  useEffect(() => {
+    if (groupId) storeGroupId(groupId);
+  }, [groupId]);
+
   const members = useMembers(groupId);
 
-  if (!groupIds || (groupId && !members)) {
+  if (!groupIds) {
     return <Notice message="読み込み中..." />;
   }
-  if (groupIds.length === 0 || !groupId) {
-    return <Notice message="所属しているグループがありません" />;
+
+  if (groupIds.length === 0 || showSetup) {
+    return <GroupSetup user={user} onDone={() => setShowSetup(false)} />;
   }
 
-  const currentMember = members?.find((m) => m.id === user.uid);
+  if (!groupId || !groups || !members) {
+    return <Notice message="読み込み中..." />;
+  }
+
+  const currentMember = members.find((m) => m.id === user.uid);
   if (!currentMember) {
     return <Notice message="このグループのメンバー情報が見つかりません" />;
   }
@@ -98,7 +137,11 @@ function GroupGate({ user }: { user: User }) {
       uid={user.uid}
       groupId={groupId}
       currentMember={currentMember}
-      members={members ?? []}
+      members={members}
+      groups={groups}
+      currentGroupId={groupId}
+      onChangeGroup={setPickedGroupId}
+      onCreateNewGroup={() => setShowSetup(true)}
     />
   );
 }
@@ -115,11 +158,19 @@ function ShiftCalendar({
   currentMember,
   members,
   groupId,
+  groups,
+  currentGroupId,
+  onChangeGroup,
+  onCreateNewGroup,
 }: {
   uid: string;
   currentMember: Member;
   members: Member[];
   groupId: string;
+  groups: Group[];
+  currentGroupId: string;
+  onChangeGroup: (id: string) => void;
+  onCreateNewGroup: () => void;
 }) {
   const [view, setView] = useState<ViewMode>("list");
   const [mode, setMode] = useState<ShiftMode>("single");
@@ -128,6 +179,8 @@ function ShiftCalendar({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
+  const [opError, setOpError] = useState<string | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
@@ -147,6 +200,17 @@ function ShiftCalendar({
   }
   function handleToday() {
     setAnchorDate(new Date());
+  }
+
+  async function handleCopyInviteLink() {
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?g=${groupId}`;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setInviteLinkCopied(true);
+      setTimeout(() => setInviteLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy invite link:", err);
+    }
   }
 
   function changeMode(m: ShiftMode) {
@@ -234,6 +298,19 @@ function ShiftCalendar({
           shiftIds.map((id) => revertShiftToDesired(groupId, id)),
         );
       }
+      setOpError(null);
+    } catch (err) {
+      // 権限が無い操作はセキュリティルールに拒否される。握り潰すと画面上は
+      // 何も起きなかったように見えるので、必ず理由を出す。
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません（確定・却下は管理者とリーダーのみ）"
+          : "操作に失敗しました。通信状況を確認してもう一度お試しください。",
+      );
     } finally {
       setBusy(false);
     }
@@ -287,6 +364,15 @@ function ShiftCalendar({
     <div className="min-h-screen bg-gray-50">
       <div className="flex items-center justify-end gap-3 px-4 pt-3">
         <ShiftModeToggle mode={mode} onChangeMode={changeMode} />
+        {currentMember.role === "admin" && (
+          <button
+            type="button"
+            onClick={handleCopyInviteLink}
+            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+          >
+            {inviteLinkCopied ? "コピーしました" : "招待リンク"}
+          </button>
+        )}
         <span className="text-sm text-gray-500">{currentMember.displayName}</span>
         <button
           type="button"
@@ -308,8 +394,23 @@ function ShiftCalendar({
         onNext={handleNext}
         onToday={handleToday}
         onChangeView={setView}
+        groups={groups}
+        currentGroupId={currentGroupId}
+        onChangeGroup={onChangeGroup}
+        onCreateNewGroup={onCreateNewGroup}
       />
       <ShiftLegend mode={mode} />
+
+      {opError && (
+        <div className="mx-auto max-w-7xl px-4">
+          <p
+            role="alert"
+            className="rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2 text-[12px] font-bold text-[#D9736F]"
+          >
+            {opError}
+          </p>
+        </div>
+      )}
 
       <main className="mx-auto max-w-7xl px-4 pb-32">
         {shifts === undefined ? (

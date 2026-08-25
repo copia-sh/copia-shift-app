@@ -22,7 +22,8 @@ import {
   type SelKey,
   type ShiftMode,
 } from "./shiftVisual";
-import type { Member, Shift } from "../types";
+import { GroupSwitcher } from "./GroupSwitcher";
+import type { Member, Shift, Group } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
 
@@ -90,6 +91,10 @@ export function CalendarNav({
   onNext,
   onToday,
   onChangeView,
+  groups,
+  currentGroupId,
+  onChangeGroup,
+  onCreateNewGroup,
 }: {
   label: string;
   view: "list" | "month" | "week";
@@ -97,13 +102,22 @@ export function CalendarNav({
   onNext: () => void;
   onToday: () => void;
   onChangeView: (v: "list" | "month" | "week") => void;
+  groups: Group[];
+  currentGroupId: string;
+  onChangeGroup: (id: string) => void;
+  onCreateNewGroup: () => void;
 }) {
   const square =
     "h-[34px] w-[34px] rounded-md border border-gray-200 bg-white text-[15px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none";
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-3">
       <div className="flex items-center gap-2.5">
-        <span className="text-[13px] font-bold tracking-wide text-[#248DD4]">Copia シフト</span>
+        <GroupSwitcher
+          groups={groups}
+          currentGroupId={currentGroupId}
+          onChange={onChangeGroup}
+          onCreateNew={onCreateNewGroup}
+        />
         <span className="text-xl font-bold text-gray-900">{label}</span>
       </div>
       <div className="flex items-center gap-2">

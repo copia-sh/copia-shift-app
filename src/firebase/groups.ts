@@ -94,7 +94,16 @@ export function subscribeToMyGroupIds(
   const userRef = doc(db, "users", uid);
   return onSnapshot(
     userRef,
+    // includeMetadataChanges が必要。サーバが書き込みを確定しても中身は
+    // ローカル反映時と同じなので、既定ではスナップショットが再発火せず、
+    // hasPendingWrites が false になった瞬間を受け取れない。
+    { includeMetadataChanges: true },
     (snapshot) => {
+      // 未確定のローカル書き込みは無視する。joinGroup のバッチは楽観的に
+      // ローカルへ先に反映されるため、これを拾うと「参加に失敗したのに一瞬
+      // 参加済みとして扱われ、直後にロールバックされる」ちらつきが起きて、
+      // 参加フォームがアンマウントされエラー表示が消えてしまう。
+      if (snapshot.metadata.hasPendingWrites) return;
       const groupIds = (snapshot.data()?.groupIds as string[]) ?? [];
       cb(groupIds);
     },
