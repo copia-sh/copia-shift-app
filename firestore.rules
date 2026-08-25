@@ -3,126 +3,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function memberPath(gid) {
-      return /databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid);
+    // members/{email} が存在する = Copiaチームの登録メンバー
+    function isTeamMember() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.token.email));
     }
 
-    // 在籍中(active)のメンバーだけを「メンバー」とみなす。退会は active:false で表す。
-    function isMember(gid) {
-      return signedIn()
-        && exists(memberPath(gid))
-        && get(memberPath(gid)).data.active == true;
+    // 招待コードなどの秘密設定。クライアントからは直接read/write不可(ルール内のget()でのみ参照)
+    match /config/{docId} {
+      allow read, write: if false;
     }
 
-    function roleOf(gid) {
-      return get(memberPath(gid)).data.role;
+    match /members/{memberId} {
+      // 自分の分、もしくは既にチームメンバーになっている人は全員分を読める
+      allow read: if isTeamMember() ||
+        (isSignedIn() && memberId == request.auth.token.email);
+
+      // 新規参加: 本人のメールアドレスのドキュメントのみ作成可能。
+      // 招待コードが config/settings の値と一致しないと作成できない(自己registration制限)。
+      // 大文字小文字の入力ミスを吸収するため小文字化してから比較する
+      allow create: if isSignedIn()
+        && memberId == request.auth.token.email
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.lower() ==
+          get(/databases/$(database)/documents/config/settings).data.inviteCode.lower();
+
+      allow update, delete: if false;
     }
 
-    function isAdmin(gid) {
-      return isMember(gid) && roleOf(gid) == 'admin';
-    }
+    match /shiftEntries/{entryId} {
+      allow read: if isTeamMember();
 
-    // 確定・確定取消・却下ができる人
-    function canConfirm(gid) {
-      return isMember(gid) && (roleOf(gid) == 'admin' || roleOf(gid) == 'leader');
-    }
+      // 出勤希望日の新規登録: 本人のみ、必ず status = "desired" で作成
+      allow create: if isTeamMember()
+        && request.resource.data.memberId == request.auth.token.email
+        && request.resource.data.status == 'desired';
 
-    function isGroupOwner(gid) {
-      return signedIn()
-        && get(/databases/$(database)/documents/groups/$(gid)).data.ownerId == request.auth.uid;
-    }
+      // 出勤希望日の削除(却下): 未確定(desired)のものはチームメンバーなら誰でも削除可能。
+      // 確定(confirmed)済みのものは削除できない(取り消しは update の確定取消のみ)
+      allow delete: if isTeamMember() && resource.data.status == 'desired';
 
-    // 所属グループの逆引き。本人しか読み書きできない。
-    match /users/{uid} {
-      allow read: if signedIn() && uid == request.auth.uid;
-      allow create, update: if signedIn() && uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['groupIds']);
-      allow delete: if false;
-    }
-
-    match /groups/{gid} {
-      allow read: if isMember(gid);
-      // セルフホスト前提なので、ログイン済みなら誰でもグループを作れる。
-      // ただし ownerId は自分自身でなければならない。
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAdmin(gid);
-      allow delete: if false;
-
-      // 招待コードを含むのでメンバーのみ読める
-      match /settings/{docId} {
-        allow read: if isMember(gid);
-        // グループ作成直後、まだ自分のメンバードキュメントが無い状態で作るためオーナー判定を使う
-        allow create: if isGroupOwner(gid);
-        allow update: if isAdmin(gid);
-        allow delete: if false;
-      }
-
-      match /members/{memberId} {
-        allow read: if isMember(gid);
-
-        // 参加は2通り:
-        //  1) グループ作成者が自分自身を admin として作る
-        //  2) 招待コードが settings/general と一致すれば自分自身を member として作る
-        allow create: if signedIn() && memberId == request.auth.uid && (
-          (request.resource.data.role == 'admin' && isGroupOwner(gid))
-          ||
-          (request.resource.data.role == 'member'
-            && request.resource.data.inviteCode is string
-            && request.resource.data.inviteCode.lower() ==
-               get(/databases/$(database)/documents/groups/$(gid)/settings/general).data.inviteCode.lower())
-        );
-
-        // admin: 他人のロール変更・無効化・属性編集ができる。ただし自分自身のロールは変えられない
-        //        (最後の admin が自分を降格してグループが操作不能になるのを防ぐ)
-        // 一般:   自分の表示名と色だけ変えられる
-        allow update: if isMember(gid) && (
-          isAdmin(gid)
-            ? !(memberId == request.auth.uid
-                && request.resource.data.role != resource.data.role)
-              && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['displayName', 'color', 'role', 'active', 'attributes'])
-              && (!('attributes' in request.resource.data)
-                  || request.resource.data.attributes is list)
-            : (memberId == request.auth.uid
-                && request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['displayName', 'color']))
-        );
-
-        // 退会は active:false で表すのでドキュメントは消さない
-        allow delete: if false;
-      }
-
-      match /shifts/{shiftId} {
-        allow read: if isMember(gid);
-
-        // 希望の登録は本人のみ。admin だけは代理登録もできる。必ず desired で作る。
-        allow create: if isMember(gid)
-          && request.resource.data.status == 'desired'
-          && (request.resource.data.memberId == request.auth.uid || isAdmin(gid));
-
-        // 確定済みは削除できない(先に確定を取り消す)。
-        // 未確定なら本人、または leader/admin が消せる。
-        allow delete: if isMember(gid)
-          && resource.data.status == 'desired'
-          && (resource.data.memberId == request.auth.uid || canConfirm(gid));
-
-        // memberId と date は誰も変更できない。
-        // leader/admin は確定・確定取消を含めて変更できる。
-        // 一般メンバーは、自分の未確定シフトを未確定のまま編集することだけできる。
-        allow update: if isMember(gid)
-          && request.resource.data.memberId == resource.data.memberId
-          && request.resource.data.date == resource.data.date
-          && (
-            canConfirm(gid)
-            || (resource.data.memberId == request.auth.uid
-                && resource.data.status == 'desired'
-                && request.resource.data.status == 'desired')
-          );
-      }
+      // 更新(確定/確定取り消し/種別・時間の編集): チームメンバーなら誰でも、誰の分でも可能
+      allow update: if isTeamMember()
+        && request.resource.data.memberId == resource.data.memberId;
     }
   }
 }

@@ -1,52 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
 @import "tailwindcss";
 
 :root {
   color-scheme: light;
-  font-family: "Noto Sans JP", system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic", Roboto, sans-serif;
-
-  /* Design Tokens - Colors */
-  --c-blue: #248DD4;
-  --c-blue-deep: #0863A0;
-  --c-blue-tint: #D1E9F9;
-  --c-teal: #1F8A98;
-  --c-coral: #D9736F;
-  --c-coral-line: #F0C7C7;
-  --c-coral-bg: #FDF1F1;
-  --c-orange: #E08A2E;
-  --c-today: #F9E428;
-  --c-today-bg: #FFF6D6;
-  --c-today-bg-2: #FFFBEA;
-  --c-today-bg-3: #FFFDF4;
-  --c-line: #E5E7EB;
-  --c-line-2: #EFF1F3;
-  --c-line-3: #F1F3F5;
-  --c-line-4: #F4F6F8;
-  --c-surface: #fff;
-  --c-surface-2: #FBFCFD;
-  --c-surface-3: #FAFBFC;
-  --c-surface-4: #F9FAFB;
-  --c-page: #F7F9FB;
-  --c-ink: #111827;
-  --c-ink-2: #374151;
-  --c-ink-3: #4B5563;
-  --c-ink-4: #6B7280;
-  --c-ink-5: #9CA3AF;
-  --c-ink-none: #C8CDD2;
-
-  /* Design Tokens - Dimensions */
-  --w-name-col: 132px;
-  --w-day-col: 48px;
-  --h-row: 50px;
-  --h-week-hour: 32px;
-  --w-week-time-col: 44px;
-  --h-month-chip: 52px;
-  --h-month-cell: 158px;
+  font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic", Roboto, sans-serif;
 }
 
 body {
   margin: 0;
-  background-color: var(--c-page);
 }
 
 #root {

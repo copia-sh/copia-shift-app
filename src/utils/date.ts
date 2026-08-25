@@ -16,11 +16,11 @@ export function toDateKey(date: Date): string {
 }
 
 /** All the day cells needed to render a full Google-Calendar-style month grid (Sun-Sat weeks). */
-export function getMonthGridDays(monthAnchor: Date, weekStartsOn: 0 | 1 = 0): Date[] {
+export function getMonthGridDays(monthAnchor: Date): Date[] {
   const monthStart = startOfMonth(monthAnchor);
   const monthEnd = endOfMonth(monthAnchor);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn });
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
   const days: Date[] = [];
   let current = gridStart;
@@ -31,8 +31,8 @@ export function getMonthGridDays(monthAnchor: Date, weekStartsOn: 0 | 1 = 0): Da
   return days;
 }
 
-export function getWeekDays(weekAnchor: Date, weekStartsOn: 0 | 1 = 0): Date[] {
-  const weekStart = startOfWeek(weekAnchor, { weekStartsOn });
+export function getWeekDays(weekAnchor: Date): Date[] {
+  const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 0 });
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
 

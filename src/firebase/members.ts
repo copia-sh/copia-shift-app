@@ -1,6 +1,8 @@
-import { collection, onSnapshot, orderBy, query, updateDoc, doc } from "firebase/firestore";
-import { db } from "./config";
-import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
+import { collection, doc, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
+import { auth, db } from "./config";
+import type { Member } from "../types";
+
+const membersCollection = collection(db, "members");
 
 const COLOR_PALETTE = [
   "#ef4444",
@@ -13,7 +15,7 @@ const COLOR_PALETTE = [
   "#84cc16",
 ];
 
-export function colorForEmail(email: string): string {
+function colorForEmail(email: string): string {
   let hash = 0;
   for (let i = 0; i < email.length; i++) {
     hash = (hash * 31 + email.charCodeAt(i)) >>> 0;
@@ -25,63 +27,44 @@ export function nameFromEmail(email: string): string {
   return email.split("@")[0];
 }
 
-export function subscribeToMembers(
-  groupId: string,
-  callback: (members: Member[]) => void,
-) {
-  const membersCollection = collection(db, "groups", groupId, "members");
-  const q = query(membersCollection, orderBy("displayName"));
+export function subscribeToMembers(callback: (members: Member[]) => void) {
+  const q = query(membersCollection, orderBy("name"));
   return onSnapshot(
     q,
     (snapshot) => {
-      const members = snapshot.docs.map((doc) => {
-        const data = doc.data() as Omit<Member, "id">;
-        return {
-          id: doc.id,
-          ...data,
-          attributes: normalizeMemberAttributes(data.attributes),
-        };
-      });
+      const members = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Member, "id">),
+      }));
       callback(members);
     },
     () => {
+      // Not signed in yet, or signed in but not a team member: Firestore
+      // rules reject the list query. Treat that as "no members visible yet"
+      // instead of leaving callers stuck on a loading state forever.
       callback([]);
     },
   );
 }
 
-export async function updateMemberRole(
-  groupId: string,
-  memberId: string,
-  role: MemberRole,
-): Promise<void> {
-  const memberRef = doc(db, "groups", groupId, "members", memberId);
-  await updateDoc(memberRef, { role });
-}
+/**
+ * Self-service "join the team" step: called after the user has a Firebase Auth
+ * account but no matching members doc yet. Firestore rules only allow this
+ * write to succeed when inviteCode matches the value in config/settings.
+ */
+export async function createMemberProfile(params: {
+  email: string;
+  inviteCode: string;
+}) {
+  const email = params.email.toLowerCase();
+  const ref = doc(membersCollection, email);
+  const data = {
+    name: nameFromEmail(email),
+    email,
+    color: colorForEmail(email),
+    inviteCode: params.inviteCode.trim(),
+  };
 
-export async function updateMemberActive(
-  groupId: string,
-  memberId: string,
-  active: boolean,
-): Promise<void> {
-  const memberRef = doc(db, "groups", groupId, "members", memberId);
-  await updateDoc(memberRef, { active });
-}
-
-export async function updateMemberDisplayName(
-  groupId: string,
-  memberId: string,
-  displayName: string,
-): Promise<void> {
-  const memberRef = doc(db, "groups", groupId, "members", memberId);
-  await updateDoc(memberRef, { displayName });
-}
-
-export async function updateMemberAttributes(
-  groupId: string,
-  memberId: string,
-  attributes: string[],
-): Promise<void> {
-  const memberRef = doc(db, "groups", groupId, "members", memberId);
-  await updateDoc(memberRef, { attributes: normalizeMemberAttributes(attributes) });
+  await auth.currentUser?.getIdToken(true);
+  await setDoc(ref, data);
 }
