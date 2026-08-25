@@ -74,6 +74,22 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
     if (typeMap.has(key)) {
       return typeMap.get(key)!;
     }
+    // 「却下」は種別一覧には出さない予約語だが、却下操作で必ず作られるので
+    // 定義を持たせる。ここを外すと灰色の「?」で表示されてしまう。
+    if (key === REJECTED_TYPE) {
+      return {
+        key,
+        label: "却下",
+        color: "#D9736F",
+        attendance: "unavailable",
+        mark: "×",
+      };
+    }
+    // 管理者が削除した種別を参照している古いシフト。何だったかは復元できないので、
+    // 種別名をそのまま出して「今は無い種別」だと分かるようにする。
+    // attendance は "available" にしておく: セルの状態(希望/不可)を決めるのは
+    // unavailableKeys の方で、未知キーはそこに含まれないため希望として扱われる。
+    // ここで "unavailable" と申告すると、見た目と分類が食い違う。
     return {
       key,
       label: key,
