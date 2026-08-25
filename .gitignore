@@ -15,6 +15,15 @@ dist-ssr
 .env.*
 !.env.example
 
+# Firebase のサービスアカウント鍵。1つでも漏れるとプロジェクト全体を掌握されるため、
+# 名前の揺れも含めて広めに除外する。
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+service-account*.json
+
+# 移行スクリプトが出力する旧データのバックアップ（メールアドレスを含む）
+backup-*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
