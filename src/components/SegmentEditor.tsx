@@ -8,6 +8,7 @@ export interface SegmentEditorProps {
   segments: Shift[];
   shiftTypes: ShiftType[];
   busy: boolean;
+  maxSegments?: number;
   onClose: () => void;
   onSave: (
     next: { id?: string; type: ShiftType; startTime: string | null; endTime: string | null }[]
@@ -28,6 +29,7 @@ export function SegmentEditor({
   segments,
   shiftTypes,
   busy,
+  maxSegments = 4,
   onClose,
   onSave,
 }: SegmentEditorProps) {
@@ -41,7 +43,6 @@ export function SegmentEditor({
     }))
   );
   const [error, setError] = useState<string | null>(null);
-  const maxSegments = 4;
   const canAdd = edits.length < maxSegments;
 
   const handleAddSegment = () => {

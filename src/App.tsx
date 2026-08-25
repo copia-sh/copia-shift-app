@@ -29,17 +29,20 @@ import {
 import { SegmentEditor } from "./components/SegmentEditor";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
+import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
 import { useMyGroupIds } from "./hooks/useMyGroupIds";
 import { useGroups } from "./hooks/useGroups";
+import { useGroupSettings } from "./hooks/useGroupSettings";
 import { signOut } from "./firebase/auth";
 import {
   updateMemberRole,
   updateMemberActive,
   updateMemberDisplayName,
 } from "./firebase/members";
+import { updateGroupSettings } from "./firebase/settings";
 import {
   getMonthGridDays,
   getWeekDays,
@@ -56,7 +59,8 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import type { Member, Shift, Group, ShiftType, MemberRole } from "./types";
+import { DEFAULT_GROUP_SETTINGS } from "./types";
+import type { Member, Shift, Group, ShiftType, MemberRole, GroupSettings } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -193,14 +197,16 @@ function ShiftCalendar({
   const [editingCell, setEditingCell] = useState<SelKey | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const settings = useGroupSettings(groupId);
 
   const { startKey, endKey } = useMemo(() => {
-    const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);
+    const days = view === "week" ? getWeekDays(anchorDate, settings?.weekStartsOn ?? 0) : getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0);
     return {
       startKey: toDateKey(days[0]),
       endKey: toDateKey(days[days.length - 1]),
     };
-  }, [anchorDate, view]);
+  }, [anchorDate, view, settings?.weekStartsOn]);
 
   const shifts = useShiftsInRange(groupId, startKey, endKey);
 
@@ -477,6 +483,27 @@ function ShiftCalendar({
     }
   }
 
+  async function handleSaveSettings(patch: Partial<GroupSettings>) {
+    setBusy(true);
+    try {
+      await updateGroupSettings(groupId, patch);
+      setOpError(null);
+      setShowSettingsDialog(false);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onCellTap(k: SelKey, st: CellState) {
     const { memberId } = parseSelKey(k);
     if (!canTapCell(mode, memberId, currentMember.id, st)) return;
@@ -506,6 +533,9 @@ function ShiftCalendar({
     currentMemberId: currentMember.id,
     mode,
     selected,
+    // 未取得のうちは既定値で描く。ここで `settings!` と断言してしまうと、
+    // 後で描画の分岐を動かしたときに undefined がそのまま流れてしまう。
+    settings: settings ?? { inviteCode: "", ...DEFAULT_GROUP_SETTINGS },
     onCellTap,
     onToggleMany: toggleMany,
     showTimes: true,
@@ -523,6 +553,15 @@ function ShiftCalendar({
             className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
           >
             {inviteLinkCopied ? "コピーしました" : "招待リンク"}
+          </button>
+        )}
+        {currentMember.role === "admin" && (
+          <button
+            type="button"
+            onClick={() => setShowSettingsDialog(true)}
+            className="rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+          >
+            設定
           </button>
         )}
         {currentMember.role === "admin" && (
@@ -580,7 +619,7 @@ function ShiftCalendar({
       )}
 
       <main className="mx-auto max-w-7xl px-4 pb-32">
-        {shifts === undefined ? (
+        {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : view === "list" ? (
           <ShiftListMatrix {...common} />
@@ -606,7 +645,7 @@ function ShiftCalendar({
         onOpenSegmentEditor={(k) => setEditingCell(k)}
       />
 
-      {editingCell && (
+      {editingCell && settings && (
         <SegmentEditor
           dateKey={parseSelKey(editingCell).dateKey}
           memberName={currentMember.displayName}
@@ -617,6 +656,7 @@ function ShiftCalendar({
           )}
           shiftTypes={["出勤", "リモート", "欠勤"]}
           busy={busy}
+          maxSegments={settings.maxSegmentsPerDay}
           onClose={() => setEditingCell(null)}
           onSave={async (next) => {
             await handleSegmentSave(editingCell, next);
@@ -642,6 +682,15 @@ function ShiftCalendar({
           onChangeRole={handleMemberRoleChange}
           onChangeActive={handleMemberActiveChange}
           onChangeDisplayName={handleMemberDisplayNameChange}
+        />
+      )}
+
+      {showSettingsDialog && settings && (
+        <GroupSettingsDialog
+          settings={settings}
+          busy={busy}
+          onClose={() => setShowSettingsDialog(false)}
+          onSave={handleSaveSettings}
         />
       )}
     </div>

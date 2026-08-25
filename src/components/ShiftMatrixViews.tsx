@@ -7,6 +7,7 @@ import {
   canTapCell,
   cellStatesOf,
   daysOfMonth,
+  dowLabelsFrom,
   hourValue,
   isSameDate,
   monthGridWeeks,
@@ -24,16 +25,14 @@ import {
   type ShiftMode,
 } from "./shiftVisual";
 import { GroupSwitcher } from "./GroupSwitcher";
-import type { Member, Shift, Group } from "../types";
+import type { GroupSettings, Member, Shift, Group } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
 
 const NAME_W = 132;
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 9); // 9:00-20:00
 const HOUR_H = 32;
-/** 週ビュー: 1日 = 4人 × 33px。390px 幅では横スクロールになる。 */
+/** 週ビュー: 1人 × 33px。390px 幅では横スクロールになる。 */
 const WEEK_PERSON_W = 33;
-const WEEK_DAY_W = WEEK_PERSON_W * 4;
 const WEEK_GUTTER_W = 44;
 
 /** 選択中を色以外でも示す小さな ✓ バッジ（赤は使わず前景色を流用） */
@@ -196,6 +195,7 @@ interface ViewCommon {
   currentMemberId: string;
   mode: ShiftMode;
   selected: Set<SelKey>;
+  settings: GroupSettings;
   /** モードごとの分岐は App.tsx 側で行う */
   onCellTap: (key: SelKey, state: CellState) => void;
   onToggleMany: (keys: SelKey[]) => void;
@@ -224,6 +224,7 @@ export function ShiftListMatrix({
   currentMemberId,
   mode,
   selected,
+  settings,
   onCellTap,
   onToggleMany,
   showTimes = true,
@@ -340,7 +341,7 @@ export function ShiftListMatrix({
                 const k = selKey(mem.id, d.dateKey);
                 const isSel = selected.has(k);
                 const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                const boxes = cellBoxes(allStates);
+                const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
                 const isSimple = allStates.length <= 1;
                 return (
                   <button
@@ -434,29 +435,34 @@ export function ShiftMonthGrid({
   currentMemberId,
   mode,
   selected,
+  settings,
   onCellTap,
   onToggleMany,
   showTimes = true,
   density = "compact",
 }: ViewCommon) {
   const comfy = density === "comfortable";
-  const weeks = useMemo(() => monthGridWeeks(anchorDate), [anchorDate]);
+  const weeks = useMemo(() => monthGridWeeks(anchorDate, settings.weekStartsOn), [anchorDate, settings.weekStartsOn]);
   const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
 
+  const dowLabels = dowLabelsFrom(settings.weekStartsOn);
   return (
     <div className="border-t border-gray-200">
       <div className="grid grid-cols-7 border-b border-gray-200 bg-[#FBFCFD]">
-        {DOW_LABELS.map((l, i) => (
-          <div
-            key={l}
-            className="border-l border-[#EFF1F3] py-1.5 text-center text-[11px] font-bold"
-            style={{ color: i === 0 ? "#D9736F" : i === 6 ? "#248DD4" : "#8E8E8E" }}
-          >
-            {l}
-          </div>
-        ))}
+        {dowLabels.map((l, i) => {
+          const actualDow = (i + settings.weekStartsOn) % 7;
+          return (
+            <div
+              key={l + i}
+              className="border-l border-[#EFF1F3] py-1.5 text-center text-[11px] font-bold"
+              style={{ color: actualDow === 0 ? "#D9736F" : actualDow === 6 ? "#248DD4" : "#8E8E8E" }}
+            >
+              {l}
+            </div>
+          );
+        })}
       </div>
       {weeks.map((week, wi) => (
         <div key={wi} className="grid grid-cols-7 border-b border-[#EFF1F3]">
@@ -529,7 +535,7 @@ export function ShiftMonthGrid({
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                    const boxes = cellBoxes(allStates);
+                    const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
                     const isSimple = allStates.length <= 1;
                     const meta = (showTimes && shortRange(st)) || (st.kind === "no" ? noLabel(st) : sk.label);
                     const isOwn = mem.id === currentMemberId;
@@ -591,15 +597,18 @@ export function ShiftWeekView({
   currentMemberId,
   mode,
   selected,
+  settings,
   onCellTap,
   onToggleMany,
 }: ViewCommon) {
-  const days = useMemo(() => weekDaysOf(anchorDate), [anchorDate]);
+  const days = useMemo(() => weekDaysOf(anchorDate, settings.weekStartsOn), [anchorDate, settings.weekStartsOn]);
   const byKey = useStateMap(shifts);
   const today = new Date();
   const bulkHeaders = mode !== "single";
-  const gridCols = `${WEEK_GUTTER_W}px repeat(7, ${WEEK_DAY_W}px)`;
-  const totalW = WEEK_GUTTER_W + WEEK_DAY_W * 7;
+  const weekDayW = WEEK_PERSON_W * Math.max(1, members.length);
+  const gridCols = `${WEEK_GUTTER_W}px repeat(7, ${weekDayW}px)`;
+  const totalW = WEEK_GUTTER_W + weekDayW * 7;
+  const hours = Array.from({ length: settings.displayEndHour - settings.displayStartHour }, (_, i) => i + settings.displayStartHour);
 
   return (
     <div className="overflow-x-auto border-t border-gray-200">
@@ -607,11 +616,12 @@ export function ShiftWeekView({
         {/* 日付ヘッダー + 4人の可否バー（縦スクロールなしで可否が読める） */}
         <div className="grid border-b border-gray-200 bg-[#FBFCFD]" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-end justify-end p-1 text-[9px] font-bold leading-tight text-gray-400">可否</div>
-          {days.map((day) => {
+          {days.map((day, di) => {
             const dateKey = toDateKey(day);
             const dow = day.getDay();
             const isToday = isSameDate(day, today);
             const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [])));
+            const dowLabel = dowLabelsFrom(settings.weekStartsOn)[di];
             return (
               <div
                 key={dateKey}
@@ -623,7 +633,7 @@ export function ShiftWeekView({
                     className="text-[10px] font-bold"
                     style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}
                   >
-                    {DOW_LABELS[dow]}
+                    {dowLabel}
                   </span>
                   <button
                     type="button"
@@ -689,7 +699,7 @@ export function ShiftWeekView({
         <div className="max-h-[420px] overflow-y-auto">
           <div className="grid" style={{ gridTemplateColumns: gridCols }}>
             <div>
-              {HOURS.map((h) => (
+              {hours.map((h) => (
                 <div
                   key={h}
                   className="border-t border-[#F4F6F8] pr-1 text-right text-[9px] text-gray-400"
@@ -706,9 +716,9 @@ export function ShiftWeekView({
                 <div
                   key={dateKey}
                   className="relative border-l border-[#EFF1F3]"
-                  style={{ height: HOUR_H * HOURS.length, background: isToday ? "#FFFDF4" : "#fff" }}
+                  style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}
                 >
-                  {HOURS.map((h) => (
+                  {hours.map((h) => (
                     <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
                   ))}
                   {members.map((mem, mi) => {
@@ -718,7 +728,7 @@ export function ShiftWeekView({
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
                     const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                    const top = (hourValue(st.startTime) - HOURS[0]) * HOUR_H;
+                    const top = (hourValue(st.startTime) - settings.displayStartHour) * HOUR_H;
                     const height = Math.max((hourValue(st.endTime) - hourValue(st.startTime)) * HOUR_H - 3, 24);
                     return (
                       <button

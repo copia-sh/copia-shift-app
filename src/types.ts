@@ -33,3 +33,18 @@ export interface Shift {
   confirmedAt: number | null;
   updatedAt: number | null;
 }
+
+export interface GroupSettings {
+  inviteCode: string;
+  displayStartHour: number;
+  displayEndHour: number;
+  weekStartsOn: 0 | 1;
+  maxSegmentsPerDay: number;
+}
+
+export const DEFAULT_GROUP_SETTINGS: Omit<GroupSettings, "inviteCode"> = {
+  displayStartHour: 9,
+  displayEndHour: 20,
+  weekStartsOn: 0,
+  maxSegmentsPerDay: 4,
+};

@@ -182,6 +182,13 @@ export const TIME_CHOICES = (() => {
 
 export const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
+export function dowLabelsFrom(weekStartsOn: 0 | 1): string[] {
+  if (weekStartsOn === 0) {
+    return DOW_LABELS;
+  }
+  return [...DOW_LABELS.slice(1), DOW_LABELS[0]];
+}
+
 export function daysOfMonth(anchor: Date): Date[] {
   const y = anchor.getFullYear();
   const m = anchor.getMonth();
@@ -189,10 +196,12 @@ export function daysOfMonth(anchor: Date): Date[] {
   return Array.from({ length: last }, (_, i) => new Date(y, m, i + 1));
 }
 
-export function monthGridWeeks(anchor: Date): Date[][] {
+export function monthGridWeeks(anchor: Date, weekStartsOn: 0 | 1 = 0): Date[][] {
   const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const dayOfWeek = first.getDay();
+  const offset = weekStartsOn === 0 ? dayOfWeek : (dayOfWeek - 1 + 7) % 7;
   const cursor = new Date(first);
-  cursor.setDate(1 - first.getDay());
+  cursor.setDate(1 - offset);
   const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
   const weeks: Date[][] = [];
   for (;;) {
@@ -208,9 +217,11 @@ export function monthGridWeeks(anchor: Date): Date[][] {
   return weeks;
 }
 
-export function weekDaysOf(anchor: Date): Date[] {
+export function weekDaysOf(anchor: Date, weekStartsOn: 0 | 1 = 0): Date[] {
+  const dayOfWeek = anchor.getDay();
+  const offset = weekStartsOn === 0 ? dayOfWeek : (dayOfWeek - 1 + 7) % 7;
   const start = new Date(anchor);
-  start.setDate(anchor.getDate() - anchor.getDay());
+  start.setDate(anchor.getDate() - offset);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
