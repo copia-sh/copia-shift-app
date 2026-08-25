@@ -5,6 +5,7 @@ import {
   getDoc,
   onSnapshot,
   serverTimestamp,
+  setDoc,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./config";
@@ -18,23 +19,31 @@ export async function createGroup(params: {
   inviteCode: string;
 }): Promise<string> {
   const { name, ownerUid, ownerEmail, inviteCode } = params;
-  const batch = writeBatch(db);
+
+  // Firestoreのセキュリティルールは、同じバッチ内の他の書き込みを get() で参照できない。
+  // ルールは常にバッチ適用前の状態に対して評価される。
+  // settings と members の create は isGroupOwner(gid) に依存しているため、
+  // グループ本体と同じバッチで書くと group がまだ存在せず必ず拒否される。
+  // したがって以下の順で逐次的に setDoc で書き込みを行う。
 
   const groupsRef = collection(db, "groups");
   const newGroupDocRef = doc(groupsRef);
   const groupId = newGroupDocRef.id;
 
-  batch.set(newGroupDocRef, {
+  // 1. グループ本体を作成
+  await setDoc(newGroupDocRef, {
     name,
     ownerId: ownerUid,
     createdAt: serverTimestamp(),
   });
 
+  // 2. 招待コード設定を作成
   const settingsRef = doc(db, "groups", groupId, "settings", "general");
-  batch.set(settingsRef, { inviteCode });
+  await setDoc(settingsRef, { inviteCode });
 
+  // 3. オーナーメンバーを作成
   const memberRef = doc(db, "groups", groupId, "members", ownerUid);
-  batch.set(memberRef, {
+  await setDoc(memberRef, {
     email: ownerEmail,
     displayName: nameFromEmail(ownerEmail),
     color: colorForEmail(ownerEmail),
@@ -43,13 +52,10 @@ export async function createGroup(params: {
     joinedAt: serverTimestamp(),
   });
 
-  // set + merge（update ではない）。users/{uid} は初回グループ作成の時点では
-  // まだ存在しないので、update だとバッチ全体が失敗する。arrayUnion にすることで
-  // 読み込み→書き込みの競合も避けられる。
+  // 4. ユーザードキュメントを更新（グループIDを追加）
   const userRef = doc(db, "users", ownerUid);
-  batch.set(userRef, { groupIds: arrayUnion(groupId) }, { merge: true });
+  await setDoc(userRef, { groupIds: arrayUnion(groupId) }, { merge: true });
 
-  await batch.commit();
   return groupId;
 }
 
