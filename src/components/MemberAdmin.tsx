@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Member, MemberRole } from "../types";
+import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
 
 export interface MemberAdminProps {
   members: Member[];
@@ -10,6 +10,7 @@ export interface MemberAdminProps {
   onChangeRole: (memberId: string, role: MemberRole) => void;
   onChangeActive: (memberId: string, active: boolean) => void;
   onChangeDisplayName: (memberId: string, displayName: string) => void;
+  onChangeAttributes: (memberId: string, attributes: string[]) => void;
 }
 
 export function MemberAdmin({
@@ -21,8 +22,13 @@ export function MemberAdmin({
   onChangeRole,
   onChangeActive,
   onChangeDisplayName,
+  onChangeAttributes,
 }: MemberAdminProps) {
   const [editedNames, setEditedNames] = useState<Record<string, string>>({});
+  const [newAttributes, setNewAttributes] = useState<Record<string, string>>({});
+  const availableAttributes = normalizeMemberAttributes(
+    members.flatMap((member) => member.attributes),
+  );
 
   const adminCount = members.filter((m) => m.role === "admin" && m.active).length;
   const isOnlyAdmin =
@@ -44,6 +50,26 @@ export function MemberAdmin({
       delete newEditedNames[memberId];
       setEditedNames(newEditedNames);
     }
+  };
+
+  const toggleAttribute = (member: Member, attribute: string) => {
+    const next = member.attributes.includes(attribute)
+      ? member.attributes.filter((value) => value !== attribute)
+      : normalizeMemberAttributes([...member.attributes, attribute]);
+    onChangeAttributes(member.id, next);
+  };
+
+  const addAttribute = (member: Member) => {
+    const [attribute] = normalizeMemberAttributes([newAttributes[member.id] ?? ""]);
+    if (!attribute) return;
+    if (!member.attributes.includes(attribute)) {
+      onChangeAttributes(member.id, normalizeMemberAttributes([...member.attributes, attribute]));
+    }
+    setNewAttributes((current) => {
+      const copy = { ...current };
+      delete copy[member.id];
+      return copy;
+    });
   };
 
   const renderMemberRow = (member: Member) => {
@@ -106,6 +132,62 @@ export function MemberAdmin({
             <span className="text-[11px] text-gray-400">最後の管理者は外せません</span>
           )}
         </div>
+
+        <div className="pl-5">
+          <span className="mb-1.5 block text-[11px] font-bold text-gray-500">属性タグ</span>
+          <div className="flex flex-wrap gap-1.5">
+            {availableAttributes.length === 0 && (
+              <span className="text-[11px] text-gray-400">まだ属性がありません</span>
+            )}
+            {availableAttributes.map((attribute) => {
+              const selected = member.attributes.includes(attribute);
+              return (
+                <button
+                  key={attribute}
+                  type="button"
+                  onClick={() => toggleAttribute(member, attribute)}
+                  disabled={busy || !canManage}
+                  aria-pressed={selected}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-bold disabled:opacity-50 ${
+                    selected
+                      ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
+                      : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                  }`}
+                >
+                  {selected ? "✓ " : ""}{attribute}
+                </button>
+              );
+            })}
+          </div>
+          {canManage && (
+            <div className="mt-2 flex gap-1.5">
+              <input
+                type="text"
+                value={newAttributes[member.id] ?? ""}
+                onChange={(e) =>
+                  setNewAttributes({ ...newAttributes, [member.id]: e.target.value })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addAttribute(member);
+                  }
+                }}
+                disabled={busy}
+                placeholder="新しい属性"
+                className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-900 disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => addAttribute(member)}
+                disabled={busy || !(newAttributes[member.id] ?? "").trim()}
+                className="rounded border border-[#248DD4] bg-white px-2.5 py-1 text-[11px] font-bold text-[#248DD4] disabled:opacity-40"
+              >
+                追加
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -119,7 +201,7 @@ export function MemberAdmin({
 
         {!canManage && (
           <p className="mb-3 rounded-md bg-[#D1E9F9] px-3 py-2 text-[11px] font-bold text-[#0863A0]">
-            表示名・役職・在籍の変更は管理者のみ行えます
+            表示名・役職・在籍・属性タグの変更は管理者のみ行えます
           </p>
         )}
 

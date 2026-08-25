@@ -29,6 +29,7 @@ import {
 import { SegmentEditor } from "./components/SegmentEditor";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
+import { MemberFilter } from "./components/MemberFilter";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
@@ -42,6 +43,7 @@ import {
   updateMemberRole,
   updateMemberActive,
   updateMemberDisplayName,
+  updateMemberAttributes,
 } from "./firebase/members";
 import { updateGroupSettings, updateShiftTypes } from "./firebase/settings";
 import {
@@ -57,7 +59,7 @@ import {
   revertShiftToDesired,
   updateShiftDetails,
 } from "./firebase/shifts";
-import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
+import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES, filterMembersByAttributes } from "./types";
 import { buildShiftTheme } from "./components/shiftTheme";
 import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
@@ -149,6 +151,7 @@ function GroupGate({ user }: { user: User }) {
 
   return (
     <ShiftCalendar
+      key={groupId}
       uid={user.uid}
       groupId={groupId}
       currentMember={currentMember}
@@ -191,6 +194,7 @@ function ShiftCalendar({
   const [mode, setMode] = useState<ShiftMode>("single");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
+  const [selectedAttributes, setSelectedAttributes] = useState<Set<string>>(new Set());
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
@@ -491,6 +495,26 @@ function ShiftCalendar({
     }
   }
 
+  async function handleMemberAttributesChange(memberId: string, attributes: string[]) {
+    setBusy(true);
+    try {
+      await updateMemberAttributes(groupId, memberId, attributes);
+      setOpError(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function describeWriteError(err: unknown): string {
     const denied =
       err instanceof FirebaseError
@@ -554,10 +578,22 @@ function ShiftCalendar({
   const activeMembers = useMemo(() => {
     return (members ?? []).filter((m) => m.active);
   }, [members]);
+  const effectiveSelectedAttributes = useMemo(() => {
+    const available = new Set(activeMembers.flatMap((member) => member.attributes));
+    return new Set([...selectedAttributes].filter((attribute) => available.has(attribute)));
+  }, [activeMembers, selectedAttributes]);
+  const filteredMembers = useMemo(() => {
+    return filterMembersByAttributes(activeMembers, effectiveSelectedAttributes);
+  }, [activeMembers, effectiveSelectedAttributes]);
+
+  function handleMemberFilterChange(attributes: Set<string>) {
+    setSelectedAttributes(attributes);
+    setSelected(new Set());
+  }
 
   const common = {
     anchorDate,
-    members: activeMembers,
+    members: filteredMembers,
     shifts: shifts ?? [],
     currentMemberId: currentMember.id,
     mode,
@@ -609,6 +645,12 @@ function ShiftCalendar({
         onCreateNewGroup={onCreateNewGroup}
       />
       <ShiftLegend mode={mode} theme={theme} />
+      <MemberFilter
+        members={activeMembers}
+        currentMemberId={currentMember.id}
+        selectedAttributes={effectiveSelectedAttributes}
+        onChange={handleMemberFilterChange}
+      />
 
       {opError && (
         <div className="mx-auto max-w-[1400px] px-5">
@@ -687,6 +729,7 @@ function ShiftCalendar({
           onChangeRole={handleMemberRoleChange}
           onChangeActive={handleMemberActiveChange}
           onChangeDisplayName={handleMemberDisplayNameChange}
+          onChangeAttributes={handleMemberAttributesChange}
         />
       )}
 

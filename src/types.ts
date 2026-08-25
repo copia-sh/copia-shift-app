@@ -40,7 +40,32 @@ export interface Member {
   color: string;
   role: MemberRole;
   active: boolean;
+  attributes: string[];
   joinedAt: number | null;
+}
+
+export const MAX_MEMBER_ATTRIBUTES = 20;
+export const MAX_MEMBER_ATTRIBUTE_LENGTH = 30;
+
+/** 旧データや入力値を、表示・保存に使える重複なしの属性タグへ正規化する。 */
+export function normalizeMemberAttributes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const normalized = raw
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim().slice(0, MAX_MEMBER_ATTRIBUTE_LENGTH))
+    .filter(Boolean);
+  return [...new Set(normalized)].slice(0, MAX_MEMBER_ATTRIBUTES);
+}
+
+/** 未選択は全員、複数選択はどれか1つ以上の属性を持つメンバーを返す。 */
+export function filterMembersByAttributes(
+  members: Member[],
+  selectedAttributes: ReadonlySet<string>,
+): Member[] {
+  if (selectedAttributes.size === 0) return members;
+  return members.filter((member) =>
+    member.attributes.some((attribute) => selectedAttributes.has(attribute)),
+  );
 }
 
 export interface Shift {

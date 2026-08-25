@@ -49,6 +49,7 @@ export async function createGroup(params: {
     color: colorForEmail(ownerEmail),
     role: "admin",
     active: true,
+    attributes: [],
     joinedAt: serverTimestamp(),
   });
 
@@ -75,6 +76,7 @@ export async function joinGroup(params: {
     color: colorForEmail(email),
     role: "member",
     active: true,
+    attributes: [],
     joinedAt: serverTimestamp(),
     // セキュリティルール側で settings/general.inviteCode と突き合わせるため、
     // 書き込むドキュメントに載せる必要がある（旧 createMemberProfile と同じ方式）。

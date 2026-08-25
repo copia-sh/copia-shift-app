@@ -211,6 +211,7 @@ async function main() {
       color: m.color ?? "#248DD4",
       role: email === adminEmail ? "admin" : "member",
       active: true,
+      attributes: [],
     });
   }
 
@@ -335,6 +336,7 @@ async function main() {
         color: m.color,
         role: m.role,
         active: m.active,
+        attributes: m.attributes,
         joinedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },

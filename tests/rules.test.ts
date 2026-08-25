@@ -36,6 +36,7 @@ const memberDoc = (uid: string, role: string, active = true) => ({
   color: "#248DD4",
   role,
   active,
+  attributes: [],
   joinedAt: new Date(),
 });
 
@@ -256,6 +257,14 @@ describe("メンバー管理", () => {
     );
   });
 
+  it("管理者はメンバーの属性タグを変更できる", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(ADMIN), "groups", GID, "members", MEMBER), {
+        attributes: ["1班", "2026夏インターン"],
+      }),
+    );
+  });
+
   it("一般メンバーは自分の表示名を変えられる", async () => {
     await assertSucceeds(
       updateDoc(doc(as(MEMBER), "groups", GID, "members", MEMBER), { displayName: "新しい名前" }),
@@ -265,6 +274,14 @@ describe("メンバー管理", () => {
   it("一般メンバーは自分を管理者に昇格できない", async () => {
     await assertFails(
       updateDoc(doc(as(MEMBER), "groups", GID, "members", MEMBER), { role: "admin" }),
+    );
+  });
+
+  it("一般メンバーは自分の属性タグを変更できない", async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "members", MEMBER), {
+        attributes: ["管理者班"],
+      }),
     );
   });
 

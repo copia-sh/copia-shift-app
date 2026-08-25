@@ -1,6 +1,6 @@
 import { collection, onSnapshot, orderBy, query, updateDoc, doc } from "firebase/firestore";
 import { db } from "./config";
-import type { Member, MemberRole } from "../types";
+import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
 
 const COLOR_PALETTE = [
   "#ef4444",
@@ -34,10 +34,14 @@ export function subscribeToMembers(
   return onSnapshot(
     q,
     (snapshot) => {
-      const members = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Member, "id">),
-      }));
+      const members = snapshot.docs.map((doc) => {
+        const data = doc.data() as Omit<Member, "id">;
+        return {
+          id: doc.id,
+          ...data,
+          attributes: normalizeMemberAttributes(data.attributes),
+        };
+      });
       callback(members);
     },
     () => {
@@ -71,4 +75,13 @@ export async function updateMemberDisplayName(
 ): Promise<void> {
   const memberRef = doc(db, "groups", groupId, "members", memberId);
   await updateDoc(memberRef, { displayName });
+}
+
+export async function updateMemberAttributes(
+  groupId: string,
+  memberId: string,
+  attributes: string[],
+): Promise<void> {
+  const memberRef = doc(db, "groups", groupId, "members", memberId);
+  await updateDoc(memberRef, { attributes: normalizeMemberAttributes(attributes) });
 }

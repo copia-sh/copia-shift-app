@@ -76,17 +76,20 @@ service cloud.firestore {
                get(/databases/$(database)/documents/groups/$(gid)/settings/general).data.inviteCode.lower())
         );
 
-        // admin: 他人のロール変更・無効化ができる。ただし自分自身のロールは変えられない
+        // admin: 他人のロール変更・無効化・属性編集ができる。ただし自分自身のロールは変えられない
         //        (最後の admin が自分を降格してグループが操作不能になるのを防ぐ)
-        // 一般:   自分の表示名と色だけ変えられる。role / active / email は変えられない
+        // 一般:   自分の表示名と色だけ変えられる
         allow update: if isMember(gid) && (
           isAdmin(gid)
             ? !(memberId == request.auth.uid
                 && request.resource.data.role != resource.data.role)
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['displayName', 'color', 'role', 'active', 'attributes'])
+              && (!('attributes' in request.resource.data)
+                  || request.resource.data.attributes is list)
             : (memberId == request.auth.uid
-                && request.resource.data.role == resource.data.role
-                && request.resource.data.active == resource.data.active
-                && request.resource.data.email == resource.data.email)
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['displayName', 'color']))
         );
 
         // 退会は active:false で表すのでドキュメントは消さない
