@@ -3,13 +3,17 @@ import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { signInWithEmail, signUpWithEmail } from "../firebase/auth";
 
+/**
+ * 認証だけを担当する。ログイン済みのユーザーが「どのグループのどのメンバーか」の
+ * 解決は App 側の責任にしている（グループを跨げるようになったため、認証の時点では
+ * まだメンバーが確定しない）。
+ */
 interface LoginGateProps {
   user: User | null | undefined;
-  onMemberJoined?: () => void;
-  children?: (currentUser: User, currentMember: any) => React.ReactNode;
+  children: (currentUser: User) => React.ReactNode;
 }
 
-export function LoginGate({ user, onMemberJoined: _onMemberJoined, children }: LoginGateProps) {
+export function LoginGate({ user, children }: LoginGateProps) {
   if (user === undefined) {
     return <FullScreenMessage title="読み込み中..." />;
   }
@@ -18,13 +22,7 @@ export function LoginGate({ user, onMemberJoined: _onMemberJoined, children }: L
     return <AuthForm />;
   }
 
-  if (!children) {
-    return <FullScreenMessage title="グループ機能は次のPhaseで実装します" />;
-  }
-
-  // Return a placeholder with the current user and a dummy member
-  const currentMember = { id: user.uid, displayName: user.email ?? "User", email: user.email ?? "" };
-  return <>{children(user, currentMember)}</>;
+  return <>{children(user)}</>;
 }
 
 function FullScreenMessage({

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { User } from "firebase/auth";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { LoginGate } from "./components/LoginGate";
@@ -49,44 +50,56 @@ type ViewMode = "list" | "month" | "week";
 
 function App() {
   const user = useAuthUser();
-  const groupIds = useMyGroupIds(user?.uid ?? null);
-  const groupId = groupIds?.[0] ?? null;
 
-  if (!user || !groupIds) {
-    return <LoginGate user={user} onMemberJoined={() => {}} />;
+  return <LoginGate user={user}>{(currentUser) => <GroupGate user={currentUser} />}</LoginGate>;
+}
+
+function Notice({ message }: { message: string }) {
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <p className="text-gray-600">{message}</p>
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="mt-4 rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
+        >
+          ログアウト
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ログイン済みユーザーを、所属グループとその中のメンバー情報に解決する。
+ * currentMember は必ず Firestore 上の実データから引く（role や active を
+ * 権限判定に使うため、認証情報から組み立てた偽物を渡してはいけない）。
+ */
+function GroupGate({ user }: { user: User }) {
+  const groupIds = useMyGroupIds(user.uid);
+  const groupId = groupIds?.[0] ?? null;
+  const members = useMembers(groupId);
+
+  if (!groupIds || (groupId && !members)) {
+    return <Notice message="読み込み中..." />;
+  }
+  if (groupIds.length === 0 || !groupId) {
+    return <Notice message="所属しているグループがありません" />;
   }
 
-  if (groupIds.length === 0) {
-    return (
-      <LoginGate user={user} onMemberJoined={() => {}}>
-        {() => (
-          <div className="flex h-screen items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <p className="text-gray-600">所属しているグループがありません</p>
-              <button
-                type="button"
-                onClick={() => signOut()}
-                className="mt-4 rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
-              >
-                ログアウト
-              </button>
-            </div>
-          </div>
-        )}
-      </LoginGate>
-    );
+  const currentMember = members?.find((m) => m.id === user.uid);
+  if (!currentMember) {
+    return <Notice message="このグループのメンバー情報が見つかりません" />;
   }
 
   return (
-    <LoginGate user={user} onMemberJoined={() => {}}>
-      {(currentUser, currentMember) => (
-        <ShiftCalendar
-          uid={currentUser.uid}
-          currentMember={currentMember}
-          groupId={groupId}
-        />
-      )}
-    </LoginGate>
+    <ShiftCalendar
+      uid={user.uid}
+      groupId={groupId}
+      currentMember={currentMember}
+      members={members ?? []}
+    />
   );
 }
 
@@ -100,10 +113,12 @@ interface Target {
 function ShiftCalendar({
   uid,
   currentMember,
+  members,
   groupId,
 }: {
   uid: string;
   currentMember: Member;
+  members: Member[];
   groupId: string;
 }) {
   const [view, setView] = useState<ViewMode>("list");
@@ -113,8 +128,6 @@ function ShiftCalendar({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
-
-  const members = useMembers(groupId);
 
   const { startKey, endKey } = useMemo(() => {
     const days = view === "week" ? getWeekDays(anchorDate) : getMonthGridDays(anchorDate);

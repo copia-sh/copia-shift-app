@@ -1,4 +1,5 @@
 import {
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -42,12 +43,11 @@ export async function createGroup(params: {
     joinedAt: serverTimestamp(),
   });
 
+  // set + merge（update ではない）。users/{uid} は初回グループ作成の時点では
+  // まだ存在しないので、update だとバッチ全体が失敗する。arrayUnion にすることで
+  // 読み込み→書き込みの競合も避けられる。
   const userRef = doc(db, "users", ownerUid);
-  const userSnap = await getDoc(userRef);
-  const existingGroupIds = (userSnap.data()?.groupIds as string[]) ?? [];
-  batch.update(userRef, {
-    groupIds: [...existingGroupIds, groupId],
-  });
+  batch.set(userRef, { groupIds: arrayUnion(groupId) }, { merge: true });
 
   await batch.commit();
   return groupId;
@@ -59,7 +59,7 @@ export async function joinGroup(params: {
   email: string;
   inviteCode: string;
 }): Promise<void> {
-  const { groupId, uid, email, inviteCode: _inviteCode } = params;
+  const { groupId, uid, email, inviteCode } = params;
   const batch = writeBatch(db);
 
   const memberRef = doc(db, "groups", groupId, "members", uid);
@@ -70,14 +70,13 @@ export async function joinGroup(params: {
     role: "member",
     active: true,
     joinedAt: serverTimestamp(),
+    // セキュリティルール側で settings/general.inviteCode と突き合わせるため、
+    // 書き込むドキュメントに載せる必要がある（旧 createMemberProfile と同じ方式）。
+    inviteCode: inviteCode.trim(),
   });
 
   const userRef = doc(db, "users", uid);
-  const userSnap = await getDoc(userRef);
-  const existingGroupIds = (userSnap.data()?.groupIds as string[]) ?? [];
-  batch.update(userRef, {
-    groupIds: [...existingGroupIds, groupId],
-  });
+  batch.set(userRef, { groupIds: arrayUnion(groupId) }, { merge: true });
 
   await batch.commit();
 }
