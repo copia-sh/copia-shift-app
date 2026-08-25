@@ -31,6 +31,7 @@ import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
+import { ExportDialog } from "./components/ExportDialog";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
@@ -205,6 +206,7 @@ function ShiftCalendar({
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const settings = useGroupSettings(groupId);
   const shiftTypes = useShiftTypes(groupId);
 
@@ -624,6 +626,9 @@ function ShiftCalendar({
       {/* 1段目: モードと管理系。テキストボタンは 13px/700 / #6B7280 / padding 6px 10px */}
       <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
+        <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
+          書き出し
+        </button>
         {currentMember.role === "admin" && (
           <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
             設定
@@ -757,6 +762,17 @@ function ShiftCalendar({
           onClose={() => setShowSettingsDialog(false)}
           onSave={handleSaveSettings}
           onSaveTypes={handleSaveShiftTypes}
+        />
+      )}
+
+      {showExportDialog && theme && (
+        <ExportDialog
+          anchorDate={anchorDate}
+          shifts={shifts ?? []}
+          currentMemberId={currentMember.id}
+          theme={theme}
+          busy={busy}
+          onClose={() => setShowExportDialog(false)}
         />
       )}
     </div>
