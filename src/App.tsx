@@ -624,7 +624,7 @@ function ShiftCalendar({
   return (
     <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
       {/* 1段目: モードと管理系。テキストボタンは 13px/700 / #6B7280 / padding 6px 10px */}
-      <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5">
+      <div className="hidden flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5 md:flex">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
           書き出し
@@ -645,6 +645,26 @@ function ShiftCalendar({
         <button type="button" onClick={() => signOut()} className={HEADER_BTN}>
           ログアウト
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-3 pt-2 md:hidden">
+        <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
+        <details className="relative ml-auto">
+          <summary className={`${HEADER_BTN} cursor-pointer list-none border border-gray-200 bg-white shadow-[0_2px_0_0_#E3E3E3]`}>
+            メニュー
+          </summary>
+          <div className="absolute right-0 top-10 z-40 flex min-w-[150px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+            <button type="button" onClick={() => setShowExportDialog(true)} className={`${HEADER_BTN} text-left`}>書き出し</button>
+            {currentMember.role === "admin" && (
+              <button type="button" onClick={() => setShowSettingsDialog(true)} className={`${HEADER_BTN} text-left`}>設定</button>
+            )}
+            {currentMember.role === "admin" && (
+              <button type="button" onClick={() => setShowMemberAdmin(true)} className={`${HEADER_BTN} text-left`}>メンバー</button>
+            )}
+            <button type="button" onClick={() => setShowProfileDialog(true)} className={`${HEADER_BTN} text-left`}>{currentMember.displayName}</button>
+            <button type="button" onClick={() => signOut()} className={`${HEADER_BTN} text-left`}>ログアウト</button>
+          </div>
+        </details>
       </div>
 
       <CalendarNav
@@ -681,7 +701,7 @@ function ShiftCalendar({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1400px] px-5 pb-[140px]">
+      <main className="mx-auto max-w-[1400px] px-2 pb-[120px] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : view === "list" ? (

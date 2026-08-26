@@ -24,12 +24,12 @@ import {
 } from "./shiftVisual";
 import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
+import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
 import { REJECTED_TYPE } from "../types";
 import type { GroupSettings, Member, Shift, Group } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
 
-const NAME_W = 132;
 const HOUR_H = 32;
 const WEEK_GUTTER_W = 44;
 
@@ -141,24 +141,24 @@ export function CalendarNav({
   const square =
     "h-[34px] w-[34px] rounded-md border border-gray-200 bg-white text-[15px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-1.5 pt-2.5">
-      <div className="flex items-center gap-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-1.5 pt-2 md:gap-3 md:px-5 md:pt-2.5">
+      <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
         <GroupSwitcher
           groups={groups}
           currentGroupId={currentGroupId}
           onChange={onChangeGroup}
           onCreateNew={onCreateNewGroup}
         />
-        <span className="text-xl font-bold text-gray-900">{label}</span>
+        <span className="whitespace-nowrap text-lg font-bold text-gray-900 md:text-xl">{label}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full items-center justify-between gap-1.5 md:w-auto md:justify-start md:gap-2">
         <button type="button" onClick={onPrev} className={square}>
           ‹
         </button>
         <button
           type="button"
           onClick={onToday}
-          className="h-[34px] rounded-md border border-[#248DD4] bg-white px-3.5 text-[13px] font-bold text-[#248DD4] shadow-[0_2px_0_0_#D1E9F9] hover:bg-[#D1E9F9] active:translate-y-0.5 active:shadow-none"
+          className="h-[34px] rounded-md border border-[#248DD4] bg-white px-2.5 text-[12px] font-bold text-[#248DD4] shadow-[0_2px_0_0_#D1E9F9] hover:bg-[#D1E9F9] active:translate-y-0.5 active:shadow-none md:px-3.5 md:text-[13px]"
         >
           今月
         </button>
@@ -175,7 +175,7 @@ export function CalendarNav({
               key={id}
               type="button"
               onClick={() => onChangeView(id)}
-              className={`h-[34px] px-3.5 text-[13px] font-bold ${
+              className={`h-[34px] px-2.5 text-[12px] font-bold md:px-3.5 md:text-[13px] ${
                 view === id ? "bg-[#248DD4] text-white" : "bg-white text-gray-700"
               }`}
             >
@@ -235,8 +235,8 @@ export function ShiftLegend({
       };
   items.push({ label: none.label, skin: none });
 
-  return (
-    <div className="flex flex-wrap items-center gap-3.5 px-5 pb-2.5">
+  const contents = (
+    <>
       {items.map(({ label, skin }) => (
         <div key={label} className="flex items-center gap-1.5">
           <span
@@ -247,7 +247,23 @@ export function ShiftLegend({
         </div>
       ))}
       <span className="ml-auto text-[11px] text-gray-400">{MODE_HINT[mode]}</span>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      <details className="mx-3 mb-2 rounded-md border border-gray-200 bg-white md:hidden">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-bold text-gray-600">
+          凡例・操作方法（{items.length}項目）
+        </summary>
+        <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 px-3 py-2.5">
+          {contents}
+        </div>
+      </details>
+      <div className="hidden flex-wrap items-center gap-3.5 px-5 pb-2.5 md:flex">
+        {contents}
+      </div>
+    </>
   );
 }
 
@@ -303,8 +319,9 @@ export function ShiftListMatrix({
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
+  const nameW = listNameWidth(typeof window === "undefined" ? 1280 : window.innerWidth);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useCenterToday(scrollRef, anchorDate, NAME_W, colW);
+  useCenterToday(scrollRef, anchorDate, nameW, colW);
 
   const dayMeta = days.map((day) => {
     const dateKey = toDateKey(day);
@@ -332,11 +349,11 @@ export function ShiftListMatrix({
 
   return (
     <div ref={scrollRef} className="overflow-x-auto border-t border-gray-200">
-      <div style={{ minWidth: NAME_W + colW * days.length }}>
+      <div style={{ minWidth: nameW + colW * days.length }}>
         <div className="flex border-b border-gray-200 bg-[#FBFCFD]">
           <div
             className="sticky left-0 z-20 flex flex-none items-end border-r border-gray-200 bg-[#FBFCFD] px-2.5 py-1.5 text-[10px] font-bold text-gray-400"
-            style={{ width: NAME_W }}
+            style={{ width: nameW }}
           >
             メンバー
           </div>
@@ -387,7 +404,7 @@ export function ShiftListMatrix({
                 }
                 className="sticky left-0 z-10 flex flex-none items-center gap-2 border-r border-gray-200 px-2.5 text-left"
                 style={{
-                  width: NAME_W,
+                  width: nameW,
                   boxSizing: "border-box",
                   background: isOwn ? "#F1F8FE" : "#fff",
                   boxShadow: isOwn ? "inset 3px 0 0 0 #248DD4" : undefined,
@@ -470,7 +487,7 @@ export function ShiftListMatrix({
         <div className="flex border-t border-gray-200 bg-[#FBFCFD]">
           <div
             className="sticky left-0 z-10 flex flex-none items-center border-r border-gray-200 bg-[#FBFCFD] px-2.5 py-1 text-[10px] font-bold text-gray-400"
-            style={{ width: NAME_W }}
+            style={{ width: nameW }}
           >
             確定人数
           </div>
@@ -516,10 +533,13 @@ export function ShiftMonthGrid({
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
+  const memberColumns = monthMemberColumns(members.length);
+  const cellMinHeight = monthCellMinHeight(members.length, comfy);
 
   const dowLabels = dowLabelsFrom(settings.weekStartsOn);
   return (
-    <div className="border-t border-gray-200">
+    <>
+    <div className="hidden border-t border-gray-200 md:block">
       <div className="grid grid-cols-7 border-b border-gray-200 bg-[#FBFCFD]">
         {dowLabels.map((l, i) => {
           const actualDow = (i + settings.weekStartsOn) % 7;
@@ -548,7 +568,7 @@ export function ShiftMonthGrid({
                 key={dateKey}
                 className="border-l border-[#EFF1F3] p-1.5"
                 style={{
-                  minHeight: comfy ? 176 : 158,
+                  minHeight: cellMinHeight,
                   background: isToday
                     ? "#FFFBEA"
                     : inMonth
@@ -596,7 +616,7 @@ export function ShiftMonthGrid({
                     {day.getDate()}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${memberColumns}, minmax(0, 1fr))` }}>
                   {members.map((mem) => {
                     const cellStates = byKey.get(selKey(mem.id, dateKey)) ?? [];
                     const allStates = cellStatesOf(cellStates, unavailableKeys);
@@ -675,6 +695,138 @@ export function ShiftMonthGrid({
         </div>
       ))}
     </div>
+    <MobileMonthGrid
+      anchorDate={anchorDate}
+      members={members}
+      shifts={shifts}
+      currentMemberId={currentMemberId}
+      mode={mode}
+      selected={selected}
+      settings={settings}
+      theme={theme}
+      onCellTap={onCellTap}
+      onToggleMany={onToggleMany}
+      showTimes={showTimes}
+    />
+    </>
+  );
+}
+
+function MobileMonthGrid({
+  anchorDate,
+  members,
+  shifts,
+  currentMemberId,
+  mode,
+  selected,
+  settings,
+  theme,
+  onCellTap,
+  onToggleMany,
+  showTimes = true,
+}: ViewCommon) {
+  const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
+  const byKey = useStateMap(shifts);
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
+  const today = new Date();
+  const bulkHeaders = mode !== "single";
+
+  return (
+    <div className="space-y-2 md:hidden">
+      {days.map((day) => {
+        const dateKey = toDateKey(day);
+        const dow = day.getDay();
+        const isToday = isSameDate(day, today);
+        const states = members.map((member) =>
+          primaryCellState(cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys)),
+        );
+        const fixed = states.filter((state) => state.kind === "fixed").length;
+        return (
+          <section
+            key={dateKey}
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+            style={{ boxShadow: isToday ? "inset 3px 0 0 0 #F9E428" : undefined }}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 bg-[#FBFCFD] px-3 py-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-bold text-gray-900">{day.getDate()}日</span>
+                <span
+                  className="text-[11px] font-bold"
+                  style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}
+                >
+                  {DOW_LABELS[dow]}
+                </span>
+                {isToday && <span className="rounded-full bg-[#248DD4] px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
+              </div>
+              <button
+                type="button"
+                disabled={!bulkHeaders}
+                onClick={() =>
+                  onToggleMany(
+                    members
+                      .filter((member, index) => canTapCell(mode, member.id, currentMemberId, states[index]))
+                      .map((member) => selKey(member.id, dateKey)),
+                  )
+                }
+                className="text-[11px] font-bold text-gray-400"
+              >
+                確定 {fixed}
+              </button>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {members.map((member, memberIndex) => {
+                const allStates = cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys);
+                const state = states[memberIndex];
+                const key = selKey(member.id, dateKey);
+                const isSelected = selected.has(key);
+                const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
+                const skin = theme ? theme.skinFor(state, isSelected) : null;
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    disabled={!tappable}
+                    onClick={() => onCellTap(key, state)}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
+                  >
+                    <span className="flex w-[96px] flex-none items-center gap-2">
+                      <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: member.color }} />
+                      <span className="truncate text-[12px] font-bold text-gray-800">{member.displayName}</span>
+                    </span>
+                    <span className="relative flex h-9 min-w-0 flex-1 gap-px overflow-hidden rounded-md">
+                      {boxes.length === 0 ? (
+                        <span className="flex h-full w-full items-center justify-center rounded-md border" style={skin ? skinStyle(skin) : {}}>
+                          {isSelected && skin && <SelectedBadge fg={skin.fg} />}
+                          <span className="text-[12px] font-bold" style={{ color: skin?.fg }}>{skin?.mark ?? "·"}</span>
+                        </span>
+                      ) : (
+                        boxes.map((box, index) => {
+                          const boxSkin = theme ? theme.skinFor(box.state, isSelected) : null;
+                          return (
+                            <span
+                              key={index}
+                              className="flex min-w-0 items-center justify-center gap-1 overflow-hidden rounded border px-1"
+                              style={{ flexBasis: 0, flexGrow: box.widthPct, ...(boxSkin ? skinStyle(boxSkin) : {}) }}
+                            >
+                              <span className="text-[11px] font-bold" style={{ color: boxSkin?.fg }}>{boxSkin?.mark}</span>
+                              {showTimes && box.widthPct >= 28 && (
+                                <span className="truncate text-[9px] font-bold" style={{ color: boxSkin?.fg }}>{shortRange(box.state)}</span>
+                              )}
+                            </span>
+                          );
+                        })
+                      )}
+                      {boxes.length > 0 && isSelected && skin && <SelectedBadge fg={skin.fg} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -697,7 +849,7 @@ export function ShiftWeekView({
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const weekDayW = Math.max(96, 34 * Math.max(1, members.length));
+  const weekDayW = weekDayWidth(members.length);
   const gridCols = `${WEEK_GUTTER_W}px repeat(${days.length}, ${weekDayW}px)`;
   const totalW = WEEK_GUTTER_W + weekDayW * days.length;
   const hours = Array.from({ length: settings.displayEndHour - settings.displayStartHour }, (_, i) => i + settings.displayStartHour);
@@ -705,7 +857,8 @@ export function ShiftWeekView({
   useCenterToday(scrollRef, anchorDate, WEEK_GUTTER_W, weekDayW);
 
   return (
-    <div ref={scrollRef} className="max-h-[70vh] overflow-auto border-t border-gray-200">
+    <>
+    <div ref={scrollRef} className="hidden max-h-[70vh] overflow-auto border-t border-gray-200 md:block">
       <div style={{ width: totalW }}>
         <div className="sticky top-0 z-20 grid border-b border-gray-200 bg-[#FBFCFD]" style={{ gridTemplateColumns: gridCols }}>
           <div className="sticky left-0 z-30 flex items-end justify-end border-r border-[#EFF1F3] bg-[#FBFCFD] p-1 text-[9px] font-bold leading-tight text-gray-400">可否</div>
@@ -858,7 +1011,153 @@ export function ShiftWeekView({
           })}
         </div>
       </div>
-      </div>
+    </div>
+    <MobileWeekView
+      anchorDate={anchorDate}
+      members={members}
+      shifts={shifts}
+      currentMemberId={currentMemberId}
+      mode={mode}
+      selected={selected}
+      settings={settings}
+      theme={theme}
+      onCellTap={onCellTap}
+      onToggleMany={onToggleMany}
+    />
+    </>
+  );
+}
+
+function MobileWeekView({
+  anchorDate,
+  members,
+  shifts,
+  currentMemberId,
+  mode,
+  selected,
+  settings,
+  theme,
+  onCellTap,
+  onToggleMany,
+}: ViewCommon) {
+  const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
+  const byKey = useStateMap(shifts);
+  const unavailableKeys = theme?.unavailableKeys ?? new Set();
+  const hours = Array.from(
+    { length: settings.displayEndHour - settings.displayStartHour },
+    (_, index) => index + settings.displayStartHour,
+  );
+  const today = new Date();
+  const bulkHeaders = mode !== "single";
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // カード幅に gap-2 (8px) を足したスクロール刻み。ここがカード幅だけだと、
+  // 月末では gap の累積分だけ前日へずれる。
+  useCenterToday(scrollRef, anchorDate, 0, typeof window === "undefined" ? 351 : window.innerWidth - 24);
+
+  return (
+    <div ref={scrollRef} className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 md:hidden">
+      {days.map((day) => {
+        const dateKey = toDateKey(day);
+        const dow = day.getDay();
+        const isToday = isSameDate(day, today);
+        const states = members.map((member) =>
+          primaryCellState(cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys)),
+        );
+        return (
+          <section key={dateKey} className="w-[calc(100vw-32px)] flex-none snap-center overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-[#FBFCFD] px-3 py-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-bold text-gray-900">{day.getDate()}日</span>
+                <span className="text-[11px] font-bold" style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}>
+                  {DOW_LABELS[dow]}
+                </span>
+                {isToday && <span className="rounded-full bg-[#248DD4] px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
+              </div>
+              <button
+                type="button"
+                disabled={!bulkHeaders}
+                onClick={() =>
+                  onToggleMany(
+                    members
+                      .filter((member, index) => canTapCell(mode, member.id, currentMemberId, states[index]))
+                      .map((member) => selKey(member.id, dateKey)),
+                  )
+                }
+                className="text-[10px] font-bold text-gray-400"
+              >
+                日を選択
+              </button>
+            </div>
+            <div className="grid gap-1 border-b border-gray-100 p-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, members.length)}, minmax(0, 1fr))` }}>
+              {members.map((member, index) => {
+                const state = states[index];
+                const key = selKey(member.id, dateKey);
+                const isSelected = selected.has(key);
+                const skin = theme ? theme.skinFor(state, isSelected) : null;
+                const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    disabled={!tappable}
+                    onClick={() => onCellTap(key, state)}
+                    className={`relative min-w-0 rounded border px-1 py-1.5 ${tappable ? "" : "cursor-default opacity-60"}`}
+                    style={skin ? skinStyle(skin) : {}}
+                  >
+                    {isSelected && skin && <SelectedBadge fg={skin.fg} />}
+                    <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
+                    <span className="mt-0.5 block text-[11px] font-bold" style={{ color: skin?.fg }}>{skin?.mark ?? "·"}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid" style={{ gridTemplateColumns: `38px minmax(0, 1fr)` }}>
+              <div className="border-r border-gray-100 bg-[#FBFCFD]">
+                {hours.map((hour) => (
+                  <div key={hour} className="border-t border-gray-100 pr-1 text-right text-[8px] text-gray-400" style={{ height: HOUR_H }}>
+                    {hour}:00
+                  </div>
+                ))}
+              </div>
+              <div className="relative" style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}>
+                {hours.map((hour) => <div key={hour} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />)}
+                {members.map((member, index) => {
+                  const allStates = cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys);
+                  const timed = allStates.filter((state) => state.startTime && state.endTime && (state.kind === "fixed" || state.kind === "want"));
+                  const state = timed.find((item) => item.kind === "fixed") ?? timed[0];
+                  if (!state?.startTime || !state.endTime) return null;
+                  const key = selKey(member.id, dateKey);
+                  const isSelected = selected.has(key);
+                  const skin = theme ? theme.skinFor(state, isSelected) : null;
+                  const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                  const people = Math.max(1, members.length);
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      disabled={!tappable}
+                      onClick={() => onCellTap(key, state)}
+                      className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
+                      style={{
+                        top: (hourValue(state.startTime) - settings.displayStartHour) * HOUR_H,
+                        height: Math.max((hourValue(state.endTime) - hourValue(state.startTime)) * HOUR_H - 3, 24),
+                        left: `calc(${(index * 100) / people}% + 1px)`,
+                        width: `calc(${100 / people}% - 2px)`,
+                        ...(skin ? skinStyle(skin) : {}),
+                      }}
+                    >
+                      {isSelected && skin && <SelectedBadge fg={skin.fg} />}
+                      <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
+                      <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>{shortRange(state)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -916,8 +1215,8 @@ export function BulkEditToolbar({
     mode === "review" ? "確定の操作" : mode === "multi" ? `${selected.size}件をまとめて変更` : "このセルを変更";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3.5">
-      <div className="pointer-events-auto flex w-full max-w-5xl flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-2 pb-2 md:px-3 md:pb-3.5">
+      <div className="pointer-events-auto flex max-h-[42svh] w-full max-w-5xl flex-col gap-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)] md:max-h-none md:gap-2.5 md:p-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-bold text-gray-900">{title}</span>
           <span className="text-[11px] text-gray-400">

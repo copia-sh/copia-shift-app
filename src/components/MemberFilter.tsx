@@ -51,15 +51,15 @@ export function MemberFilter({
   };
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-5 pb-3">
-      <span className="mr-1 text-[12px] font-bold text-[#6B7280]">
+    <div className="mx-auto flex max-w-[1400px] flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 md:flex-wrap md:overflow-visible md:px-5 md:pb-3">
+      <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
         表示対象（{visibleCount}人）
       </span>
       <button
         type="button"
         onClick={() => onChange(new Set())}
         aria-pressed={!showCurrentMemberOnly && selectedAttributes.size === 0}
-        className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
+        className={`flex-none whitespace-nowrap rounded-full border px-3 py-1 text-[12px] font-bold ${
           !showCurrentMemberOnly && selectedAttributes.size === 0
             ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
             : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -71,7 +71,7 @@ export function MemberFilter({
         type="button"
         onClick={onSelectCurrentMember}
         aria-pressed={showCurrentMemberOnly}
-        className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
+        className={`flex-none whitespace-nowrap rounded-full border px-3 py-1 text-[12px] font-bold ${
           showCurrentMemberOnly
             ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
             : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -88,7 +88,7 @@ export function MemberFilter({
             onClick={() => toggle(attribute)}
             aria-pressed={selected}
             title={currentAttributes.has(attribute) ? "自分に設定されている属性" : undefined}
-            className={`rounded-full border px-3 py-1 text-[12px] font-bold ${
+            className={`flex-none whitespace-nowrap rounded-full border px-3 py-1 text-[12px] font-bold ${
               selected
                 ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
