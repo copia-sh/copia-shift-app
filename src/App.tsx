@@ -788,7 +788,7 @@ function ShiftCalendar({
       {showExportDialog && theme && (
         <ExportDialog
           anchorDate={anchorDate}
-          shifts={shifts ?? []}
+          groupId={groupId}
           currentMemberId={currentMember.id}
           theme={theme}
           busy={busy}

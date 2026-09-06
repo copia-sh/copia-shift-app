@@ -3,6 +3,9 @@ import {
   escapeIcalText,
   foldIcalLine,
   buildIcalendar,
+  filterShiftsForExport,
+  formatSpreadsheetShift,
+  shiftsToSpreadsheetRow,
   shiftsToIcalEvents,
   type IcalEvent,
 } from "../src/utils/ical";
@@ -368,5 +371,104 @@ describe("shiftsToIcalEvents", () => {
 
     expect(events[0].startTime).toBe("09:00");
     expect(events[0].endTime).toBe("17:00");
+  });
+});
+
+describe("filterShiftsForExport", () => {
+  const makeShift = (overrides: Partial<Shift>): Shift => ({
+    id: "shift1",
+    memberId: "user1",
+    date: "2026-09-10",
+    status: "desired",
+    type: "出勤",
+    startTime: null,
+    endTime: null,
+    createdBy: "user1",
+    createdAt: 1,
+    confirmedBy: null,
+    confirmedAt: null,
+    updatedAt: 1,
+    ...overrides,
+  });
+
+  it("filters by member, inclusive date range, type, and status", () => {
+    const shifts = [
+      makeShift({ id: "start", date: "2026-09-01" }),
+      makeShift({ id: "end", date: "2026-09-30", status: "confirmed" }),
+      makeShift({ id: "other-member", memberId: "user2" }),
+      makeShift({ id: "outside", date: "2026-10-01" }),
+      makeShift({ id: "wrong-type", type: "欠勤" }),
+    ];
+
+    const result = filterShiftsForExport({
+      shifts,
+      memberId: "user1",
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      typeKeys: new Set(["出勤"]),
+      statuses: new Set(["desired", "confirmed"]),
+    });
+
+    expect(result.map((shift) => shift.id)).toEqual(["start", "end"]);
+  });
+
+  it("can export confirmed shifts only", () => {
+    const result = filterShiftsForExport({
+      shifts: [makeShift({ id: "wanted" }), makeShift({ id: "fixed", status: "confirmed" })],
+      memberId: "user1",
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      typeKeys: new Set(["出勤"]),
+      statuses: new Set(["confirmed"]),
+    });
+
+    expect(result.map((shift) => shift.id)).toEqual(["fixed"]);
+  });
+});
+
+describe("spreadsheet export", () => {
+  const makeShift = (overrides: Partial<Shift>): Shift => ({
+    id: "shift1",
+    memberId: "user1",
+    date: "2026-08-01",
+    status: "desired",
+    type: "出勤",
+    startTime: "09:00",
+    endTime: "17:00",
+    createdBy: "user1",
+    createdAt: 1,
+    confirmedBy: null,
+    confirmedAt: null,
+    updatedAt: 1,
+    ...overrides,
+  });
+
+  it("matches the monthly sheet notation", () => {
+    expect(formatSpreadsheetShift(makeShift({}), (key) => key)).toBe("9:00-17:00");
+    expect(formatSpreadsheetShift(makeShift({ type: "リモート" }), (key) => key)).toBe("9:00-17:00(リ)");
+    expect(
+      formatSpreadsheetShift(
+        makeShift({ type: "欠勤", startTime: null, endTime: null }),
+        (key) => key,
+      ),
+    ).toBe("欠勤");
+  });
+
+  it("creates one tab-ready cell per day and joins multiple shifts", () => {
+    const row = shiftsToSpreadsheetRow({
+      shifts: [
+        makeShift({ id: "afternoon", date: "2026-08-02", startTime: "13:00", endTime: "18:00" }),
+        makeShift({ id: "morning", date: "2026-08-02", type: "リモート", startTime: "09:00", endTime: "12:00" }),
+        makeShift({ id: "last", date: "2026-08-31", startTime: "10:00", endTime: "19:00" }),
+      ],
+      year: 2026,
+      month: 8,
+      labelOf: (key) => key,
+    });
+
+    expect(row).toHaveLength(31);
+    expect(row[0]).toBe("");
+    expect(row[1]).toBe("9:00-12:00(リ),13:00-18:00");
+    expect(row[30]).toBe("10:00-19:00");
   });
 });

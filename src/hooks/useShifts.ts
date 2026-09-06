@@ -7,12 +7,15 @@ export function useShiftsInRange(
   startDate: string,
   endDate: string,
 ) {
-  const [shifts, setShifts] = useState<Shift[] | undefined>(undefined);
+  const queryKey = groupId ? `${groupId}:${startDate}:${endDate}` : "";
+  const [result, setResult] = useState<{ queryKey: string; shifts: Shift[] } | null>(null);
 
   useEffect(() => {
     if (!groupId) return;
-    return subscribeToShiftsInRange(groupId, startDate, endDate, setShifts);
-  }, [groupId, startDate, endDate]);
+    return subscribeToShiftsInRange(groupId, startDate, endDate, (shifts) => {
+      setResult({ queryKey, shifts });
+    });
+  }, [groupId, startDate, endDate, queryKey]);
 
-  return shifts;
+  return result?.queryKey === queryKey ? result.shifts : undefined;
 }

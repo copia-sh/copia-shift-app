@@ -135,6 +135,80 @@ export interface ShiftsToIcalEventsParams {
   includeUnavailable: boolean;
 }
 
+export type ExportShiftStatus = Shift["status"];
+
+export interface FilterShiftsForExportParams {
+  shifts: Shift[];
+  memberId: string;
+  startDate: string;
+  endDate: string;
+  typeKeys: ReadonlySet<string>;
+  statuses: ReadonlySet<ExportShiftStatus>;
+}
+
+/** カレンダー出力の対象を、本人・期間・種別・状態で絞り込む。日付は YYYY-MM-DD。 */
+export function filterShiftsForExport({
+  shifts,
+  memberId,
+  startDate,
+  endDate,
+  typeKeys,
+  statuses,
+}: FilterShiftsForExportParams): Shift[] {
+  return shifts.filter(
+    (shift) =>
+      shift.memberId === memberId &&
+      shift.date >= startDate &&
+      shift.date <= endDate &&
+      typeKeys.has(shift.type) &&
+      statuses.has(shift.status),
+  );
+}
+
+export interface ShiftsToSpreadsheetRowParams {
+  shifts: Shift[];
+  year: number;
+  /** 1..12 */
+  month: number;
+  labelOf: (typeKey: string) => string;
+}
+
+function spreadsheetTime(time: string): string {
+  return time.replace(/^0(?=\d:)/, "");
+}
+
+/** 「8月シフト」の日付セルに合わせた表示へ変換する。 */
+export function formatSpreadsheetShift(
+  shift: Shift,
+  labelOf: (typeKey: string) => string,
+): string {
+  const label = labelOf(shift.type);
+  if (!shift.startTime || !shift.endTime) return label;
+
+  const timeRange = `${spreadsheetTime(shift.startTime)}-${spreadsheetTime(shift.endTime)}`;
+  if (label === "出勤") return timeRange;
+  if (label === "リモート") return `${timeRange}(リ)`;
+  return `${timeRange}(${label})`;
+}
+
+/** 月次シフト表の「1日」から貼れる、日数ぶんの1行を作る。 */
+export function shiftsToSpreadsheetRow({
+  shifts,
+  year,
+  month,
+  labelOf,
+}: ShiftsToSpreadsheetRowParams): string[] {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const date = `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
+    return shifts
+      .filter((shift) => shift.date === date)
+      .sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""))
+      .map((shift) => formatSpreadsheetShift(shift, labelOf))
+      .join(",");
+  });
+}
+
 /** Convert shifts to iCal events */
 export function shiftsToIcalEvents({
   shifts,
