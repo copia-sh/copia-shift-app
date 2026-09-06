@@ -9,15 +9,21 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "emulator": "firebase emulators:exec --only firestore \"vitest run\""
+    "emulator": "firebase emulators:exec --only firestore \"vitest run\"",
+    "worker:dev": "wrangler dev --config worker/wrangler.toml",
+    "worker:seed": "node worker/dev-seed.mjs",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
+    "worker:typecheck": "tsc --noEmit -p worker/tsconfig.json"
   },
   "dependencies": {
     "date-fns": "^4.4.0",
     "firebase": "^12.18.0",
+    "jose": "^6.2.12",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260906.1",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
@@ -29,6 +35,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "wrangler": "^4.129.0"
   }
 }

@@ -32,6 +32,7 @@ import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { ExportDialog } from "./components/ExportDialog";
+import { ShareLinkDialog } from "./components/ShareLinkDialog";
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
@@ -207,6 +208,7 @@ function ShiftCalendar({
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showShareLinkDialog, setShowShareLinkDialog] = useState(false);
   const settings = useGroupSettings(groupId);
   const shiftTypes = useShiftTypes(groupId);
 
@@ -629,6 +631,9 @@ function ShiftCalendar({
         <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
           書き出し
         </button>
+        <button type="button" onClick={() => setShowShareLinkDialog(true)} className={HEADER_BTN}>
+          カレンダー購読
+        </button>
         {currentMember.role === "admin" && (
           <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
             設定
@@ -655,6 +660,7 @@ function ShiftCalendar({
           </summary>
           <div className="absolute right-0 top-10 z-40 flex min-w-[150px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
             <button type="button" onClick={() => setShowExportDialog(true)} className={`${HEADER_BTN} text-left`}>書き出し</button>
+            <button type="button" onClick={() => setShowShareLinkDialog(true)} className={`${HEADER_BTN} text-left`}>カレンダー購読</button>
             {currentMember.role === "admin" && (
               <button type="button" onClick={() => setShowSettingsDialog(true)} className={`${HEADER_BTN} text-left`}>設定</button>
             )}
@@ -793,6 +799,16 @@ function ShiftCalendar({
           theme={theme}
           busy={busy}
           onClose={() => setShowExportDialog(false)}
+        />
+      )}
+
+      {showShareLinkDialog && theme && (
+        <ShareLinkDialog
+          groupId={groupId}
+          currentMemberId={currentMember.id}
+          theme={theme}
+          busy={busy}
+          onClose={() => setShowShareLinkDialog(false)}
         />
       )}
     </div>

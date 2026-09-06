@@ -1,0 +1,8 @@
+name = "copia-shift-ics-feed"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# FIREBASE_PROJECT_ID はここに書いて構わない(秘密ではない)。
+# FIREBASE_SERVICE_ACCOUNT_KEY はコミットしない。`wrangler secret put FIREBASE_SERVICE_ACCOUNT_KEY` で登録する。
+[vars]
+FIREBASE_PROJECT_ID = ""

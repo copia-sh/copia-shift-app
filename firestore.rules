@@ -96,6 +96,25 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // カレンダー購読リンク。ドキュメントIDそのものが秘密のトークン(推測不可な乱数)。
+      // Cloudflare Worker はサービスアカウント(管理者権限)でここを読むため、
+      // このルールはブラウザ側の「発行・一覧・失効」UIだけに適用される。
+      match /shareLinks/{token} {
+        allow read: if isMember(gid) && (resource.data.memberId == request.auth.uid || isAdmin(gid));
+
+        allow create: if isMember(gid)
+          && request.resource.data.memberId == request.auth.uid
+          && request.resource.data.statuses is list
+          && request.resource.data.statuses.size() > 0
+          && request.resource.data.statuses.hasOnly(['desired', 'confirmed'])
+          && request.resource.data.typeKeys is list
+          && request.resource.data.typeKeys.size() > 0;
+
+        // 本人はいつでも失効でき、管理者は漏洩時などに代理で失効できる。
+        allow delete: if isMember(gid) && (resource.data.memberId == request.auth.uid || isAdmin(gid));
+        allow update: if false;
+      }
+
       match /shifts/{shiftId} {
         allow read: if isMember(gid);
 

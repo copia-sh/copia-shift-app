@@ -1,0 +1,5 @@
+# ローカル開発専用。`worker/.dev.vars` にコピーして使う(gitignore済み・コミットしない)。
+# FIRESTORE_EMULATOR_HOST を設定すると、本物のサービスアカウント鍵は不要になり、
+# ローカルのFirestoreエミュレータに向く(worker/dev-seed.mjs 参照)。
+FIREBASE_PROJECT_ID=demo-copia
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080

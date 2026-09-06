@@ -35,6 +35,8 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          # 任意機能(カレンダー購読)。未設定なら空のままでよい
+          VITE_ICS_FEED_BASE_URL: ${{ secrets.VITE_ICS_FEED_BASE_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

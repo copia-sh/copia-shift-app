@@ -83,6 +83,14 @@ export interface Shift {
   updatedAt: number | null;
 }
 
+export interface ShareLink {
+  id: string;
+  memberId: string;
+  statuses: ShiftStatus[];
+  typeKeys: string[];
+  createdAt: number | null;
+}
+
 export interface GroupSettings {
   inviteCode: string;
   displayStartHour: number;

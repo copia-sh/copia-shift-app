@@ -391,6 +391,126 @@ describe("グループ作成", () => {
   });
 });
 
+describe("共有リンク(shareLinks)", () => {
+  const shareLink = (memberId: string) => ({
+    memberId,
+    statuses: ["confirmed"],
+    typeKeys: ["出勤"],
+    createdAt: new Date(),
+  });
+
+  it("本人はカレンダー購読リンクを発行できる", async () => {
+    await assertSucceeds(
+      setDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok1"), shareLink(MEMBER)),
+    );
+  });
+
+  it("他人になりすましてリンクを発行することはできない", async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok2"), shareLink(MEMBER2)),
+    );
+  });
+
+  it("statuses が空だと発行できない", async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok3"), {
+        ...shareLink(MEMBER),
+        statuses: [],
+      }),
+    );
+  });
+
+  it("statuses に想定外の値が入っていると発行できない", async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok4"), {
+        ...shareLink(MEMBER),
+        statuses: ["confirmed", "rejected"],
+      }),
+    );
+  });
+
+  it("typeKeys が空だと発行できない", async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok5"), {
+        ...shareLink(MEMBER),
+        typeKeys: [],
+      }),
+    );
+  });
+
+  it("本人は自分のリンクを読める", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok6"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertSucceeds(getDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok6")));
+  });
+
+  it("他人のリンクは読めない(トークンを知らない限り推測もできない)", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok7"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertFails(getDoc(doc(as(MEMBER2), "groups", GID, "shareLinks", "tok7")));
+  });
+
+  it("管理者は他人のリンクも読める(一覧・失効のため)", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok8"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertSucceeds(getDoc(doc(as(ADMIN), "groups", GID, "shareLinks", "tok8")));
+  });
+
+  it("本人は自分のリンクを失効(削除)できる", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok9"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertSucceeds(deleteDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok9")));
+  });
+
+  it("他人のリンクを削除できない", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok10"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertFails(deleteDoc(doc(as(MEMBER2), "groups", GID, "shareLinks", "tok10")));
+  });
+
+  it("管理者は漏洩時などに他人のリンクを代理で失効できる", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok10b"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertSucceeds(deleteDoc(doc(as(ADMIN), "groups", GID, "shareLinks", "tok10b")));
+  });
+
+  it("発行後に内容を書き換えることはできない(取り消して発行し直す運用)", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore() as unknown as Firestore, "groups", GID, "shareLinks", "tok11"),
+        shareLink(MEMBER),
+      );
+    });
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "shareLinks", "tok11"), { typeKeys: ["リモート"] }),
+    );
+  });
+});
+
 describe("所属グループの逆引き(users)", () => {
   it("自分のドキュメントは読み書きできる", async () => {
     await assertSucceeds(setDoc(doc(as(MEMBER), "users", MEMBER), { groupIds: [GID] }));

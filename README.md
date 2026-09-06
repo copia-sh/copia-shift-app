@@ -14,13 +14,14 @@
 - **属性で表示を絞り込み** — 「1班」「2026夏インターン」など、複数の属性タグでメンバーを絞り込める
 - **シフト種別のカスタマイズ** — 「出勤・リモート・欠勤」を、その団体の言葉（「ホール・キッチン」など）に変えられる。色・記号も設定可能
 - **シフトの書き出し** — 期間、シフト種別、希望・確定を選び、カレンダー用 `.ics` の保存や月次Excelシート用のコピーができる
+- **カレンダー購読（任意機能）** — 自分のシフトをURLで発行し、iPhone/Googleカレンダー等に登録すると自動で反映され続ける。別途 Cloudflare Worker のセットアップが必要（[worker/README.md](./worker/README.md)）
 - **iPhoneのホーム画面に対応** — Safariの「ホーム画面に追加」で専用アイコンのWebアプリとして使える
 
 ## 動作の前提
 
 | | |
 |---|---|
-| 料金 | Firebaseの無料枠（Spark）で動きます。数十人規模なら課金は発生しない想定です |
+| 料金 | Firebaseの無料枠（Spark）で動きます。数十人規模なら課金は発生しない想定です（カレンダー購読を使う場合、Cloudflareの無料枠も利用します） |
 | 認証 | メールアドレス＋パスワード |
 | 参加方法 | 管理者が発行する**招待リンク**を配る（招待コードだけでは参加できません。詳細は後述） |
 
@@ -197,8 +198,9 @@ npx firebase emulators:start --only firestore,auth --project demo-copia
 
 ```bash
 npx vitest run tests/segments.test.ts tests/settings.test.ts tests/shiftTheme.test.ts   # 純粋関数（エミュレータ不要）
-npx firebase emulators:exec --only firestore "npx vitest run"                            # ルールを含む全件
+npx firebase emulators:exec --only firestore "npx vitest run"                            # ルールを含む全件(worker/ のテストも含む)
 npm run build
+npm run worker:typecheck
 npx oxlint
 ```
 
@@ -217,12 +219,18 @@ groups/{groupId}/members/{uid}
 groups/{groupId}/shifts/{自動ID}        1件 = 1つのシフト枠。同じ日に複数並ぶ
   memberId, date, status, type, startTime, endTime, ...
 
+groups/{groupId}/shareLinks/{token}    カレンダー購読リンク。ドキュメントIDそのものが秘密のトークン
+  memberId, statuses[], typeKeys[], createdAt
+
 users/{uid}
   groupIds                             所属グループの逆引き
 ```
 
 `shifts` は自動採番なので、同じ人の同じ日に複数のドキュメントが並びます。
 `startTime` と `endTime` が両方 `null` なら終日枠です。
+
+`shareLinks` の `{token}` は、本人がリンクを発行するときにブラウザ側で生成する32バイトの乱数です。
+このトークンを知っている人だけが、そのリンクの中身（本人の絞り込み済みシフト）を読めます。
 
 ---
 
