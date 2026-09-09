@@ -12,6 +12,6 @@ compatibility_date = "2025-01-01"
 #                  既定は無効。使うつもりが無い機能を、サービスアカウント鍵を設定しただけで
 #                  公開してしまわないようにするため(worker/README.md 参照)。
 [vars]
-FIREBASE_PROJECT_ID = ""
-AGENT_GROUP_ID = ""
+FIREBASE_PROJECT_ID = "copia-shift-app"
+AGENT_GROUP_ID = "2iogHeS5UYKAJKccFwqk"
 ICS_FEED_ENABLED = "false"

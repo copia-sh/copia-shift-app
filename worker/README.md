@@ -133,10 +133,20 @@ Authorization: Bearer <AGENT_API_TOKEN>
 #### 2. 共有シークレットを発行して登録する
 
 ```bash
-openssl rand -base64 32   # この値を共有シークレットにする(44文字になる)
-npx wrangler secret put AGENT_API_TOKEN --config worker/wrangler.toml
-npm run worker:deploy
+# 1) 生成してクリップボードへ(値が表示される)。これをエージェント側に渡す
+openssl rand -hex 32 | tr -d '\n' | pbcopy && pbpaste && echo
+
+# 2) クリップボードからそのまま登録する(手打ちせず、シェル履歴にも残さない)
+pbpaste | npx wrangler secret put AGENT_API_TOKEN --config worker/wrangler.toml
 ```
+
+`pbcopy` / `pbpaste` はmacOS用です。手で貼りたい場合や他のOSでは、パイプを外して
+`npx wrangler secret put AGENT_API_TOKEN --config worker/wrangler.toml` を実行し、
+対話プロンプト(入力は表示されません)に貼り付けてください。
+
+`base64` ではなく `hex` を使い、`tr -d '\n'` で改行を落としているのには理由があります。
+base64 は `+` `/` `=` を含むため貼り付け時に壊れやすく、**末尾に改行が混じると認証が必ず失敗します**
+（`worker/src/agentAuth.ts` は完全一致で比較します）。hex 32バイトは64文字なので最小長も満たします。
 
 発行した値はエージェント側にだけ渡します。Firebaseの管理権限やサービスアカウント鍵はエージェントへ渡しません。
 
