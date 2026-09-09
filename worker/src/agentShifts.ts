@@ -1,6 +1,6 @@
 import { DEFAULT_SHIFT_TYPES } from "../../src/types";
 import type { FirestoreClient } from "./firestoreRest";
-import { findActiveMemberByName } from "./memberName";
+import { findActiveMemberByName, toActiveMember } from "./memberName";
 import { isValidPathSegment } from "./pathSegment";
 
 const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -155,6 +155,66 @@ function workWindow(segments: readonly AgentShiftSegment[]): {
     workStart: starts.length > 0 ? starts.reduce((min, time) => (time < min ? time : min)) : null,
     workEnd: ends.length > 0 ? ends.reduce((max, time) => (time > max ? time : max)) : null,
   };
+}
+
+export interface ShiftSyncPayload {
+  date: string;
+  name: string;
+  workStart: string | null;
+  workEnd: string | null;
+  labels: string[];
+}
+
+/**
+ * 指定日群の全在籍メンバー分を、スプレッドシート同期用にまとめる。
+ *
+ * 1人ずつ `buildAgentShifts` を呼ぶと、メンバー一覧・種別定義を人数×日数ぶん読み直す。
+ * 同期はここで一度だけ読み、表示に必要な値だけを返す。
+ */
+export async function buildShiftSyncPayloads({
+  firestore,
+  groupId,
+  dates,
+}: {
+  firestore: FirestoreClient;
+  groupId: string;
+  dates: readonly string[];
+}): Promise<ShiftSyncPayload[]> {
+  if (!isValidPathSegment(groupId)) throw new Error("invalid_group_id");
+  const uniqueDates = [...new Set(dates)].sort();
+  if (uniqueDates.length === 0 || uniqueDates.some((date) => !isValidDateKey(date))) {
+    throw new Error("invalid_dates");
+  }
+
+  const [memberDocs, typeInfoByKey, shiftDocs] = await Promise.all([
+    firestore.queryCollection(`groups/${groupId}`, "members", [{ field: "active", op: "==", value: true }]),
+    loadShiftTypes(firestore, groupId),
+    firestore.queryCollection(`groups/${groupId}`, "shifts", [
+      { field: "date", op: ">=", value: uniqueDates[0] },
+      { field: "date", op: "<=", value: uniqueDates.at(-1) as string },
+    ]),
+  ]);
+  const members = memberDocs.flatMap(toActiveMember);
+  const memberIds = new Set(members.map((member) => member.memberId));
+  const datesSet = new Set(uniqueDates);
+  const segmentsByMemberAndDate = new Map<string, AgentShiftSegment[]>();
+  for (const doc of shiftDocs) {
+    const memberId = doc.data.memberId;
+    const date = doc.data.date;
+    if (typeof memberId !== "string" || typeof date !== "string") continue;
+    if (!memberIds.has(memberId) || !datesSet.has(date)) continue;
+    const key = `${memberId}\u0000${date}`;
+    const current = segmentsByMemberAndDate.get(key) ?? [];
+    current.push(toSegment(doc.data, typeInfoByKey));
+    segmentsByMemberAndDate.set(key, current);
+  }
+
+  return uniqueDates.flatMap((date) =>
+    members.map((member) => {
+      const segments = (segmentsByMemberAndDate.get(`${member.memberId}\u0000${date}`) ?? []).sort(compareSegments);
+      return { date, name: member.displayName, ...workWindow(segments), labels: segments.map((segment) => segment.label) };
+    }),
+  );
 }
 
 export interface BuildAgentShiftsParams {

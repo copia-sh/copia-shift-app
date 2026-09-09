@@ -1,9 +1,11 @@
-import { parseServiceAccountKey, fetchAccessToken } from "./googleAuth";
+import { parseServiceAccountKey, fetchAccessToken, SPREADSHEETS_SCOPE } from "./googleAuth";
 import { createFirestoreClient, type FirestoreClient } from "./firestoreRest";
 import { buildFeed, toJstDateKey } from "./feed";
 import { isValidPathSegment } from "./pathSegment";
 import { isAuthorizedAgentRequest, isTokenStrongEnough, MIN_AGENT_TOKEN_LENGTH } from "./agentAuth";
 import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShifts";
+import { handleMcpRequest } from "./mcp";
+import { syncShiftSheet } from "./shiftSync";
 
 export interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -30,10 +32,20 @@ export interface Env {
    * 未設定のときはAPI自体を無効(404)にする。
    */
   AGENT_API_TOKEN?: string;
+  /**
+   * ChatGPT Workspace Agent 用 MCP の共有シークレット。AGENT_API_TOKEN とは分離する。
+   * 未設定のときは MCP の経路自体を無効(404)にする。
+   */
+  MCP_API_TOKEN?: string;
+  /** Google Sheets へ同期する更新履歴スプレッドシート。 */
+  SHIFT_SYNC_SPREADSHEET_ID?: string;
+  /** `"true"` のときだけ毎時のスプレッドシート同期を有効にする。 */
+  SHIFT_SYNC_ENABLED?: string;
 }
 
 const FEED_PATH = /^\/feed\/([^/]+)\/([^/]+)\.ics$/;
 const AGENT_SHIFTS_PATH = "/agent/shifts";
+const MCP_PATH = "/mcp";
 
 function notFound(): Response {
   return new Response("not found", { status: 404 });
@@ -70,6 +82,31 @@ async function connectFirestore(env: Env): Promise<FirestoreClient> {
     accessToken,
     emulatorHost,
   });
+}
+
+/** Cloudflare Cron から `シフト同期` タブを更新する。通常のHTTP経路からは起動できない。 */
+async function handleScheduledSync(env: Env): Promise<void> {
+  if (env.SHIFT_SYNC_ENABLED !== "true") return;
+  const groupId = env.AGENT_GROUP_ID;
+  const spreadsheetId = env.SHIFT_SYNC_SPREADSHEET_ID;
+  if (!groupId || !spreadsheetId) {
+    console.error("copia-shift-ics-feed: shift sync is enabled but not configured");
+    return;
+  }
+  try {
+    const account = parseServiceAccountKey(env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const [firestore, sheetsToken] = await Promise.all([
+      connectFirestore(env),
+      fetchAccessToken(account, { scopes: [SPREADSHEETS_SCOPE] }),
+    ]);
+    const result = await syncShiftSheet({ firestore, groupId, spreadsheetId, accessToken: sheetsToken });
+    console.info(`copia-shift-ics-feed: shift sync completed (${result.rowCount} rows)`);
+  } catch (error) {
+    console.error("copia-shift-ics-feed: shift sync failed", error);
+    // 握りつぶすと Cloudflare の Cron 実行履歴が常に成功と表示され、
+    // 同期が何日も止まっていても気づけない。実行を失敗として残す。
+    throw error;
+  }
 }
 
 /**
@@ -151,9 +188,38 @@ async function handleAgentShifts(request: Request, url: URL, env: Env): Promise<
   }
 }
 
+/** `POST /mcp` — ChatGPT Workspace Agent 向け、シフト参照だけを公開する MCP。 */
+async function handleMcp(request: Request, env: Env): Promise<Response> {
+  const groupId = env.AGENT_GROUP_ID;
+  const expectedToken = env.MCP_API_TOKEN;
+  if (!groupId || !expectedToken) return notFound();
+  if (!isTokenStrongEnough(expectedToken)) {
+    console.error(
+      `copia-shift-ics-feed: MCP_API_TOKEN が短すぎます(${MIN_AGENT_TOKEN_LENGTH}文字以上必要)。` +
+        "/mcp は無効のままにします。",
+    );
+    return notFound();
+  }
+  // Streamable HTTP の要件: ブラウザ由来の別 Origin を受け付けない。
+  // ChatGPT のサーバー間接続は Origin を送らないため、無い場合だけ通す。
+  if (request.headers.get("Origin")) return new Response("forbidden", { status: 403 });
+  if (!(await isAuthorizedAgentRequest(request.headers.get("Authorization"), expectedToken))) {
+    return jsonError(401, "unauthorized", { "WWW-Authenticate": "Bearer" });
+  }
+
+  return handleMcpRequest(request, {
+    async getShifts({ date, name }) {
+      const firestore = await connectFirestore(env);
+      return buildAgentShifts({ firestore, groupId, date, name });
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname === MCP_PATH) return handleMcp(request, env);
     if (request.method !== "GET") return notFound();
 
     if (url.pathname === AGENT_SHIFTS_PATH) {
@@ -164,5 +230,10 @@ export default {
     // 無効時はFirestoreへの往復もOAuthトークン取得も行わず、経路が無いものとして返す。
     if (!match || !isFeedEnabled(env)) return notFound();
     return handleFeed(env, match[1], match[2]);
+  },
+  // waitUntil ではなく await する。waitUntil だと同期の成否に関わらず実行が成功扱いになり、
+  // Cron の実行履歴から失敗を読み取れない。
+  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    await handleScheduledSync(env);
   },
 };

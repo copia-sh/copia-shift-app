@@ -1,7 +1,8 @@
 import { SignJWT, importPKCS8 } from "jose";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const FIRESTORE_SCOPE = "https://www.googleapis.com/auth/datastore";
+export const FIRESTORE_SCOPE = "https://www.googleapis.com/auth/datastore";
+export const SPREADSHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const ACCESS_TOKEN_TTL_SECONDS = 3600;
 
 export interface ServiceAccount {
@@ -29,6 +30,8 @@ export function parseServiceAccountKey(json: string): ServiceAccount {
 export interface FetchAccessTokenOptions {
   now?: Date;
   fetchImpl?: typeof fetch;
+  /** JWT に載せる Google API scope。省略時は Firestore 読み取り用だけに絞る。 */
+  scopes?: readonly string[];
 }
 
 /**
@@ -38,12 +41,15 @@ export interface FetchAccessTokenOptions {
  */
 export async function fetchAccessToken(
   account: ServiceAccount,
-  { now = new Date(), fetchImpl = fetch }: FetchAccessTokenOptions = {},
+  { now = new Date(), fetchImpl = fetch, scopes = [FIRESTORE_SCOPE] }: FetchAccessTokenOptions = {},
 ): Promise<string> {
+  if (scopes.length === 0 || scopes.some((scope) => !scope)) {
+    throw new Error("at least one Google OAuth scope is required");
+  }
   const key = await importPKCS8(account.private_key, "RS256");
   const iat = Math.floor(now.getTime() / 1000);
 
-  const assertion = await new SignJWT({ scope: FIRESTORE_SCOPE })
+  const assertion = await new SignJWT({ scope: scopes.join(" ") })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(account.client_email)
     .setAudience(GOOGLE_TOKEN_URL)

@@ -16,6 +16,23 @@ export type MemberNameLookup =
   | { ok: true; memberId: string; displayName: string }
   | { ok: false; reason: "name_not_found" | "ambiguous_name" };
 
+export interface ActiveMember {
+  memberId: string;
+  displayName: string;
+}
+
+/**
+ * active な有効メンバーだけを、識別子を外部に出さない呼び出し側向けに整形する。
+ * 読めないドキュメントは空配列にして落とすため、`flatMap` にそのまま渡せる。
+ */
+export function toActiveMember(member: FirestoreDocument): ActiveMember[] {
+  if (member.data.active !== true || !isValidPathSegment(member.id)) return [];
+  const displayName = member.data.displayName;
+  return typeof displayName === "string" && normalizeMemberName(displayName)
+    ? [{ memberId: member.id, displayName }]
+    : [];
+}
+
 /**
  * 在籍中(active)のメンバーの中から、氏名が一致する1名を特定する。
  *
@@ -30,16 +47,8 @@ export function findActiveMemberByName(
   const key = normalizeMemberName(name);
   if (!key) return { ok: false, reason: "name_not_found" };
 
-  // filter ではなく flatMap。filter は型の絞り込みを呼び出し側へ伝えないため、
-  // displayName を string として取り出すのにキャストが必要になってしまう。
-  const matches = members.flatMap((member) => {
-    if (member.data.active !== true) return [];
-    if (!isValidPathSegment(member.id)) return [];
-    const displayName = member.data.displayName;
-    if (typeof displayName !== "string") return [];
-    if (normalizeMemberName(displayName) !== key) return [];
-    return [{ memberId: member.id, displayName }];
-  });
+  // `toActiveMember` で active・ID・表示名を検証してから、表記ゆれを吸収して照合する。
+  const matches = members.flatMap(toActiveMember).filter((member) => normalizeMemberName(member.displayName) === key);
 
   if (matches.length === 0) return { ok: false, reason: "name_not_found" };
   if (matches.length > 1) return { ok: false, reason: "ambiguous_name" };

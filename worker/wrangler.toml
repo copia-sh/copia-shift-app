@@ -3,7 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
 # ここに書く値は秘密ではないのでコミットして構わない。
-# 秘密情報(FIREBASE_SERVICE_ACCOUNT_KEY と AGENT_API_TOKEN)はここに書かず、
+# 秘密情報(FIREBASE_SERVICE_ACCOUNT_KEY、AGENT_API_TOKEN、MCP_API_TOKEN、
+# SHIFT_SYNC_SPREADSHEET_ID)はここに書かず、
 # `wrangler secret put <名前> --config worker/wrangler.toml` で登録する。
 #
 # AGENT_GROUP_ID   運用エージェント向けAPI(`/agent/shifts`)が読むグループ。
@@ -15,3 +16,12 @@ compatibility_date = "2025-01-01"
 FIREBASE_PROJECT_ID = "copia-shift-app"
 AGENT_GROUP_ID = "2iogHeS5UYKAJKccFwqk"
 ICS_FEED_ENABLED = "false"
+# SHIFT_SYNC_ENABLED  シフトのスプレッドシート同期。"true" のときだけ Cron が動く。
+#                     Google Sheets API の有効化と、サービスアカウントへの編集共有が
+#                     完了するまで false のままにする。
+# 同期先の SHIFT_SYNC_SPREADSHEET_ID は、このリポジトリが公開されているため vars に置かず
+# シークレットとして登録する(スプレッドシートIDは実質URLと同じで、漏れると存在が特定される)。
+SHIFT_SYNC_ENABLED = "false"
+
+[triggers]
+crons = ["0 * * * *"]

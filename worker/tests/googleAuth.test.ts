@@ -74,6 +74,19 @@ describe("fetchAccessToken", () => {
     expect(payload.exp! - payload.iat!).toBe(3600);
   });
 
+  it("uses only the explicitly requested scope", async () => {
+    const { publicKey, privateKeyPem } = await generateTestKeyPair();
+    const now = new Date("2026-06-15T00:00:00.000Z");
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "token" }), { status: 200 }));
+    await fetchAccessToken(
+      { client_email: "bot@project.iam.gserviceaccount.com", private_key: privateKeyPem },
+      { now, fetchImpl, scopes: ["https://www.googleapis.com/auth/spreadsheets"] },
+    );
+    const assertion = new URLSearchParams(fetchImpl.mock.calls[0][1].body as string).get("assertion") as string;
+    const { payload } = await jwtVerify(assertion, publicKey, { currentDate: now });
+    expect(payload.scope).toBe("https://www.googleapis.com/auth/spreadsheets");
+  });
+
   it("throws when the token endpoint responds with a non-ok status", async () => {
     const { privateKeyPem } = await generateTestKeyPair();
     const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));

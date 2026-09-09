@@ -6,9 +6,11 @@
 | エンドポイント | 用途 | 状態 |
 | --- | --- | --- |
 | `GET /agent/shifts?date=&name=` | Slackの運用エージェントが勤務予定を読む（読み取り専用） | `AGENT_GROUP_ID` と `AGENT_API_TOKEN` を設定すると有効 |
+| `POST /mcp` | ChatGPT Workspace Agent が `get_shift` ツールで勤務予定を読む（読み取り専用） | `AGENT_GROUP_ID` と `MCP_API_TOKEN` を設定すると有効 |
+| Cron → `シフト同期` | Workspace Agent が既存のGoogle Drive接続で勤務予定を読むため、Google Sheetsへ毎時同期 | 共有とSheets API有効化後に `SHIFT_SYNC_ENABLED="true"` で有効 |
 | `GET /feed/{groupId}/{token}.ics` | メンバーが自分のシフトをカレンダーアプリで購読する | **既定で無効**。`ICS_FEED_ENABLED="true"` のときだけ有効 |
 
-どちらも任意機能です。設定しなくてもアプリ本体は今まで通り動きます。
+いずれも任意機能です。設定しなくてもアプリ本体は今まで通り動きます。
 Worker名 `copia-shift-ics-feed` は、既存の購読URLを壊さないため変更しません。
 
 カレンダー購読フィードを使う予定がなければ、[共通セットアップ](#共通セットアップfirestoreへの読み取り権限) と
@@ -192,6 +194,118 @@ npm run worker:dev
 curl -H 'Authorization: Bearer dev-agent-token-0123456789abcdef' \
   'http://127.0.0.1:8787/agent/shifts?name=開発用ユーザー'
 ```
+
+## Workspace Agent 向けGoogle Sheets同期
+
+ChatGPT BusinessでカスタムMCPの開発者モードを使えない場合の代替です。Workerが毎時（1時間に1回）
+`スタダチーム_タスク表_更新履歴` の `シフト同期` タブを更新し、Workspace Agentは既に接続済みの
+Google Driveからそのタブを読めます。同期する列は更新日時・日付・氏名・勤務開始/終了・勤務区分・同期状態だけで、
+メールアドレスやFirebase UIDは書き込みません。
+
+### 有効化
+
+1. Google Cloud Consoleでプロジェクト `copia-shift-app` の **Google Sheets API** を有効にする。
+2. Firebase Console → プロジェクトの設定 → **サービスアカウント** で、Workerに登録済みの鍵の
+   `client_email` を確認する。
+3. 同期先の更新履歴スプレッドシート（`スタダチーム_タスク表_更新履歴`）を、そのメールアドレスへ
+   **編集者**として共有する。
+4. 同期先のスプレッドシートIDをシークレットとして登録する。
+
+```bash
+npx wrangler secret put SHIFT_SYNC_SPREADSHEET_ID --config worker/wrangler.toml
+# `Enter a secret value:` が出たらスプレッドシートIDを貼り付けて Enter
+```
+
+スプレッドシートIDを `wrangler.toml` に書かないのは、**このリポジトリが公開されている**ためです。
+IDは実質URLと同じで、リンク共有に切り替わった瞬間に誰でも読めてしまいます。
+`vars` に書くとその値が公開リポジトリに載るので、シークレットにします。
+
+5. `worker/wrangler.toml` の `SHIFT_SYNC_ENABLED` を `"true"` に変え、デプロイする。
+
+```bash
+npm run worker:deploy
+```
+
+`シフト同期` タブは無ければ自動で作られるので、手で用意する必要はありません。
+
+設定前はCronは登録されていますが同期処理は何も書き込まないため、共有が済むまで安全にデプロイできます。
+有効化後は本日から7日先までの在籍メンバーの予定を毎回全置換します（行数を決め打ちせず A:G 列を
+消してから書き直すので、人数が減っても古い行は残りません）。
+
+Agent側では、`シフト同期` の当日・本人名の行を読み、`更新日時` が**90分以内**の場合だけ勤務終了時刻として
+使います。行がない、または古い場合は、従来どおり本人に終了時刻を尋ねます。
+
+90分としているのは、同期が1時間間隔のためです。データは正常時でも最大1時間古くなるので、
+これより短い閾値（例: 10分）にすると正常なデータまで捨ててしまいます。逆に90分を超えて古い場合は
+同期が1回以上飛んでいるので、本人に尋ねる動作が正しくなります。同期間隔を変えるときは、
+この閾値も合わせて見直してください。
+
+### 同期の失敗に気づく
+
+同期が失敗すると Cron の実行が**失敗として記録されます**（握りつぶしていません）。
+Cloudflareダッシュボードの Workers → 該当Worker → Settings → Trigger Events の実行履歴、
+または `npx wrangler tail --config worker/wrangler.toml` で理由を確認できます。
+
+よくある失敗は、Sheets APIが未有効（403）、サービスアカウントへの共有漏れ（403）、
+スプレッドシートIDの誤り（404）です。
+
+### 読み取り量の目安
+
+1回の同期で「在籍メンバー全員 + 8日分のシフト + 種別定義1件」をFirestoreから読みます。
+1時間間隔なら1日24回です。メンバー10人・8日分で90件程度なら1日およそ2,200読み取りで、
+Firebase無料枠の1日50,000読み取りの5%弱に収まります。アプリ本体の利用分を足しても余裕があります。
+
+間隔を短くする場合は読み取り量が比例して増えます（5分間隔なら1日約26,000件で無料枠の半分強）。
+その場合は `worker/src/shiftSync.ts` の `SYNC_DAYS` を縮めて相殺できます。日次運用
+（当日の終業時刻）だけなら2日分あれば足ります。間隔を変えたときは、上の鮮度判定（90分）も
+合わせて見直してください。
+
+## ChatGPT Workspace Agent 用 MCP (`/mcp`)
+
+ChatGPT Workspace Agent にシフト確認をさせるための、**読み取り専用** MCP (Model Context Protocol) です。
+公開するツールは `get_shift` だけで、Firestoreの更新やシフトの変更はできません。
+
+MCPは Streamable HTTP の `POST /mcp` を使います。MCPの初期化・ツール一覧・ツール実行を実装しており、
+状態を持たないため SSE と `Mcp-Session-Id` は使いません。
+
+### 有効化
+
+`AGENT_GROUP_ID` と、MCP専用の `MCP_API_TOKEN` が両方必要です。Slack API 用の
+`AGENT_API_TOKEN` は MCP に流用しません。接続先ごとに失効できるよう、必ず別の値にします。
+
+```bash
+openssl rand -hex 32
+npx wrangler secret put MCP_API_TOKEN --config worker/wrangler.toml
+```
+
+`MCP_API_TOKEN` は32文字以上のランダム値にしてください。未設定・短すぎる値では `/mcp` は404になります。
+
+ChatGPTのカスタムMCP設定では、WorkerのURL末尾に `/mcp` を付けます。
+
+```
+https://copia-shift-ics-feed.<あなたのサブドメイン>.workers.dev/mcp
+```
+
+認証は `Authorization: Bearer <MCP_API_TOKEN>` です。トークンをチャット本文やエージェントの
+Instructions に貼らず、カスタムMCPの認証設定にだけ登録してください。ChatGPT側の認証UIが
+OAuthのみを求める組織設定の場合は、このWorkerにOAuth 2.1の認可サーバーを追加する必要があります。
+その場合も、ここで実装した `get_shift` と Firestore参照ロジックはそのまま使えます。
+
+### `get_shift`
+
+| 引数 | 必須 | 内容 |
+| --- | --- | --- |
+| `name` | はい | シフト表の表示名。表記ゆれは既存APIと同じ規則で照合する |
+| `date` | いいえ | Asia/Tokyo基準の `YYYY-MM-DD`。省略時は当日 |
+
+返す値は `/agent/shifts` と同じ、氏名・勤務開始/終了・勤務種別だけです。メールアドレス、Firebase UID、他人のシフトは返しません。
+
+### 運用上の注意
+
+- `MCP_API_TOKEN` は Cloudflare と ChatGPTのカスタムMCP認証設定にのみ保存します
+- Cloudflare WAFで `/mcp` にも `/agent/shifts` と同じレート制限（例: IPあたり毎分20回）を設定してください
+- MCPは `Origin` ヘッダを持つブラウザ経由の呼び出しを拒否し、ChatGPTのサーバー間接続だけを想定しています
+- デプロイとChatGPT Workspace Agentへの接続設定は、コード変更とは別の管理操作です
 
 ## カレンダー購読フィード (`/feed/...`)
 
