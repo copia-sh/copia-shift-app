@@ -2,7 +2,16 @@ name = "copia-shift-ics-feed"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
-# FIREBASE_PROJECT_ID はここに書いて構わない(秘密ではない)。
-# FIREBASE_SERVICE_ACCOUNT_KEY はコミットしない。`wrangler secret put FIREBASE_SERVICE_ACCOUNT_KEY` で登録する。
+# ここに書く値は秘密ではないのでコミットして構わない。
+# 秘密情報(FIREBASE_SERVICE_ACCOUNT_KEY と AGENT_API_TOKEN)はここに書かず、
+# `wrangler secret put <名前> --config worker/wrangler.toml` で登録する。
+#
+# AGENT_GROUP_ID   運用エージェント向けAPI(`/agent/shifts`)が読むグループ。
+#                  空のままなら、そのAPIは無効(404)のまま。
+# ICS_FEED_ENABLED カレンダー購読フィード(`/feed/...`)を使うかどうか。"true" のときだけ有効。
+#                  既定は無効。使うつもりが無い機能を、サービスアカウント鍵を設定しただけで
+#                  公開してしまわないようにするため(worker/README.md 参照)。
 [vars]
 FIREBASE_PROJECT_ID = ""
+AGENT_GROUP_ID = ""
+ICS_FEED_ENABLED = "false"

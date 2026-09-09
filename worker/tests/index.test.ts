@@ -34,6 +34,8 @@ describe("worker fetch handler", () => {
     env = {
       FIREBASE_PROJECT_ID: "p1",
       FIREBASE_SERVICE_ACCOUNT_KEY: await generateServiceAccountJson(),
+      // フィードは既定で無効。既存の挙動を確認するテストでは明示的に有効化する。
+      ICS_FEED_ENABLED: "true",
     };
 
     fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -162,6 +164,26 @@ describe("worker fetch handler", () => {
     expect(res.status).toBe(200);
     const [url] = emulatorFetch.mock.calls[0];
     expect(url).toBe("http://127.0.0.1:8080/v1/projects/p1/databases/(default)/documents/groups/g1/shareLinks/tok-abc");
+  });
+
+  it("returns a 404 for the feed route when ICS_FEED_ENABLED is unset, without calling fetch at all", async () => {
+    const res = await worker.fetch(new Request("https://worker.example.dev/feed/g1/tok-abc.ics"), {
+      ...env,
+      ICS_FEED_ENABLED: undefined,
+    });
+    expect(res.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the feed route disabled for any value other than \"true\" (fail closed)", async () => {
+    for (const value of ["false", "1", "yes", "TRUE ", ""]) {
+      const res = await worker.fetch(
+        new Request("https://worker.example.dev/feed/g1/tok-abc.ics"),
+        { ...env, ICS_FEED_ENABLED: value },
+      );
+      expect(res.status, `ICS_FEED_ENABLED=${JSON.stringify(value)}`).toBe(404);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("returns a text/calendar feed with the correct content and cache headers", async () => {

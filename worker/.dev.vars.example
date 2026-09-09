@@ -3,3 +3,11 @@
 # ローカルのFirestoreエミュレータに向く(worker/dev-seed.mjs 参照)。
 FIREBASE_PROJECT_ID=demo-copia
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+
+# 運用エージェント向けAPI(`/agent/shifts`)をローカルで試すとき。
+# AGENT_API_TOKEN が未設定・32文字未満だと、このAPIは 404 のまま無効になる。
+AGENT_GROUP_ID=demo-group
+AGENT_API_TOKEN=dev-agent-token-0123456789abcdef
+
+# カレンダー購読フィード(`/feed/...`)。既定で無効。ローカルで試すときだけ "true" にする。
+ICS_FEED_ENABLED=false
