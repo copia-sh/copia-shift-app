@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { signInWithEmail, signUpWithEmail } from "../firebase/auth";
+import { FullScreenMessage, LoadingScreen } from "./FullScreenMessage";
 
 /**
  * 認証だけを担当する。ログイン済みのユーザーが「どのグループのどのメンバーか」の
@@ -15,7 +16,7 @@ interface LoginGateProps {
 
 export function LoginGate({ user, children }: LoginGateProps) {
   if (user === undefined) {
-    return <FullScreenMessage title="読み込み中..." />;
+    return <LoadingScreen />;
   }
 
   if (user === null) {
@@ -25,20 +26,6 @@ export function LoginGate({ user, children }: LoginGateProps) {
   return <>{children(user)}</>;
 }
 
-function FullScreenMessage({
-  title,
-  children,
-}: {
-  title: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-6 text-center">
-      <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-      {children}
-    </div>
-  );
-}
 
 function authErrorMessage(error: unknown): string {
   if (error instanceof FirebaseError) {
@@ -85,7 +72,7 @@ function AuthForm() {
   }
 
   return (
-    <FullScreenMessage title="Copia シフト管理">
+    <FullScreenMessage title="Copia シフト管理" tone="heading">
       <div className="w-full max-w-xs">
         <p className="mb-4 text-sm leading-6 text-gray-600">
           すでにグループに所属している方は、登録済みのメールアドレスとパスワードでログインしてください。

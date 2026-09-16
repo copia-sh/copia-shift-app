@@ -30,6 +30,7 @@ import { SegmentEditor } from "./components/SegmentEditor";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
+import { FullScreenMessage, LoadingScreen } from "./components/FullScreenMessage";
 import { HeaderMenu } from "./components/HeaderMenu";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { ExportDialog } from "./components/ExportDialog";
@@ -84,22 +85,6 @@ function App() {
   return <LoginGate user={user}>{(currentUser) => <GroupGate user={currentUser} />}</LoginGate>;
 }
 
-function Notice({ message }: { message: string }) {
-  return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <p className="text-gray-600">{message}</p>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="mt-4 rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
-        >
-          ログアウト
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /**
  * ログイン済みユーザーを、所属グループとその中のメンバー情報に解決する。
@@ -143,7 +128,7 @@ function GroupGate({ user }: { user: User }) {
   const members = useMembers(groupId);
 
   if (!groupIds) {
-    return <Notice message="読み込み中..." />;
+    return <LoadingScreen />;
   }
 
   if (groupIds.length === 0 || showSetup) {
@@ -151,12 +136,25 @@ function GroupGate({ user }: { user: User }) {
   }
 
   if (!groupId || !groups || !members) {
-    return <Notice message="読み込み中..." />;
+    return <LoadingScreen />;
   }
 
   const currentMember = members.find((m) => m.id === user.uid);
   if (!currentMember) {
-    return <Notice message="このグループのメンバー情報が見つかりません" />;
+    return (
+      <FullScreenMessage
+        title="このグループのメンバー情報が見つかりません"
+        action={
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
+          >
+            ログアウト
+          </button>
+        }
+      />
+    );
   }
 
   return (
