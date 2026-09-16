@@ -17,6 +17,8 @@ import {
 } from "./components/ShiftMatrixViews";
 import {
   canTapCell,
+  isSimpleCell,
+  nextInCycle,
   parseSelKey,
   selKey,
   type BulkOp,
@@ -49,6 +51,7 @@ import { useIsNarrowViewport } from "./hooks/useViewport";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
+import { HeaderMenu } from "./components/HeaderMenu";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { ExportDialog } from "./components/ExportDialog";
 import { ShareLinkDialog } from "./components/ShareLinkDialog";
@@ -663,14 +666,45 @@ function ShiftCalendar({
   }
 
   /**
-   * 通常のタップは「見る」。詳細を開くだけで、1件も書き込まない。
-   * 変えるときは詳細の「編集」から始める（見るつもりの操作で予定が変わらない）。
+   * 通常モードのタップ。自分の単純なセル（0件、または終日1件）は、これまでどおり
+   * 1段階ずつ切り替えて即保存する。日々の入力はこれが一番速い。
+   * それ以外（他人・確定済み・複数枠）は、従来は何も起きなかったので詳細を開く。
    */
-  function onCellTap(k: SelKey, st: CellState, options?: { extend?: boolean }) {
+  async function onCellTap(k: SelKey, st: CellState, options?: { extend?: boolean }) {
     const { memberId } = parseSelKey(k);
 
     if (mode === "single") {
-      openDetail(k);
+      const target = targetOf(k);
+      const member = activeMembers.find((m) => m.id === memberId);
+      const quickEditable =
+        canTapCell(mode, memberId, currentMember.id, st) &&
+        (member?.shiftTarget ?? true) &&
+        isSimpleCell(target.states);
+
+      if (!quickEditable) {
+        openDetail(k);
+        return;
+      }
+
+      if (busyRef.current) return;
+      setDetailKey(null);
+      setDraft(null);
+      setSelected(new Set([k]));
+      setBulkNotice(null);
+      const op = nextInCycle(st, theme?.cycleKeys ?? []);
+      if (!op) return;
+      const outcome = await applyOps([target], op);
+      // 押したのに何も変わらなかった場合は、理由を出す（黙って無視しない）。
+      if (!outcome.error && outcome.writtenSegments === 0 && outcome.skipped.length > 0) {
+        setBulkNotice(
+          describeBulkOutcome({
+            writtenSegments: 0,
+            appliedCells: 0,
+            skipped: outcome.skipped,
+            atomic: true,
+          }),
+        );
+      }
       return;
     }
 
@@ -950,6 +984,20 @@ function ShiftCalendar({
     };
   })();
 
+  // 「管理」に入るのは権限のある項目だけ。無い人にはメニュー自体を出さない。
+  const adminMenuItems =
+    currentMember.role === "admin"
+      ? [
+          { key: "settings", label: "グループ設定", onSelect: () => setShowSettingsDialog(true) },
+          { key: "members", label: "メンバー管理", onSelect: () => setShowMemberAdmin(true) },
+        ]
+      : [];
+
+  const accountMenuItems = [
+    { key: "profile", label: "表示名の変更", onSelect: () => setShowProfileDialog(true) },
+    { key: "signout", label: "ログアウト", onSelect: () => signOut() },
+  ];
+
   const monthLayout: MonthLayout =
     monthLayoutChoice ?? (monthSummaryDefault(filteredMembers.length) ? "summary" : "members");
 
@@ -979,48 +1027,28 @@ function ShiftCalendar({
 
   return (
     <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
-      {/* 1段目: モードと管理系。テキストボタンは 13px/700 / #6B7280 / padding 6px 10px */}
-      <div className="hidden flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5 md:flex">
+      {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
+          毎日は使わない操作を平置きすると、日々の入力と同じ重さに見えてしまう。 */}
+      <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
           書き出し
         </button>
-        {currentMember.role === "admin" && (
-          <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
-            設定
-          </button>
-        )}
-        {currentMember.role === "admin" && (
-          <button type="button" onClick={() => setShowMemberAdmin(true)} className={HEADER_BTN}>
-            メンバー
-          </button>
-        )}
-        <button type="button" onClick={() => setShowProfileDialog(true)} className={HEADER_BTN}>
-          {currentMember.displayName}
-        </button>
-        <button type="button" onClick={() => signOut()} className={HEADER_BTN}>
-          ログアウト
-        </button>
+        {adminMenuItems.length > 0 && <HeaderMenu label="管理" items={adminMenuItems} />}
+        <HeaderMenu label={currentMember.displayName} items={accountMenuItems} />
       </div>
 
       <div className="flex items-center gap-2 px-3 pt-2 md:hidden">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
-        <details className="relative ml-auto">
-          <summary className={`${HEADER_BTN} cursor-pointer list-none border border-gray-200 bg-white shadow-[0_2px_0_0_#E3E3E3]`}>
-            メニュー
-          </summary>
-          <div className="absolute right-0 top-10 z-40 flex min-w-[150px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
-            <button type="button" onClick={() => setShowExportDialog(true)} className={`${HEADER_BTN} text-left`}>書き出し</button>
-            {currentMember.role === "admin" && (
-              <button type="button" onClick={() => setShowSettingsDialog(true)} className={`${HEADER_BTN} text-left`}>設定</button>
-            )}
-            {currentMember.role === "admin" && (
-              <button type="button" onClick={() => setShowMemberAdmin(true)} className={`${HEADER_BTN} text-left`}>メンバー</button>
-            )}
-            <button type="button" onClick={() => setShowProfileDialog(true)} className={`${HEADER_BTN} text-left`}>{currentMember.displayName}</button>
-            <button type="button" onClick={() => signOut()} className={`${HEADER_BTN} text-left`}>ログアウト</button>
-          </div>
-        </details>
+        <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
+            書き出し
+          </button>
+          <HeaderMenu
+            label="メニュー"
+            items={[...adminMenuItems, ...accountMenuItems]}
+          />
+        </div>
       </div>
 
       <CalendarNav
@@ -1140,9 +1168,8 @@ function ShiftCalendar({
         )}
       </main>
 
-      {/* 単一選択の操作は右パネル（詳細）に集約した。まとめて変更するときだけ
-          下のバーを出す。同じ操作の入口を2か所に置かない。 */}
-      {mode !== "single" && (
+      {/* 詳細を開いているときは、同じ操作の入口を2か所に出さない。 */}
+      {(mode !== "single" || detailKey === null) && (
       <BulkEditToolbar
         mode={mode}
         targets={selectedTargets}

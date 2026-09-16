@@ -1441,7 +1441,9 @@ export function BulkEditToolbar({
   // 「時間で分ける」の対象になるセル。single モードで自分のセルを1つだけ
   // 選んでいるときのみ非 null。
   const editableSelfCellKey =
-    mode === "multi" && targets.length === 1 && targets[0].memberId === currentMemberId
+    (mode === "single" || mode === "multi") &&
+    targets.length === 1 &&
+    targets[0].memberId === currentMemberId
       ? selKey(targets[0].memberId, targets[0].dateKey)
       : null;
   if (targets.length === 0) return null;
@@ -1564,7 +1566,7 @@ export function BulkEditToolbar({
                     onClick={() => onOpenSegmentEditor(editableSelfCellKey)}
                     className={`${btn} border border-[#248DD4] bg-white text-[#248DD4]`}
                   >
-                    この日を編集
+                    時間で分ける
                   </button>
                   <div className="border-l border-gray-300" style={{ height: "20px" }} />
                 </>
