@@ -287,8 +287,8 @@ interface ViewCommon {
   selected: Set<SelKey>;
   settings: GroupSettings;
   theme: ShiftTheme | null;
-  /** モードごとの分岐は App.tsx 側で行う */
-  onCellTap: (key: SelKey, state: CellState) => void;
+  /** モードごとの分岐は App.tsx 側で行う。extend は Shift＋クリック（範囲選択） */
+  onCellTap: (key: SelKey, state: CellState, options?: { extend?: boolean }) => void;
   onToggleMany: (keys: SelKey[]) => void;
   showTimes?: boolean;
   density?: "compact" | "comfortable";
@@ -538,7 +538,7 @@ export function ShiftListMatrix({
                     key={d.dateKey}
                     type="button"
                     disabled={!tappable}
-                    onClick={() => onCellTap(k, st)}
+                    onClick={(event) => onCellTap(k, st, { extend: event.shiftKey })}
                     className={`relative flex flex-none flex-col justify-center gap-0.5 border-l border-[#F4F6F8] px-1 ${
                       tappable ? "" : "cursor-default"
                     }`}

@@ -172,6 +172,11 @@ export function Preview() {
             saving={false}
             changedCount={draft.length}
             onChange={setDraft}
+            shortcuts={[
+              { key: "t1", label: "よく使う型：出勤 9-18", onApply: () => {} },
+              { key: "t2", label: "先週の同じ曜日をコピー", onApply: () => {} },
+              { key: "t3", label: "複数日にまとめて適用", onApply: () => {} },
+            ]}
             onSave={() => {}}
             onCancel={() => {}}
           />
