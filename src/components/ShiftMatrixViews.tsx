@@ -26,6 +26,7 @@ import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
 import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
 import { summarizeTargets, type CellTarget } from "./shiftOps";
+import { shiftTargetMembers } from "./memberRoster";
 import { REJECTED_TYPE } from "../types";
 import type { GroupSettings, Member, Shift, Group } from "../types";
 
@@ -324,11 +325,15 @@ export function ShiftListMatrix({
   const scrollRef = useRef<HTMLDivElement>(null);
   useCenterToday(scrollRef, anchorDate, nameW, colW);
 
+  // 集計・まとめて選択はシフト対象者だけを見る。対象外の行は表示のためだけに
+  // 並べているので、人数や選択に混ぜない。
+  const targetMembers = shiftTargetMembers(members);
+
   const dayMeta = days.map((day) => {
     const dateKey = toDateKey(day);
     const dow = day.getDay();
     const isToday = isSameDate(day, today);
-    const fixed = members.filter(
+    const fixed = targetMembers.filter(
       (m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)).kind === "fixed",
     ).length;
     return {
@@ -344,7 +349,7 @@ export function ShiftListMatrix({
 
   /** モードで選択可能な行だけをまとめて選択する */
   const bulkKeys = (dateKey: string) =>
-    members
+    targetMembers
       .filter((m) => canTapCell(mode, m.id, currentMemberId, primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys))))
       .map((m) => selKey(m.id, dateKey));
 
@@ -383,6 +388,9 @@ export function ShiftListMatrix({
 
         {members.map((mem) => {
           const isOwn = mem.id === currentMemberId;
+          // シフト対象外の人は行だけ出し、セルは「—」にする。登録済みの予定は
+          // 消さないが、表の上では入力対象でないことを見た目で分ける。
+          const isNonTarget = !mem.shiftTarget;
           const states = dayMeta.map((d) => primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [], unavailableKeys)));
           const fixedCount = states.filter((s) => s.kind === "fixed").length;
           const wantCount = states.filter((s) => s.kind === "want").length;
@@ -390,7 +398,10 @@ export function ShiftListMatrix({
             <div
               key={mem.id}
               className="flex items-stretch border-b border-[#EFF1F3]"
-              style={{ height: rowH, background: isOwn ? "#F7FBFE" : "#fff" }}
+              style={{
+                height: rowH,
+                background: isNonTarget ? "#F9FAFB" : isOwn ? "#F7FBFE" : "#fff",
+              }}
             >
               <button
                 type="button"
@@ -407,22 +418,42 @@ export function ShiftListMatrix({
                 style={{
                   width: nameW,
                   boxSizing: "border-box",
-                  background: isOwn ? "#F1F8FE" : "#fff",
-                  boxShadow: isOwn ? "inset 3px 0 0 0 #248DD4" : undefined,
+                  background: isNonTarget ? "#F9FAFB" : isOwn ? "#F1F8FE" : "#fff",
+                  boxShadow: isOwn && !isNonTarget ? "inset 3px 0 0 0 #248DD4" : undefined,
                 }}
               >
                 <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: mem.color }} />
                 <span className="min-w-0">
-                  <span className="block truncate text-[13px] font-bold text-gray-900">
+                  <span
+                    className="block truncate text-[13px] font-bold"
+                    style={{ color: isNonTarget ? "#4B5563" : "#111827" }}
+                  >
                     {mem.displayName}
                   </span>
-                  <span className="block whitespace-nowrap text-[10px] text-gray-400">
-                    確定 {fixedCount} ・ 希望 {wantCount}
-                  </span>
+                  {isNonTarget ? (
+                    <span className="mt-0.5 inline-block rounded bg-[#F4F6F8] px-1.5 text-[10px] font-bold text-[#6B7280]">
+                      対象外
+                    </span>
+                  ) : (
+                    <span className="block whitespace-nowrap text-[10px] text-gray-400">
+                      確定 {fixedCount} ・ 希望 {wantCount}
+                    </span>
+                  )}
                 </span>
               </button>
 
               {dayMeta.map((d) => {
+                if (isNonTarget) {
+                  return (
+                    <div
+                      key={d.dateKey}
+                      className="flex flex-none items-center justify-center border-l border-[#EFF1F3] text-[12px] font-bold"
+                      style={{ width: colW, boxSizing: "border-box", background: d.bg, color: "#C8CDD2" }}
+                    >
+                      —
+                    </div>
+                  );
+                }
                 const cellStates = byKey.get(selKey(mem.id, d.dateKey)) ?? [];
                 const allStates = cellStatesOf(cellStates, unavailableKeys);
                 const st = primaryCellState(allStates);
@@ -516,7 +547,7 @@ export function ShiftListMatrix({
 
 export function ShiftMonthGrid({
   anchorDate,
-  members,
+  members: allMembers,
   shifts,
   currentMemberId,
   mode,
@@ -529,6 +560,9 @@ export function ShiftMonthGrid({
   density = "compact",
 }: ViewCommon) {
   const comfy = density === "comfortable";
+  // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
+  // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
+  const members = shiftTargetMembers(allMembers);
   const weeks = useMemo(() => monthGridWeeks(anchorDate, settings.weekStartsOn), [anchorDate, settings.weekStartsOn]);
   const byKey = useStateMap(shifts);
   const today = new Date();
@@ -715,7 +749,7 @@ export function ShiftMonthGrid({
 
 function MobileMonthGrid({
   anchorDate,
-  members,
+  members: allMembers,
   shifts,
   currentMemberId,
   mode,
@@ -726,6 +760,9 @@ function MobileMonthGrid({
   onToggleMany,
   showTimes = true,
 }: ViewCommon) {
+  // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
+  // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
+  const members = shiftTargetMembers(allMembers);
   const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
   const byKey = useStateMap(shifts);
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
@@ -835,7 +872,7 @@ function MobileMonthGrid({
 
 export function ShiftWeekView({
   anchorDate,
-  members,
+  members: allMembers,
   shifts,
   currentMemberId,
   mode,
@@ -845,6 +882,9 @@ export function ShiftWeekView({
   onCellTap,
   onToggleMany,
 }: ViewCommon) {
+  // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
+  // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
+  const members = shiftTargetMembers(allMembers);
   const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
   const byKey = useStateMap(shifts);
   const today = new Date();
@@ -1047,7 +1087,7 @@ export function ShiftWeekView({
 
 function MobileWeekView({
   anchorDate,
-  members,
+  members: allMembers,
   shifts,
   currentMemberId,
   mode,
@@ -1057,6 +1097,9 @@ function MobileWeekView({
   onCellTap,
   onToggleMany,
 }: ViewCommon) {
+  // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
+  // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
+  const members = shiftTargetMembers(allMembers);
   const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
   const byKey = useStateMap(shifts);
   const unavailableKeys = theme?.unavailableKeys ?? new Set();

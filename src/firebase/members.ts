@@ -39,6 +39,9 @@ export function subscribeToMembers(
         return {
           id: doc.id,
           ...data,
+          // 既存ドキュメントには shiftTarget が無い。移行せずに既定 true を埋める
+          // （`??` なので、明示的に false を保存した人は対象外のまま）。
+          shiftTarget: data.shiftTarget ?? true,
           attributes: normalizeMemberAttributes(data.attributes),
         };
       });
@@ -66,6 +69,15 @@ export async function updateMemberActive(
 ): Promise<void> {
   const memberRef = doc(db, "groups", groupId, "members", memberId);
   await updateDoc(memberRef, { active });
+}
+
+export async function updateMemberShiftTarget(
+  groupId: string,
+  memberId: string,
+  shiftTarget: boolean,
+): Promise<void> {
+  const memberRef = doc(db, "groups", groupId, "members", memberId);
+  await updateDoc(memberRef, { shiftTarget });
 }
 
 export async function updateMemberDisplayName(

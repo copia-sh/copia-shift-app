@@ -23,6 +23,8 @@ const members: Member[] = ["田村駿貴", "赤間", "曽根", "佐藤", "鈴木
     color: ["#248DD4", "#1F8A98", "#D9736F", "#8B5CF6", "#16A34A", "#E08A2E"][index],
     role: index === 0 ? "admin" : "member",
     active: true,
+    // 4人目はシフト対象外。対象外の行（氏名は読めて、セルは「—」）を確認するため。
+    shiftTarget: index !== 3,
     attributes: index === 0 ? ["社員"] : [index < 4 ? "スタダ" : "社員"],
     joinedAt: null,
   }),
@@ -102,8 +104,14 @@ export function Preview() {
         currentMemberId="m1"
         showCurrentMemberOnly={false}
         selectedAttributes={new Set()}
+        nameQuery=""
+        includeNonTargets={false}
+        counts={{ visible: visibleMembers.length, nonTarget: 0 }}
         onSelectCurrentMember={() => setCount(1)}
         onChange={() => {}}
+        onChangeNameQuery={() => {}}
+        onToggleNonTargets={() => {}}
+        onResetFilters={() => {}}
       />
       <main className="mx-auto max-w-[1400px] px-2 pb-10 md:px-5">
         {view === "list" ? (
