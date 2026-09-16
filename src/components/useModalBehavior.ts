@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
 
+/**
+ * 開いているモーダルの重なり順。ダイアログの上にシートを重ねたとき、
+ * Escape で下のものまで閉じないようにする（document へ付けた listener は
+ * stopPropagation では止まらないので、自分が最前面かを見て判断する）。
+ */
+const modalStack: symbol[] = [];
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -33,6 +40,10 @@ export function useModalBehavior<T extends HTMLElement>({
   });
 
   useEffect(() => {
+    const token = Symbol("modal");
+    modalStack.push(token);
+    const isTopmost = () => modalStack[modalStack.length - 1] === token;
+
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
 
@@ -44,6 +55,7 @@ export function useModalBehavior<T extends HTMLElement>({
     initial?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopmost()) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         requestClose();
@@ -75,6 +87,8 @@ export function useModalBehavior<T extends HTMLElement>({
     document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
+      const index = modalStack.indexOf(token);
+      if (index >= 0) modalStack.splice(index, 1);
       previouslyFocused?.focus?.();
     };
   }, []);

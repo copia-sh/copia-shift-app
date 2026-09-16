@@ -363,6 +363,7 @@ export function ExportDialog({
           </button>
           <button
             type="button"
+            data-autofocus
             onClick={handleExport}
             disabled={!canExport}
             className="flex-1 px-4 py-2 text-[12px] font-bold border border-[#248DD4] rounded bg-[#248DD4] text-white hover:bg-[#1B6FA8] disabled:opacity-50 disabled:cursor-not-allowed"

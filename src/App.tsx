@@ -80,6 +80,7 @@ import {
   emptyRosterReason,
   rosterCounts,
   rosterMembers,
+  shiftTargetMembers,
   type RosterFilter,
 } from "./components/memberRoster";
 import { readRosterFilter, storeRosterFilter } from "./utils/rosterFilterStorage";
@@ -358,6 +359,8 @@ function ShiftCalendar({
     const plan = planBulkOp(targets, op, {
       currentMemberId: currentMember.id,
       canConfirm,
+      // 画面の選択だけに頼らない。対象外の行から選べてしまっても、ここで止める。
+      shiftTargetMemberIds: new Set(shiftTargetMembers(activeMembers).map((m) => m.id)),
     });
 
     const nothingWritten = (error: string | null): BulkOutcomeResult => ({
@@ -698,7 +701,8 @@ function ShiftCalendar({
   function rangeBetween(from: SelKey, to: SelKey): SelKey[] {
     const a = parseSelKey(from);
     const b = parseSelKey(to);
-    const order = filteredMembers.map((member) => member.id);
+    // 対象外の行は表示のためだけに並べている。範囲で巻き込まない。
+    const order = shiftTargetMembers(filteredMembers).map((member) => member.id);
     const memberFrom = order.indexOf(a.memberId);
     const memberTo = order.indexOf(b.memberId);
     if (memberFrom === -1 || memberTo === -1) return [];
@@ -1162,56 +1166,6 @@ function ShiftCalendar({
       />
       )}
 
-      {multiDaySegments && theme && settings && (
-        <Sheet
-          title="複数日にまとめて適用"
-          subtitle={`${multiDayDates.size}日を選択中`}
-          onClose={() => {
-            setMultiDaySegments(null);
-            setMultiDayDates(new Set());
-          }}
-          primary={{
-            label: busy ? "保存中…" : `${multiDayDates.size}日へ適用`,
-            onClick: handleMultiDayApply,
-            disabled: busy || multiDayDates.size === 0,
-          }}
-          secondary={{
-            label: "やめる",
-            onClick: () => {
-              setMultiDaySegments(null);
-              setMultiDayDates(new Set());
-            },
-          }}
-        >
-          <MultiDayApplyPanel
-            segments={multiDaySegments}
-            days={getMonthGridDays(anchorDate, settings.weekStartsOn).filter(
-              (day) => day.getMonth() === anchorDate.getMonth(),
-            )}
-            shiftsByDate={
-              new Map(
-                (shifts ?? [])
-                  .filter((shift) => shift.memberId === currentMember.id)
-                  .reduce((map, shift) => {
-                    map.set(shift.date, [...(map.get(shift.date) ?? []), shift]);
-                    return map;
-                  }, new Map<string, Shift[]>()),
-              )
-            }
-            selectedDates={multiDayDates}
-            theme={theme}
-            onToggleDate={(dateKey) =>
-              setMultiDayDates((current) => {
-                const next = new Set(current);
-                if (next.has(dateKey)) next.delete(dateKey);
-                else next.add(dateKey);
-                return next;
-              })
-            }
-          />
-        </Sheet>
-      )}
-
       {/* 畳んだ「＋n人」「＋n枠」の中身は、必ずここから全部読めるようにする。 */}
       {dayOverviewKey && theme && (
         <Sheet
@@ -1266,6 +1220,56 @@ function ShiftCalendar({
           }
         >
           {detailPanel.body}
+        </Sheet>
+      )}
+
+      {multiDaySegments && theme && settings && (
+        <Sheet
+          title="複数日にまとめて適用"
+          subtitle={`${multiDayDates.size}日を選択中`}
+          onClose={() => {
+            setMultiDaySegments(null);
+            setMultiDayDates(new Set());
+          }}
+          primary={{
+            label: busy ? "保存中…" : `${multiDayDates.size}日へ適用`,
+            onClick: handleMultiDayApply,
+            disabled: busy || multiDayDates.size === 0,
+          }}
+          secondary={{
+            label: "やめる",
+            onClick: () => {
+              setMultiDaySegments(null);
+              setMultiDayDates(new Set());
+            },
+          }}
+        >
+          <MultiDayApplyPanel
+            segments={multiDaySegments}
+            days={getMonthGridDays(anchorDate, settings.weekStartsOn).filter(
+              (day) => day.getMonth() === anchorDate.getMonth(),
+            )}
+            shiftsByDate={
+              new Map(
+                (shifts ?? [])
+                  .filter((shift) => shift.memberId === currentMember.id)
+                  .reduce((map, shift) => {
+                    map.set(shift.date, [...(map.get(shift.date) ?? []), shift]);
+                    return map;
+                  }, new Map<string, Shift[]>()),
+              )
+            }
+            selectedDates={multiDayDates}
+            theme={theme}
+            onToggleDate={(dateKey) =>
+              setMultiDayDates((current) => {
+                const next = new Set(current);
+                if (next.has(dateKey)) next.delete(dateKey);
+                else next.add(dateKey);
+                return next;
+              })
+            }
+          />
         </Sheet>
       )}
 

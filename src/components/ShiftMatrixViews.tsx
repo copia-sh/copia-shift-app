@@ -163,7 +163,7 @@ export function CalendarNav({
         <span className="whitespace-nowrap text-lg font-bold text-gray-900 md:text-xl">{label}</span>
       </div>
       <div className="flex w-full items-center justify-between gap-1.5 md:w-auto md:justify-start md:gap-2">
-        <button type="button" onClick={onPrev} className={square}>
+        <button type="button" onClick={onPrev} aria-label="前の月" className={square}>
           ‹
         </button>
         <button
@@ -173,7 +173,7 @@ export function CalendarNav({
         >
           今月
         </button>
-        <button type="button" onClick={onNext} className={square}>
+        <button type="button" onClick={onNext} aria-label="次の月" className={square}>
           ›
         </button>
         <div className="flex overflow-hidden rounded-md border border-gray-200 shadow-[0_2px_0_0_#E3E3E3]">
@@ -457,8 +457,14 @@ export function ShiftListMatrix({
             >
               <button
                 type="button"
-                disabled={!bulkHeaders}
-                title={bulkHeaders ? "この人の1ヶ月をまとめて選択" : undefined}
+                disabled={!bulkHeaders || isNonTarget}
+                title={
+                  isNonTarget
+                    ? "シフト対象外のメンバーです"
+                    : bulkHeaders
+                      ? "この人の1ヶ月をまとめて選択"
+                      : undefined
+                }
                 onClick={() =>
                   onToggleMany(
                     dayMeta
@@ -1435,7 +1441,7 @@ export function BulkEditToolbar({
   // 「時間で分ける」の対象になるセル。single モードで自分のセルを1つだけ
   // 選んでいるときのみ非 null。
   const editableSelfCellKey =
-    mode === "single" && targets.length === 1 && targets[0].memberId === currentMemberId
+    mode === "multi" && targets.length === 1 && targets[0].memberId === currentMemberId
       ? selKey(targets[0].memberId, targets[0].dateKey)
       : null;
   if (targets.length === 0) return null;
