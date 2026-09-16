@@ -21,6 +21,8 @@ export interface ShiftEditFormProps {
   onChange: (next: DaySegmentInput[]) => void;
   onSave: () => void;
   onCancel: () => void;
+  /** 繰り返し入力を減らす入口（よく使う型・先週のコピー・複数日適用） */
+  shortcuts?: { key: string; label: string; onApply: () => void }[];
   /** シートの中に置くとき。見出しとボタンはシート側が持つ */
   embedded?: boolean;
 }
@@ -45,6 +47,7 @@ export function ShiftEditForm({
   onChange,
   onSave,
   onCancel,
+  shortcuts = [],
   embedded = false,
 }: ShiftEditFormProps) {
   // 枠が増えても縦に伸び続けないよう、開いている枠は1つに絞る。
@@ -244,6 +247,27 @@ export function ShiftEditForm({
             </div>
           );
         })}
+
+        {shortcuts.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-md border border-[#E5E7EB] bg-[#FBFCFD] px-3 py-2.5">
+            {/* タップ即保存をやめた分、同じ内容を選び直す手数が増える。
+                よく使う組み合わせを1タップで埋められるようにする。 */}
+            <span className="text-[12px] font-bold text-[#6B7280]">手数を減らす</span>
+            <div className="flex flex-wrap gap-1.5">
+              {shortcuts.map((shortcut) => (
+                <button
+                  key={shortcut.key}
+                  type="button"
+                  onClick={shortcut.onApply}
+                  disabled={saving}
+                  className="flex h-[34px] items-center rounded-md border border-[#E5E7EB] bg-white px-2.5 text-[13px] font-bold text-[#374151] disabled:opacity-50"
+                >
+                  {shortcut.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2.5">
           <button

@@ -18,6 +18,7 @@ import {
 import {
   canTapCell,
   parseSelKey,
+  selKey,
   type BulkOp,
   type CellState,
   type SelKey,
@@ -33,6 +34,14 @@ import {
   type SkippedCell,
 } from "./components/shiftOps";
 import { DayOverviewPanel } from "./components/DayOverviewPanel";
+import { MultiDayApplyPanel } from "./components/MultiDayApplyPanel";
+import {
+  applyTemplateToDraft,
+  planTemplateApply,
+  previousWeekdaySegments,
+  suggestTemplates,
+  type TemplateSegment,
+} from "./utils/applyTemplate";
 import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
 import { ShiftEditForm } from "./components/ShiftEditForm";
 import { Sheet } from "./components/Sheet";
@@ -235,6 +244,11 @@ function ShiftCalendar({
   const [dayOverviewKey, setDayOverviewKey] = useState<string | null>(null);
   // 月の表示方法。人数が多いときだけ要約を既定にし、選び直したら覚える。
   const [monthLayoutChoice, setMonthLayoutChoice] = useState<MonthLayout | null>(null);
+  // 同じ内容を複数日へ適用するときの、適用内容と選んだ日
+  const [multiDaySegments, setMultiDaySegments] = useState<TemplateSegment[] | null>(null);
+  const [multiDayDates, setMultiDayDates] = useState<Set<string>>(new Set());
+  // Shift＋クリックの起点
+  const [anchorCell, setAnchorCell] = useState<SelKey | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -416,6 +430,48 @@ function ShiftCalendar({
         setDraft(null);
       } catch (err) {
         setEditorError(describeShiftWriteError(err));
+      }
+    });
+  }
+
+  /** 同じ枠を複数日へ1回の保存で適用する。確定済みの日は書き換えない。 */
+  async function handleMultiDayApply() {
+    if (!multiDaySegments || !settings) return;
+    const byDate = new Map<string, Shift[]>();
+    for (const shift of shifts ?? []) {
+      if (shift.memberId !== currentMember.id) continue;
+      byDate.set(shift.date, [...(byDate.get(shift.date) ?? []), shift]);
+    }
+
+    const plan = planTemplateApply({
+      memberId: currentMember.id,
+      dates: [...multiDayDates].sort(),
+      segments: multiDaySegments,
+      existingByDate: byDate,
+      maxSegments: settings.maxSegmentsPerDay,
+    });
+
+    if (plan.actions.length === 0) {
+      setBulkNotice(
+        plan.skipped.length > 0
+          ? `変更はありませんでした（${plan.skipped[0].reason} ほか ${plan.skipped.length}日）`
+          : "適用する日が選ばれていません",
+      );
+      return;
+    }
+
+    await runWrite(async () => {
+      try {
+        await applyShiftActions(groupId, uid, plan.actions);
+        setOpError(null);
+        setBulkNotice(
+          `${plan.appliedDates.length}日へ適用しました` +
+            (plan.skipped.length > 0 ? `／対象外 ${plan.skipped.length}日` : ""),
+        );
+        setMultiDaySegments(null);
+        setMultiDayDates(new Set());
+      } catch (err) {
+        setOpError(describeShiftWriteError(err));
       }
     });
   }
@@ -607,7 +663,7 @@ function ShiftCalendar({
    * 通常のタップは「見る」。詳細を開くだけで、1件も書き込まない。
    * 変えるときは詳細の「編集」から始める（見るつもりの操作で予定が変わらない）。
    */
-  function onCellTap(k: SelKey, st: CellState) {
+  function onCellTap(k: SelKey, st: CellState, options?: { extend?: boolean }) {
     const { memberId } = parseSelKey(k);
 
     if (mode === "single") {
@@ -618,12 +674,59 @@ function ShiftCalendar({
     if (!canTapCell(mode, memberId, currentMember.id, st)) return;
     if (busyRef.current) return;
     setBulkNotice(null);
+
+    // Shift＋クリックで、直前に押したセルからの長方形（人×日）をまとめて選ぶ。
+    // 1つずつ押すより速く、どこを選んだかは選択の枠線で確認できる。
+    if (options?.extend && anchorCell) {
+      const range = rangeBetween(anchorCell, k);
+      if (range.length > 0) {
+        setSelected((prev) => new Set([...prev, ...range]));
+        return;
+      }
+    }
+
+    setAnchorCell(k);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
       else next.add(k);
       return next;
     });
+  }
+
+  /** 2つのセルが作る長方形のうち、そのモードで選べるセルだけを返す。 */
+  function rangeBetween(from: SelKey, to: SelKey): SelKey[] {
+    const a = parseSelKey(from);
+    const b = parseSelKey(to);
+    const order = filteredMembers.map((member) => member.id);
+    const memberFrom = order.indexOf(a.memberId);
+    const memberTo = order.indexOf(b.memberId);
+    if (memberFrom === -1 || memberTo === -1) return [];
+
+    const memberIds = order.slice(
+      Math.min(memberFrom, memberTo),
+      Math.max(memberFrom, memberTo) + 1,
+    );
+    const [startDate, endDate] =
+      a.dateKey <= b.dateKey ? [a.dateKey, b.dateKey] : [b.dateKey, a.dateKey];
+
+    const keys: SelKey[] = [];
+    for (const memberId of memberIds) {
+      for (const day of getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0)) {
+        const dateKey = toDateKey(day);
+        if (dateKey < startDate || dateKey > endDate) continue;
+        const target = targetOf(selKey(memberId, dateKey));
+        const state = target.states[0] ?? {
+          kind: "none" as const,
+          type: "",
+          startTime: null,
+          endTime: null,
+        };
+        if (!canTapCell(mode, memberId, currentMember.id, state)) continue;
+        keys.push(selKey(memberId, dateKey));
+      }
+    }
+    return keys;
   }
 
   function openDetail(k: SelKey) {
@@ -746,6 +849,57 @@ function ShiftCalendar({
         }).actions.length
       : 0;
 
+    // 「よく使う型」は、いま読み込んでいる期間の自分の入力から作る。
+    // 保存済みテンプレートは持っていないので、推測ではなく実績だけを出す。
+    const templates = suggestTemplates(shifts ?? [], currentMember.id, theme.unavailableKeys, 2);
+    const lastWeek = previousWeekdaySegments(shifts ?? [], currentMember.id, dateKey);
+    const describeSegments = (segments: TemplateSegment[]) =>
+      segments
+        .map((segment) => {
+          const label = theme.defOf(segment.type).label;
+          return segment.startTime && segment.endTime
+            ? `${label} ${Number(segment.startTime.slice(0, 2))}-${Number(segment.endTime.slice(0, 2))}`
+            : `${label} 終日`;
+        })
+        .join("・");
+
+    const shortcuts = draft
+      ? [
+          ...templates.map((template) => ({
+            key: template.key,
+            label: `よく使う型：${describeSegments(template.segments)}`,
+            onApply: () => setDraft(applyTemplateToDraft(draft, template.segments)),
+          })),
+          ...(lastWeek
+            ? [
+                {
+                  key: "last-week",
+                  label: "先週の同じ曜日をコピー",
+                  onApply: () => setDraft(applyTemplateToDraft(draft, lastWeek)),
+                },
+              ]
+            : []),
+          ...(draft.length > 0
+            ? [
+                {
+                  key: "multi-day",
+                  label: "複数日にまとめて適用",
+                  onApply: () => {
+                    setMultiDaySegments(
+                      draft.map((row) => ({
+                        type: row.type,
+                        startTime: row.startTime,
+                        endTime: row.endTime,
+                      })),
+                    );
+                    setMultiDayDates(new Set([dateKey]));
+                  },
+                },
+              ]
+            : []),
+        ]
+      : [];
+
     const body = draft ? (
       <ShiftEditForm
         dateKey={dateKey}
@@ -759,6 +913,7 @@ function ShiftCalendar({
         error={editorError}
         changedCount={changedCount}
         onChange={setDraft}
+        shortcuts={shortcuts}
         onSave={() => handleSegmentSave(detailKey, draft)}
         onCancel={() => {
           setDraft(null);
@@ -1005,6 +1160,56 @@ function ShiftCalendar({
         }}
         theme={theme}
       />
+      )}
+
+      {multiDaySegments && theme && settings && (
+        <Sheet
+          title="複数日にまとめて適用"
+          subtitle={`${multiDayDates.size}日を選択中`}
+          onClose={() => {
+            setMultiDaySegments(null);
+            setMultiDayDates(new Set());
+          }}
+          primary={{
+            label: busy ? "保存中…" : `${multiDayDates.size}日へ適用`,
+            onClick: handleMultiDayApply,
+            disabled: busy || multiDayDates.size === 0,
+          }}
+          secondary={{
+            label: "やめる",
+            onClick: () => {
+              setMultiDaySegments(null);
+              setMultiDayDates(new Set());
+            },
+          }}
+        >
+          <MultiDayApplyPanel
+            segments={multiDaySegments}
+            days={getMonthGridDays(anchorDate, settings.weekStartsOn).filter(
+              (day) => day.getMonth() === anchorDate.getMonth(),
+            )}
+            shiftsByDate={
+              new Map(
+                (shifts ?? [])
+                  .filter((shift) => shift.memberId === currentMember.id)
+                  .reduce((map, shift) => {
+                    map.set(shift.date, [...(map.get(shift.date) ?? []), shift]);
+                    return map;
+                  }, new Map<string, Shift[]>()),
+              )
+            }
+            selectedDates={multiDayDates}
+            theme={theme}
+            onToggleDate={(dateKey) =>
+              setMultiDayDates((current) => {
+                const next = new Set(current);
+                if (next.has(dateKey)) next.delete(dateKey);
+                else next.add(dateKey);
+                return next;
+              })
+            }
+          />
+        </Sheet>
       )}
 
       {/* 畳んだ「＋n人」「＋n枠」の中身は、必ずここから全部読めるようにする。 */}
