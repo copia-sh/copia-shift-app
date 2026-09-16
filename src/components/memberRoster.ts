@@ -18,22 +18,36 @@ export const DEFAULT_ROSTER_FILTER: RosterFilter = {
   nameQuery: "",
 };
 
+/**
+ * シフト表に載せるメンバー。在籍しているか（active）と、シフトを登録する人か
+ * （shiftTarget）は別の話なので、両方を満たす人だけを返す。
+ * 行・人数・集計は必ずここを通す。通さないと画面ごとに対象がずれる。
+ */
+export function shiftTargetMembers(members: Member[]): Member[] {
+  return members.filter((member) => member.active && member.shiftTarget);
+}
+
+/** 在籍しているが、シフト表には載せない人数 */
+export function nonTargetCount(members: Member[]): number {
+  return members.filter((member) => member.active && !member.shiftTarget).length;
+}
+
 /** 絞り込みを適用して、実際に行として並べるメンバーを返す。 */
 export function rosterMembers(
   members: Member[],
   currentMemberId: string,
   filter: RosterFilter,
 ): Member[] {
-  const active = members.filter((member) => member.active);
+  const onRoster = shiftTargetMembers(members);
 
   // 「自分」は本人を見るための指定なので、属性・氏名の条件より優先する。
   // ここで空になると、条件の組み合わせ次第で自分の行が出せなくなる。
   if (filter.showCurrentMemberOnly) {
-    return active.filter((member) => member.id === currentMemberId);
+    return onRoster.filter((member) => member.id === currentMemberId);
   }
 
   const query = filter.nameQuery.trim();
-  return active.filter((member) => {
+  return onRoster.filter((member) => {
     if (filter.attributes.size > 0) {
       if (!member.attributes.some((attribute) => filter.attributes.has(attribute))) return false;
     }
@@ -59,8 +73,10 @@ export function emptyRosterReason(
   filter: RosterFilter,
 ): string | null {
   if (rosterMembers(members, currentMemberId, filter).length > 0) return null;
-  if (members.filter((member) => member.active).length === 0) {
-    return "在籍しているメンバーがいません。";
+  if (shiftTargetMembers(members).length === 0) {
+    return members.filter((member) => member.active).length > 0
+      ? "シフト表の対象になっているメンバーがいません。メンバー管理で対象を設定してください。"
+      : "在籍しているメンバーがいません。";
   }
   if (!hasActiveFilter(filter)) return null;
   return "条件に合うメンバーがいません。属性や氏名の条件を外すと表示されます。";

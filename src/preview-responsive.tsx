@@ -9,6 +9,7 @@ import {
   ShiftWeekView,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
+import { nonTargetCount, shiftTargetMembers } from "./components/memberRoster";
 import { buildShiftTheme } from "./components/shiftTheme";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import type { Member, Shift } from "./types";
@@ -23,6 +24,8 @@ const members: Member[] = ["田村駿貴", "赤間", "曽根", "佐藤", "鈴木
     color: ["#248DD4", "#1F8A98", "#D9736F", "#8B5CF6", "#16A34A", "#E08A2E"][index],
     role: index === 0 ? "admin" : "member",
     active: true,
+    // 5人目以降（社員）はシフト表対象外。対象外の扱いを確認するため。
+    shiftTarget: index < 4,
     attributes: index === 0 ? ["社員"] : [index < 4 ? "スタダ" : "社員"],
     joinedAt: null,
   }),
@@ -52,7 +55,9 @@ const shifts: Shift[] = [
 export function Preview() {
   const [view, setView] = useState<PreviewView>("month");
   const [count, setCount] = useState(4);
-  const visibleMembers = members.slice(0, count);
+  // 本体と同じく、シフト表に載せるのは対象のメンバーだけ
+  const selectedMembers = members.slice(0, count);
+  const visibleMembers = shiftTargetMembers(selectedMembers);
   const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
   const common = {
     anchorDate: new Date(2026, 7, 1),
@@ -98,12 +103,13 @@ export function Preview() {
       />
       <ShiftLegend theme={theme} />
       <MemberFilter
-        members={visibleMembers}
+        members={selectedMembers}
         currentMemberId="m1"
         showCurrentMemberOnly={false}
         selectedAttributes={new Set()}
         nameQuery=""
         visibleCount={visibleMembers.length}
+        nonTargetCount={nonTargetCount(selectedMembers)}
         hasActiveFilter={false}
         onSelectCurrentMember={() => setCount(1)}
         onChange={() => {}}

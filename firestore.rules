@@ -84,7 +84,7 @@ service cloud.firestore {
             ? !(memberId == request.auth.uid
                 && request.resource.data.role != resource.data.role)
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['displayName', 'color', 'role', 'active', 'attributes'])
+                   .hasOnly(['displayName', 'color', 'role', 'active', 'shiftTarget', 'attributes'])
               && (!('attributes' in request.resource.data)
                   || request.resource.data.attributes is list)
             : (memberId == request.auth.uid
