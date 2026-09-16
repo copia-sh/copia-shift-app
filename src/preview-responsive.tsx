@@ -102,8 +102,13 @@ export function Preview() {
         currentMemberId="m1"
         showCurrentMemberOnly={false}
         selectedAttributes={new Set()}
+        nameQuery=""
+        visibleCount={visibleMembers.length}
+        hasActiveFilter={false}
         onSelectCurrentMember={() => setCount(1)}
         onChange={() => {}}
+        onChangeNameQuery={() => {}}
+        onResetFilters={() => {}}
       />
       <main className="mx-auto max-w-[1400px] px-2 pb-10 md:px-5">
         {view === "list" ? (
