@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Dialog } from "./Dialog";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { REJECTED_TYPE, type ShiftStatus } from "../types";
@@ -116,14 +117,8 @@ export function ShareLinkDialog({ groupId, currentMemberId, theme, busy, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">カレンダー購読</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            発行したURLをiPhone/Googleカレンダーなどに登録すると、シフトが自動で反映され続けます。
-          </p>
-        </div>
+    <Dialog title="カレンダー購読" onClose={onClose}>
+
 
         {!feedBaseUrl && (
           <p className="mb-4 rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2 text-xs font-bold text-[#D9736F]">
@@ -236,7 +231,6 @@ export function ShareLinkDialog({ groupId, currentMemberId, theme, busy, onClose
             閉じる
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

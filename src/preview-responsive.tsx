@@ -10,6 +10,7 @@ import {
   type MonthLayout,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
+import { ProfileDialog } from "./components/ProfileDialog";
 import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
 import { ShiftEditForm } from "./components/ShiftEditForm";
 import type { DaySegmentInput } from "./components/shiftOps";
@@ -60,6 +61,7 @@ export function Preview() {
   const [count, setCount] = useState(4);
   const [monthLayout, setMonthLayout] = useState<MonthLayout>("members");
   const [dayOpened, setDayOpened] = useState<string | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
   // 詳細・編集パネルの見た目を確かめるための下書き（保存はしない）
   const [draft, setDraft] = useState<DaySegmentInput[]>([
     { id: "s0", type: "出勤", startTime: "09:00", endTime: "13:00" },
@@ -141,6 +143,24 @@ export function Preview() {
         <p className="mx-auto max-w-[1400px] px-3 pb-2 text-[13px] font-bold text-[#0863A0] md:px-5">
           「この日の全員」を開く: {dayOpened}（実アプリではシートで開きます）
         </p>
+      )}
+
+      <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-5">
+        <button
+          type="button"
+          onClick={() => setShowDialog(true)}
+          className="h-[38px] rounded-md border border-[#E5E7EB] bg-white px-3.5 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3]"
+        >
+          C1 ダイアログの型を見る
+        </button>
+      </div>
+      {showDialog && (
+        <ProfileDialog
+          member={members[0]}
+          busy={false}
+          onClose={() => setShowDialog(false)}
+          onSave={() => setShowDialog(false)}
+        />
       )}
 
       <section className="mx-auto flex max-w-[1400px] flex-wrap items-start gap-6 px-3 pb-12 md:px-5">
