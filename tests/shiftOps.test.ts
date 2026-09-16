@@ -129,6 +129,43 @@ describe("planBulkOp: 種別の変更", () => {
   });
 });
 
+describe("planBulkOp: シフト対象外", () => {
+  const ctxWithTargets = {
+    currentMemberId: ME,
+    canConfirm: true,
+    shiftTargetMemberIds: new Set([ME]),
+  };
+
+  it("対象外のメンバーは、権限があっても確定しない", () => {
+    const plan = planBulkOp(
+      [target(OTHER, "2026-09-01", [shift({ id: "a", memberId: OTHER, date: "2026-09-01" })])],
+      { kind: "confirm" },
+      ctxWithTargets,
+    );
+    expect(plan.actions).toHaveLength(0);
+    expect(plan.skipped[0].reason).toBe("シフト対象外のメンバーです");
+  });
+
+  it("自分が対象外になったら、自分の希望も作らない", () => {
+    const plan = planBulkOp(
+      [target(ME, "2026-09-01", [])],
+      { kind: "desired", type: "出勤" },
+      { currentMemberId: ME, canConfirm: false, shiftTargetMemberIds: new Set([OTHER]) },
+    );
+    expect(plan.actions).toHaveLength(0);
+    expect(plan.skipped[0].reason).toBe("シフト対象外のメンバーです");
+  });
+
+  it("対象の集合を渡さなければ、これまでどおり全員を対象にする", () => {
+    const plan = planBulkOp(
+      [target(OTHER, "2026-09-01", [shift({ id: "a", memberId: OTHER, date: "2026-09-01" })])],
+      { kind: "confirm" },
+      ctxLeader,
+    );
+    expect(plan.actions).toHaveLength(1);
+  });
+});
+
 describe("planBulkOp: 未回答に戻す", () => {
   it("未確定の枠だけを削除し、確定枠は残す", () => {
     const plan = planBulkOp(

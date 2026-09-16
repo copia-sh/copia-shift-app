@@ -48,6 +48,7 @@ export type ShiftAction =
 
 export const SKIP_REASONS = {
   noPermission: "この操作を行う権限がありません",
+  notShiftTarget: "シフト対象外のメンバーです",
   otherMember: "他の人の希望は変更できません",
   confirmed: "確定済みのため変更できません",
   noDesired: "確定できる希望枠がありません",
@@ -76,6 +77,12 @@ export interface BulkPlan {
 export interface BulkContext {
   currentMemberId: string;
   canConfirm: boolean;
+  /**
+   * シフトを登録する対象のメンバーID。渡さなければ全員を対象とみなす。
+   * 画面側の選択だけに頼ると、対象外の行から選べてしまうので、
+   * 書き込みを組み立てるここでも止める。
+   */
+  shiftTargetMemberIds?: ReadonlySet<string>;
 }
 
 /** 選択内容の要約。日・人・枠は別々に数える（1つの数字にまとめない）。 */
@@ -125,6 +132,10 @@ export function planBulkOp(targets: CellTarget[], op: BulkOp, ctx: BulkContext):
   for (const target of targets) {
     const before = actions.length;
 
+    if (ctx.shiftTargetMemberIds && !ctx.shiftTargetMemberIds.has(target.memberId)) {
+      skip(target, SKIP_REASONS.notShiftTarget);
+      continue;
+    }
     if (reviewOp && !ctx.canConfirm) {
       skip(target, SKIP_REASONS.noPermission);
       continue;

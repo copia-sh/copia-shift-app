@@ -225,6 +225,7 @@ export function ShareLinkDialog({ groupId, currentMemberId, theme, busy, onClose
         <div className="mt-5 flex gap-2">
           <button
             type="button"
+            data-autofocus
             onClick={onClose}
             className="flex-1 rounded border border-gray-300 bg-white px-4 py-2 text-[12px] font-bold text-gray-700 hover:bg-gray-50"
           >
