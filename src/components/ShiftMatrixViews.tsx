@@ -10,9 +10,9 @@ import {
   hourValue,
   isSameDate,
   monthGridWeeks,
-  parseSelKey,
   primaryCellState,
   selKey,
+  timeAxisLanes,
   shortRange,
   cellBoxes,
   skinStyle,
@@ -25,6 +25,7 @@ import {
 import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
 import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
+import { summarizeTargets, type CellTarget } from "./shiftOps";
 import { REJECTED_TYPE } from "../types";
 import type { GroupSettings, Member, Shift, Group } from "../types";
 
@@ -867,6 +868,7 @@ export function ShiftWeekView({
             const dow = day.getDay();
             const isToday = isSameDate(day, today);
             const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)));
+            const segmentCounts = members.map((m) => (byKey.get(selKey(m.id, dateKey)) ?? []).length);
             return (
               <div
                 key={dateKey}
@@ -933,6 +935,12 @@ export function ShiftWeekView({
                         {isSel && sk && <SelectedBadge fg={sk.fg} />}
                         <span className="text-[9px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
                         <span className="text-[11px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{sk?.mark ?? "·"}</span>
+                        {/* 代表の1件だけを見て「1日1予定」と読み違えないよう、枠数を添える */}
+                        {segmentCounts[mi] > 1 && (
+                          <span className="text-[8px] font-bold" style={{ color: sk?.fg ?? "#333" }}>
+                            {segmentCounts[mi]}枠
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -968,43 +976,52 @@ export function ShiftWeekView({
                 ))}
                 {members.map((mem, mi) => {
                   const allStates = cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? [], unavailableKeys);
-                  const timed = allStates.filter(
-                    (state) => state.startTime && state.endTime && (state.kind === "fixed" || state.kind === "want"),
-                  );
-                  const st = timed.find((state) => state.kind === "fixed") ?? timed[0];
-                  if (!st?.startTime || !st.endTime) return null;
-                  const sk = theme ? theme.skinFor(st, false) : null;
+                  // 1日に複数の枠があっても1つに絞らない。表示を切り替えただけで
+                  // 予定が消えると、空き時間の判断を誤る。
+                  const { boxes, laneCount } = timeAxisLanes(allStates);
+                  if (boxes.length === 0) return null;
                   const k = selKey(mem.id, dateKey);
                   const isSel = selected.has(k);
-                  const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                  const top = (hourValue(st.startTime) - settings.displayStartHour) * HOUR_H;
-                  const height = Math.max((hourValue(st.endTime) - hourValue(st.startTime)) * HOUR_H - 3, 24);
-                  const skForSel = theme ? theme.skinFor(st, isSel) : null;
                   const people = Math.max(1, members.length);
-                  return (
-                    <button
-                      key={mem.id}
-                      type="button"
-                      disabled={!tappable}
-                      onClick={() => onCellTap(k, st)}
-                      className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
-                        tappable ? "" : "cursor-default opacity-60"
-                      }`}
-                      style={{
-                        top,
-                        height,
-                        left: `calc(${(mi * 100) / people}% + 1px)`,
-                        width: `calc(${100 / people}% - 2px)`,
-                        ...(skForSel ? skinStyle(skForSel) : {}),
-                      }}
-                    >
-                      {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                      <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
-                      <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
-                        {Number(st.startTime.slice(0, 2))}-{Number(st.endTime.slice(0, 2))}
-                      </span>
-                    </button>
-                  );
+                  const columnPct = 100 / people;
+                  const lanePct = columnPct / Math.max(1, laneCount);
+                  return boxes.map(({ state, lane }, bi) => {
+                    const sk = theme ? theme.skinFor(state, false) : null;
+                    const skForSel = theme ? theme.skinFor(state, isSel) : null;
+                    const tappable = canTapCell(mode, mem.id, currentMemberId, state);
+                    const top = (hourValue(state.startTime!) - settings.displayStartHour) * HOUR_H;
+                    const height = Math.max(
+                      (hourValue(state.endTime!) - hourValue(state.startTime!)) * HOUR_H - 3,
+                      24,
+                    );
+                    return (
+                      <button
+                        key={`${mem.id}-${bi}`}
+                        type="button"
+                        disabled={!tappable}
+                        onClick={() => onCellTap(k, state)}
+                        title={`${mem.displayName} ${state.startTime}-${state.endTime}`}
+                        className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
+                          tappable ? "" : "cursor-default opacity-60"
+                        }`}
+                        style={{
+                          top,
+                          height,
+                          left: `calc(${mi * columnPct + lane * lanePct}% + 1px)`,
+                          width: `calc(${lanePct}% - 2px)`,
+                          ...(skForSel ? skinStyle(skForSel) : {}),
+                        }}
+                      >
+                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                        <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
+                          {mem.displayName.slice(0, 2)}
+                        </span>
+                        <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
+                          {Number(state.startTime!.slice(0, 2))}-{Number(state.endTime!.slice(0, 2))}
+                        </span>
+                      </button>
+                    );
+                  });
                 })}
               </div>
             );
@@ -1107,6 +1124,11 @@ function MobileWeekView({
                     {isSelected && skin && <SelectedBadge fg={skin.fg} />}
                     <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
                     <span className="mt-0.5 block text-[11px] font-bold" style={{ color: skin?.fg }}>{skin?.mark ?? "·"}</span>
+                    {(byKey.get(key) ?? []).length > 1 && (
+                      <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>
+                        {(byKey.get(key) ?? []).length}枠
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1123,34 +1145,44 @@ function MobileWeekView({
                 {hours.map((hour) => <div key={hour} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />)}
                 {members.map((member, index) => {
                   const allStates = cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys);
-                  const timed = allStates.filter((state) => state.startTime && state.endTime && (state.kind === "fixed" || state.kind === "want"));
-                  const state = timed.find((item) => item.kind === "fixed") ?? timed[0];
-                  if (!state?.startTime || !state.endTime) return null;
+                  const { boxes, laneCount } = timeAxisLanes(allStates);
+                  if (boxes.length === 0) return null;
                   const key = selKey(member.id, dateKey);
                   const isSelected = selected.has(key);
-                  const skin = theme ? theme.skinFor(state, isSelected) : null;
-                  const tappable = canTapCell(mode, member.id, currentMemberId, state);
                   const people = Math.max(1, members.length);
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      disabled={!tappable}
-                      onClick={() => onCellTap(key, state)}
-                      className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
-                      style={{
-                        top: (hourValue(state.startTime) - settings.displayStartHour) * HOUR_H,
-                        height: Math.max((hourValue(state.endTime) - hourValue(state.startTime)) * HOUR_H - 3, 24),
-                        left: `calc(${(index * 100) / people}% + 1px)`,
-                        width: `calc(${100 / people}% - 2px)`,
-                        ...(skin ? skinStyle(skin) : {}),
-                      }}
-                    >
-                      {isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                      <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
-                      <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>{shortRange(state)}</span>
-                    </button>
-                  );
+                  const columnPct = 100 / people;
+                  const lanePct = columnPct / Math.max(1, laneCount);
+                  return boxes.map(({ state, lane }, boxIndex) => {
+                    const skin = theme ? theme.skinFor(state, isSelected) : null;
+                    const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                    return (
+                      <button
+                        key={`${member.id}-${boxIndex}`}
+                        type="button"
+                        disabled={!tappable}
+                        onClick={() => onCellTap(key, state)}
+                        className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
+                        style={{
+                          top: (hourValue(state.startTime!) - settings.displayStartHour) * HOUR_H,
+                          height: Math.max(
+                            (hourValue(state.endTime!) - hourValue(state.startTime!)) * HOUR_H - 3,
+                            24,
+                          ),
+                          left: `calc(${index * columnPct + lane * lanePct}% + 1px)`,
+                          width: `calc(${lanePct}% - 2px)`,
+                          ...(skin ? skinStyle(skin) : {}),
+                        }}
+                      >
+                        {isSelected && skin && <SelectedBadge fg={skin.fg} />}
+                        <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>
+                          {member.displayName}
+                        </span>
+                        <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>
+                          {shortRange(state)}
+                        </span>
+                      </button>
+                    );
+                  });
                 })}
               </div>
             </div>
@@ -1165,11 +1197,11 @@ function MobileWeekView({
 
 export function BulkEditToolbar({
   mode,
-  selected,
-  shifts,
+  targets,
   startTime,
   endTime,
   busy,
+  notice,
   onChangeStart,
   onChangeEnd,
   onApply,
@@ -1179,11 +1211,13 @@ export function BulkEditToolbar({
   theme,
 }: {
   mode: ShiftMode;
-  selected: Set<SelKey>;
-  shifts: Shift[];
+  /** 選択中のセル。枠まで展開済みのものを受け取る */
+  targets: CellTarget[];
   startTime: string;
   endTime: string;
   busy: boolean;
+  /** 直前の一括操作の結果。成功・失敗・対象外をここに出す */
+  notice?: string | null;
   onChangeStart: (v: string) => void;
   onChangeEnd: (v: string) => void;
   onApply: (op: BulkOp) => void;
@@ -1192,36 +1226,33 @@ export function BulkEditToolbar({
   onOpenSegmentEditor?: (k: SelKey) => void;
   theme?: ShiftTheme | null;
 }) {
-  const byKey = useStateMap(shifts);
-  const unavailableKeys = theme?.unavailableKeys ?? new Set();
   // 「時間で分ける」の対象になるセル。single モードで自分のセルを1つだけ
   // 選んでいるときのみ非 null。
-  const editableSelfCellKey = (() => {
-    if (mode !== "single" || selected.size !== 1 || !currentMemberId) return null;
-    const [k] = [...selected];
-    return parseSelKey(k).memberId === currentMemberId ? k : null;
-  })();
-  if (selected.size === 0) return null;
-  const keys = [...selected];
-  const states = keys.map((k) => {
-    const { memberId, dateKey } = parseSelKey(k);
-    return primaryCellState(cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? [], unavailableKeys));
-  });
-  const dates = new Set(keys.map((k) => parseSelKey(k).dateKey));
-  const people = new Set(keys.map((k) => parseSelKey(k).memberId));
+  const editableSelfCellKey =
+    mode === "single" && targets.length === 1 && targets[0].memberId === currentMemberId
+      ? selKey(targets[0].memberId, targets[0].dateKey)
+      : null;
+  if (targets.length === 0) return null;
+  const summary = summarizeTargets(targets);
   const btn =
     "h-[38px] rounded-md px-3.5 text-[12px] font-bold active:translate-y-0.5 active:shadow-none disabled:opacity-50";
   const title =
-    mode === "review" ? "確定の操作" : mode === "multi" ? `${selected.size}件をまとめて変更` : "このセルを変更";
+    mode === "review"
+      ? "確定の操作"
+      : mode === "multi"
+        ? `${summary.cells}セルをまとめて変更`
+        : "このセルを変更";
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-2 pb-2 md:px-3 md:pb-3.5">
       <div className="pointer-events-auto flex max-h-[42svh] w-full max-w-5xl flex-col gap-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)] md:max-h-none md:gap-2.5 md:p-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-bold text-gray-900">{title}</span>
+          {/* 日・人・枠は別々に数える。1つの数字にまとめると、
+              「3日ぶん選んだ」と「3枠を変更する」を取り違える。 */}
           <span className="text-[11px] text-gray-400">
-            {dates.size}日 / {people.size}人 ・ 確定 {states.filter((s) => s.kind === "fixed").length} ・ 希望{" "}
-            {states.filter((s) => s.kind === "want").length} ・ 不可 {states.filter((s) => s.kind === "no").length}
+            {summary.dates}日 ・ {summary.members}人 ・ {summary.cells}セル / {summary.segments}枠（確定{" "}
+            {summary.fixed} ・ 希望 {summary.want} ・ 不可 {summary.no} ・ 未回答 {summary.emptyCells}）
           </span>
           <button
             type="button"
@@ -1231,6 +1262,15 @@ export function BulkEditToolbar({
             選択解除
           </button>
         </div>
+
+        {notice && (
+          <p
+            role="status"
+            className="rounded-md border border-[#D8E7F4] bg-[#F4F9FD] px-2.5 py-1.5 text-[11px] font-bold text-[#0863A0]"
+          >
+            {notice}
+          </p>
+        )}
 
         {mode === "review" ? (
           <div className="flex flex-wrap items-center gap-2">

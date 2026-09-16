@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { format } from "date-fns";
@@ -18,14 +18,21 @@ import {
   canTapCell,
   nextInCycle,
   parseSelKey,
-  primaryCellState,
-  cellStatesOf,
   isSimpleCell,
   type BulkOp,
   type CellState,
   type SelKey,
   type ShiftMode,
 } from "./components/shiftVisual";
+import {
+  buildCellTarget,
+  describeBulkOutcome,
+  planBulkOp,
+  planDaySave,
+  type CellTarget,
+  type DaySegmentInput,
+  type SkippedCell,
+} from "./components/shiftOps";
 import { SegmentEditor } from "./components/SegmentEditor";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
@@ -54,16 +61,10 @@ import {
   previousMonth,
   toDateKey,
 } from "./utils/date";
-import {
-  createShiftsBulk,
-  deleteShiftsBulk,
-  confirmShift,
-  revertShiftToDesired,
-  updateShiftDetails,
-} from "./firebase/shifts";
+import { applyShiftActions, ShiftWriteError } from "./firebase/shifts";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES, filterMembersByAttributes } from "./types";
 import { buildShiftTheme } from "./components/shiftTheme";
-import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
+import type { Member, Group, Shift, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
@@ -166,11 +167,13 @@ function GroupGate({ user }: { user: User }) {
   );
 }
 
-interface Target {
-  memberId: string;
-  dateKey: string;
-  shifts: Shift[];
-  state: CellState;
+/** 一括操作の結果。成功したセルだけ選択を外せるよう、呼び出し側へ返す。 */
+interface BulkOutcomeResult {
+  appliedKeys: SelKey[];
+  skipped: SkippedCell[];
+  writtenSegments: number;
+  atomic: boolean;
+  error: string | null;
 }
 
 function ShiftCalendar({
@@ -201,9 +204,17 @@ function ShiftCalendar({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
+  // setBusy は次のレンダーまで反映されないので、連打の抑止には ref を使う。
+  // state だけに頼ると、同じ操作が二重に書き込まれる。
+  const busyRef = useRef(false);
   const [opError, setOpError] = useState<string | null>(null);
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
+  const [editorError, setEditorError] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [editingCell, setEditingCell] = useState<SelKey | null>(null);
+  // 編集画面は開いた瞬間の写しを編集する。保存時にこの写しと現在の値を比べ、
+  // 開いている間に入った他の人の変更を上書きしないようにする。
+  const [editorBaseline, setEditorBaseline] = useState<Shift[]>([]);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -224,7 +235,27 @@ function ShiftCalendar({
     };
   }, [anchorDate, settings?.weekStartsOn]);
 
-  const shifts = useShiftsInRange(groupId, startKey, endKey);
+  const { shifts, error: shiftsError } = useShiftsInRange(groupId, startKey, endKey);
+
+  useEffect(() => {
+    // 表示期間が変わると、選択セルは画面の外へ出る。残したままにすると
+    // 「見えていない日付」を一括操作で書き換えてしまう。
+    setSelected(new Set());
+    setBulkNotice(null);
+  }, [startKey, endKey]);
+
+  /** 書き込みは常にここを通す。保存中の再操作を1か所で止める。 */
+  async function runWrite<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    if (busyRef.current) return undefined;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      return await fn();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
 
   function handlePrev() {
     setAnchorDate((d) => previousMonth(d));
@@ -253,6 +284,7 @@ function ShiftCalendar({
     if (m === "review" && !canConfirm) return;
     setMode(m);
     setSelected(new Set());
+    setBulkNotice(null);
   }
 
   function toggleMany(keys: SelKey[]) {
@@ -267,157 +299,139 @@ function ShiftCalendar({
     });
   }
 
-  async function applyOps(targets: Target[], op: BulkOp) {
-    setBusy(true);
-    try {
-      if (op.kind === "desired" || op.kind === "unavailable") {
-        const type = op.type;
-        const mine = targets.filter((t) => t.memberId === currentMember.id);
-        const existing = mine.filter((t) => t.shifts.length > 0);
-        const fresh = mine.filter((t) => t.shifts.length === 0);
-
-        await Promise.all(
-          existing.flatMap((t) =>
-            t.shifts.map((s) => updateShiftDetails(groupId, s.id, { type }))
-          ),
-        );
-
-        if (fresh.length > 0) {
-          await createShiftsBulk({
-            groupId,
-            memberId: currentMember.id,
-            dates: fresh.map((t) => t.dateKey),
-            type,
-            startTime: null,
-            endTime: null,
-            uid,
-          });
-        }
-      } else if (op.kind === "clear") {
-        const scope = targets.filter(
-          (t) => t.memberId === currentMember.id && t.state.kind !== "fixed",
-        );
-        const shiftIdsToDelete = scope.flatMap((t) => t.shifts.map((s) => s.id));
-        if (shiftIdsToDelete.length > 0) {
-          await deleteShiftsBulk(groupId, shiftIdsToDelete);
-        }
-      } else if (op.kind === "reject") {
-        const shiftIds = targets
-          .filter((t) => t.shifts.length > 0 && t.state.kind !== "fixed")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) =>
-            updateShiftDetails(groupId, id, { type: "却下" })
-          ),
-        );
-      } else if (op.kind === "time") {
-        const shiftIds = targets.flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) =>
-            updateShiftDetails(groupId, id, {
-              startTime: op.startTime,
-              endTime: op.endTime,
-            })
-          ),
-        );
-      } else if (op.kind === "confirm") {
-        const shiftIds = targets
-          .filter((t) => t.state.kind === "want")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) => confirmShift(groupId, id, uid)),
-        );
-      } else if (op.kind === "revert") {
-        const shiftIds = targets
-          .filter((t) => t.state.kind === "fixed")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) => revertShiftToDesired(groupId, id)),
-        );
-      }
-      setOpError(null);
-    } catch (err) {
-      // 権限が無い操作はセキュリティルールに拒否される。握り潰すと画面上は
-      // 何も起きなかったように見えるので、必ず理由を出す。
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません（確定・却下は管理者とリーダーのみ）"
-          : "操作に失敗しました。通信状況を確認してもう一度お試しください。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function targetOf(k: SelKey): Target {
+  function targetOf(k: SelKey): CellTarget {
     const { memberId, dateKey } = parseSelKey(k);
-    const shifts_ = (shifts ?? []).filter((s) => s.memberId === memberId && s.date === dateKey);
-    const unavailableKeys = theme?.unavailableKeys ?? new Set();
-    const state = primaryCellState(cellStatesOf(shifts_, unavailableKeys));
-    return { memberId, dateKey, shifts: shifts_, state };
+    const cellShifts = (shifts ?? []).filter((s) => s.memberId === memberId && s.date === dateKey);
+    return buildCellTarget(memberId, dateKey, cellShifts, theme?.unavailableKeys ?? new Set());
   }
 
-  async function handleSegmentSave(
-    k: SelKey,
-    next: { id?: string; type: string; startTime: string | null; endTime: string | null }[]
-  ) {
-    setBusy(true);
-    try {
-      const target = targetOf(k);
-      const existing = new Set(target.shifts.map((s) => s.id));
-      const nextIds = new Set(next.filter((n) => n.id).map((n) => n.id!));
+  function describeShiftWriteError(err: unknown): string {
+    const reason = err instanceof ShiftWriteError ? err.reason : err;
+    const denied =
+      reason instanceof FirebaseError
+        ? reason.code === "permission-denied"
+        : String(reason).includes("permission-denied");
+    return denied
+      ? "この操作を行う権限がありません（確定・却下は管理者とリーダーのみ）"
+      : "操作に失敗しました。通信状況を確認してもう一度お試しください。";
+  }
 
-      for (const seg of next) {
-        if (seg.id) {
-          await updateShiftDetails(groupId, seg.id, {
-            type: seg.type as ShiftType,
-            startTime: seg.startTime,
-            endTime: seg.endTime,
-          });
-        } else {
-          await createShiftsBulk({
-            groupId,
-            memberId: currentMember.id,
-            dates: [target.dateKey],
-            type: seg.type as ShiftType,
-            startTime: seg.startTime,
-            endTime: seg.endTime,
-            uid,
-          });
-        }
+  /**
+   * 選択セルを枠へ展開し、実行できる操作だけを1回の書き込みにまとめる。
+   * 対象外になった枠は捨てずに理由として返し、画面へ出す。
+   */
+  async function applyOps(targets: CellTarget[], op: BulkOp): Promise<BulkOutcomeResult> {
+    const plan = planBulkOp(targets, op, {
+      currentMemberId: currentMember.id,
+      canConfirm,
+    });
+
+    const nothingWritten = (error: string | null): BulkOutcomeResult => ({
+      appliedKeys: [],
+      skipped: plan.skipped,
+      writtenSegments: 0,
+      atomic: true,
+      error,
+    });
+
+    if (plan.actions.length === 0) return nothingWritten(null);
+
+    const result = await runWrite(async () => {
+      try {
+        const written = await applyShiftActions(groupId, uid, plan.actions);
+        setOpError(null);
+        return {
+          appliedKeys: plan.applied,
+          skipped: plan.skipped,
+          writtenSegments: written.written,
+          atomic: written.atomic,
+          error: null,
+        };
+      } catch (err) {
+        const message = describeShiftWriteError(err);
+        setOpError(message);
+        // 分割保存の途中で失敗した場合、ここまでに書けた件数を捨てない。
+        // 「0件」と伝えると、実際には保存済みの枠を二重に操作しかねない。
+        const partial = err instanceof ShiftWriteError ? err.written : 0;
+        return { ...nothingWritten(message), writtenSegments: partial, atomic: partial === 0 };
       }
+    });
 
-      const toDelete = [...existing].filter((id) => !nextIds.has(id));
-      if (toDelete.length > 0) {
-        await deleteShiftsBulk(groupId, toDelete);
-      }
+    // 保存中に重ねて押されたぶんは、何も起きなかったこととして扱う。
+    return result ?? nothingWritten(null);
+  }
 
-      setOpError(null);
-      setEditingCell(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。通信状況を確認してもう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
+  /**
+   * 1日分の枠編集を1回の保存として書き込む。検証に通らなければ1件も書かない。
+   * 失敗しても編集内容は保持し、エラーは編集画面の中に出す（主画面へ出すと
+   * ダイアログの裏に隠れる）。
+   */
+  async function handleSegmentSave(k: SelKey, next: DaySegmentInput[]) {
+    const target = targetOf(k);
+    const plan = planDaySave({
+      memberId: target.memberId,
+      date: target.dateKey,
+      existing: target.shifts,
+      baseline: editorBaseline,
+      next,
+      maxSegments: settings?.maxSegmentsPerDay ?? DEFAULT_GROUP_SETTINGS.maxSegmentsPerDay,
+    });
+
+    if (plan.error) {
+      setEditorError(plan.error);
+      return;
     }
+    if (plan.actions.length === 0) {
+      setEditorError(null);
+      setEditingCell(null);
+      return;
+    }
+
+    await runWrite(async () => {
+      try {
+        await applyShiftActions(groupId, uid, plan.actions);
+        setEditorError(null);
+        setOpError(null);
+        setEditingCell(null);
+      } catch (err) {
+        setEditorError(describeShiftWriteError(err));
+      }
+    });
   }
 
   async function handleBulk(op: BulkOp) {
-    await applyOps([...selected].map(targetOf), op);
-    if (op.kind === "desired") return;
-    setSelected(new Set());
+    const outcome = await applyOps(selectedTargets, op);
+
+    if (outcome.error) {
+      setBulkNotice(
+        outcome.writtenSegments > 0
+          ? `${outcome.error} ${outcome.writtenSegments}枠はすでに保存されている可能性があります。画面の内容を確認してから再試行してください。`
+          : outcome.error,
+      );
+      // 失敗したときは選択を残す。再試行の対象を利用者が組み直さずに済む。
+      return;
+    }
+
+    setBulkNotice(
+      describeBulkOutcome({
+        writtenSegments: outcome.writtenSegments,
+        appliedCells: outcome.appliedKeys.length,
+        skipped: outcome.skipped,
+        atomic: outcome.atomic,
+      }),
+    );
+
+    // 確定・取消・却下は「片付ける」操作なので、成功したセルだけ選択から外す。
+    // 種別や時間の適用は続けて操作することが多いので、選択を保つ。
+    const reviewOp = op.kind === "confirm" || op.kind === "revert" || op.kind === "reject";
+    if (!reviewOp) return;
+    setSelected((prev) => {
+      const nextSelection = new Set(prev);
+      for (const key of outcome.appliedKeys) nextSelection.delete(key);
+      return nextSelection;
+    });
   }
+
 
   async function handleSaveProfile(displayName: string) {
     setBusy(true);
@@ -559,19 +573,32 @@ function ShiftCalendar({
   async function onCellTap(k: SelKey, st: CellState) {
     const { memberId } = parseSelKey(k);
     if (!canTapCell(mode, memberId, currentMember.id, st)) return;
+    // 保存中のセルを押し直しても、同じ書き込みを重ねない。
+    if (busyRef.current) return;
 
     if (mode === "single") {
       setSelected(new Set([k]));
+      setBulkNotice(null);
       const target = targetOf(k);
-      const unavailableKeys = theme?.unavailableKeys ?? new Set();
-      const cellStates = cellStatesOf(target.shifts, unavailableKeys);
-      if (isSimpleCell(cellStates)) {
-        const cycleKeys = theme?.cycleKeys ?? [];
-        const op = nextInCycle(st, cycleKeys);
-        if (op) await applyOps([target], op);
+      if (isSimpleCell(target.states)) {
+        const op = nextInCycle(st, theme?.cycleKeys ?? []);
+        if (!op) return;
+        const outcome = await applyOps([target], op);
+        // 押したのに何も変わらなかった場合は、理由を出す（黙って無視しない）。
+        if (!outcome.error && outcome.writtenSegments === 0 && outcome.skipped.length > 0) {
+          setBulkNotice(
+            describeBulkOutcome({
+              writtenSegments: 0,
+              appliedCells: 0,
+              skipped: outcome.skipped,
+              atomic: true,
+            }),
+          );
+        }
       }
       return;
     }
+    setBulkNotice(null);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
@@ -594,16 +621,27 @@ function ShiftCalendar({
     return filterMembersByAttributes(activeMembers, effectiveSelectedAttributes);
   }, [activeMembers, currentMember.id, effectiveSelectedAttributes, showCurrentMemberOnly]);
 
+  // 選択セルは「枠の集まり」として扱う。件数の要約も操作の判定も、
+  // ここで作った同じ対象から導く（画面ごとに数え方が変わらないようにする）。
+  const selectedTargets = useMemo(
+    () => [...selected].map(targetOf),
+    // targetOf は shifts / theme に依存する。どちらかが変われば選択内容の意味も変わる。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selected, shifts, theme],
+  );
+
   function handleMemberFilterChange(attributes: Set<string>) {
     setShowCurrentMemberOnly(false);
     setSelectedAttributes(attributes);
     setSelected(new Set());
+    setBulkNotice(null);
   }
 
   function handleSelectCurrentMember() {
     setShowCurrentMemberOnly(true);
     setSelectedAttributes(new Set());
     setSelected(new Set());
+    setBulkNotice(null);
   }
 
   const common = {
@@ -631,9 +669,6 @@ function ShiftCalendar({
         <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
           書き出し
         </button>
-        <button type="button" onClick={() => setShowShareLinkDialog(true)} className={HEADER_BTN}>
-          カレンダー購読
-        </button>
         {currentMember.role === "admin" && (
           <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
             設定
@@ -660,7 +695,6 @@ function ShiftCalendar({
           </summary>
           <div className="absolute right-0 top-10 z-40 flex min-w-[150px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
             <button type="button" onClick={() => setShowExportDialog(true)} className={`${HEADER_BTN} text-left`}>書き出し</button>
-            <button type="button" onClick={() => setShowShareLinkDialog(true)} className={`${HEADER_BTN} text-left`}>カレンダー購読</button>
             {currentMember.role === "admin" && (
               <button type="button" onClick={() => setShowSettingsDialog(true)} className={`${HEADER_BTN} text-left`}>設定</button>
             )}
@@ -696,6 +730,17 @@ function ShiftCalendar({
         onChange={handleMemberFilterChange}
       />
 
+      {shiftsError && (
+        <div className="mx-auto max-w-[1400px] px-5">
+          <p
+            role="alert"
+            className="rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2 text-[12px] font-bold text-[#D9736F]"
+          >
+            {shiftsError}
+          </p>
+        </div>
+      )}
+
       {opError && (
         <div className="mx-auto max-w-[1400px] px-5">
           <p
@@ -721,17 +766,24 @@ function ShiftCalendar({
 
       <BulkEditToolbar
         mode={mode}
-        selected={selected}
-        shifts={shifts ?? []}
+        targets={selectedTargets}
         startTime={startTime}
         endTime={endTime}
         busy={busy}
+        notice={bulkNotice}
         onChangeStart={setStartTime}
         onChangeEnd={setEndTime}
         onApply={handleBulk}
-        onClear={() => setSelected(new Set())}
+        onClear={() => {
+          setSelected(new Set());
+          setBulkNotice(null);
+        }}
         currentMemberId={currentMember.id}
-        onOpenSegmentEditor={(k) => setEditingCell(k)}
+        onOpenSegmentEditor={(k) => {
+          setEditorError(null);
+          setEditorBaseline(targetOf(k).shifts);
+          setEditingCell(k);
+        }}
         theme={theme}
       />
 
@@ -746,8 +798,12 @@ function ShiftCalendar({
           )}
           theme={theme}
           busy={busy}
+          error={editorError}
           maxSegments={settings.maxSegmentsPerDay}
-          onClose={() => setEditingCell(null)}
+          onClose={() => {
+            setEditorError(null);
+            setEditingCell(null);
+          }}
           onSave={async (next) => {
             await handleSegmentSave(editingCell, next);
           }}

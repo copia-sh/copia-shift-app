@@ -9,6 +9,8 @@ export interface SegmentEditorProps {
   segments: Shift[];
   theme: ShiftTheme;
   busy: boolean;
+  /** 保存に失敗したときの理由。入力を保ったままこのダイアログ内に出す */
+  error?: string | null;
   maxSegments?: number;
   onClose: () => void;
   onSave: (
@@ -30,21 +32,29 @@ export function SegmentEditor({
   segments,
   theme,
   busy,
+  error: saveError = null,
   maxSegments = 4,
   onClose,
   onSave,
 }: SegmentEditorProps) {
+  // 確定済みの枠はここでは編集しない（確定の取消が先）。ただし読めるようにする。
+  const confirmed = segments.filter((s) => s.status === "confirmed");
   const [edits, setEdits] = useState<EditSegment[]>(
-    segments.map((s) => ({
-      id: s.id,
-      type: s.type,
-      startTime: s.startTime,
-      endTime: s.endTime,
-      isAllDay: !s.startTime && !s.endTime,
-    }))
+    segments
+      .filter((s) => s.status !== "confirmed")
+      .map((s) => ({
+        id: s.id,
+        type: s.type,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        isAllDay: !s.startTime && !s.endTime,
+      }))
   );
-  const [error, setError] = useState<string | null>(null);
-  const canAdd = edits.length < maxSegments;
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const setError = setValidationError;
+  // 入力の誤りと保存の失敗は、同じ場所にまとめて出す。
+  const error = validationError ?? saveError;
+  const canAdd = confirmed.length + edits.length < maxSegments;
 
   const handleAddSegment = () => {
     if (canAdd) {
@@ -109,6 +119,18 @@ export function SegmentEditor({
             {dateKey} / {memberName}
           </h2>
         </div>
+
+        {confirmed.length > 0 && (
+          <div className="mb-3 space-y-1 rounded border border-gray-200 bg-[#FBFCFD] p-2">
+            <p className="text-[11px] font-bold text-gray-500">確定済み（ここでは編集できません）</p>
+            {confirmed.map((s) => (
+              <p key={s.id} className="text-[12px] font-bold text-gray-800">
+                {theme.defOf(s.type).label} ・{" "}
+                {s.startTime && s.endTime ? `${s.startTime}〜${s.endTime}` : "終日"}
+              </p>
+            ))}
+          </div>
+        )}
 
         <div className="mb-4 max-h-96 overflow-y-auto space-y-3">
           {edits.map((seg, idx) => {

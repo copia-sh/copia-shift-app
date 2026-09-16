@@ -77,7 +77,7 @@ export function ExportDialog({
   }, [anchorDate, customEnd, customStart, monthStart, period]);
 
   const invalidRange = !startDate || !endDate || startDate > endDate;
-  const shifts = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
+  const { shifts, error: shiftsError } = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
   const typeOptions = useMemo(() => {
     const options = [...theme.types];
     const keys = new Set(options.map((type) => type.key));
@@ -167,7 +167,12 @@ export function ExportDialog({
 
   const isLoading = shifts === undefined;
   const canExport =
-    !busy && !isLoading && !invalidRange && selectedTypeKeys.size > 0 && targetShifts.length > 0;
+    !busy &&
+    !isLoading &&
+    !shiftsError &&
+    !invalidRange &&
+    selectedTypeKeys.size > 0 &&
+    targetShifts.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -315,6 +320,15 @@ export function ExportDialog({
           </fieldset>
         </details>
 
+        {/* 読み込み失敗を「0件」と同じ文で出すと、書き出す予定が無いのか
+            取得できていないのか区別できない。失敗は失敗として見せる。 */}
+        {shiftsError ? (
+          <div className="mb-5 rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2">
+            <p role="alert" className="text-xs font-bold text-[#D9736F]">
+              {shiftsError}
+            </p>
+          </div>
+        ) : (
         <div className="mb-5 rounded-md bg-blue-50 px-3 py-2">
           <p className="text-xs text-[#1B6FA8]">
             {isLoading
@@ -326,6 +340,7 @@ export function ExportDialog({
                   : `${targetShifts.length}件の予定を .ics ファイルに書き出します`}
           </p>
         </div>
+        )}
 
         {method === "spreadsheet" && (
           <div className="mb-5 text-xs leading-5 text-gray-600">
