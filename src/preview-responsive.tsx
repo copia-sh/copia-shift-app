@@ -9,6 +9,9 @@ import {
   ShiftWeekView,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
+import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
+import { ShiftEditForm } from "./components/ShiftEditForm";
+import type { DaySegmentInput } from "./components/shiftOps";
 import { buildShiftTheme } from "./components/shiftTheme";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import type { Member, Shift } from "./types";
@@ -54,6 +57,11 @@ const shifts: Shift[] = [
 export function Preview() {
   const [view, setView] = useState<PreviewView>("month");
   const [count, setCount] = useState(4);
+  // 詳細・編集パネルの見た目を確かめるための下書き（保存はしない）
+  const [draft, setDraft] = useState<DaySegmentInput[]>([
+    { id: "s0", type: "出勤", startTime: "09:00", endTime: "13:00" },
+    { id: "s1", type: "リモート", startTime: "14:00", endTime: "18:00" },
+  ]);
   const visibleMembers = members.slice(0, count);
   const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
   const common = {
@@ -122,6 +130,41 @@ export function Preview() {
           <ShiftWeekView {...common} />
         )}
       </main>
+
+      <section className="mx-auto flex max-w-[1400px] flex-wrap items-start gap-6 px-3 pb-12 md:px-5">
+        <div className="w-[360px]">
+          <p className="mb-2 text-[13px] font-bold text-[#4B5563]">P4 詳細（他人・確定済み）</p>
+          <ShiftDetailPanel
+            dateKey="2026-08-03"
+            member={members[1]}
+            isCurrentMember={false}
+            shifts={shifts.filter((s) => s.memberId === "m2" && s.date === "2026-08-03")}
+            theme={theme}
+            canEdit={false}
+            lockReason="自分以外のメンバーの枠です。内容はそのまま読めます。変更が必要なときは管理者・リーダーへ伝えてください。"
+            onEdit={() => {}}
+            onShowWholeDay={() => {}}
+            onClose={() => {}}
+          />
+        </div>
+        <div className="w-[360px]">
+          <p className="mb-2 text-[13px] font-bold text-[#4B5563]">P5 編集中（自分・複数枠）</p>
+          <ShiftEditForm
+            dateKey="2026-08-03"
+            memberName={members[0].displayName}
+            isCurrentMember
+            draft={draft}
+            lockedCount={0}
+            maxSegments={6}
+            theme={theme}
+            saving={false}
+            changedCount={draft.length}
+            onChange={setDraft}
+            onSave={() => {}}
+            onCancel={() => {}}
+          />
+        </div>
+      </section>
     </div>
   );
 }
