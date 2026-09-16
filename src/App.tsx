@@ -30,6 +30,7 @@ import { SegmentEditor } from "./components/SegmentEditor";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
+import { HeaderMenu } from "./components/HeaderMenu";
 import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
 import { ExportDialog } from "./components/ExportDialog";
 import { ShareLinkDialog } from "./components/ShareLinkDialog";
@@ -606,6 +607,21 @@ function ShiftCalendar({
     setSelected(new Set());
   }
 
+  // メニューの中身は1か所で組み立てる。PCとスマホで内容がずれないようにする。
+  // 「管理」に入るのは権限のある項目だけで、無い人にはメニュー自体を出さない。
+  const adminMenuItems =
+    currentMember.role === "admin"
+      ? [
+          { key: "settings", label: "グループ設定", onSelect: () => setShowSettingsDialog(true) },
+          { key: "members", label: "メンバー管理", onSelect: () => setShowMemberAdmin(true) },
+        ]
+      : [];
+
+  const accountMenuItems = [
+    { key: "profile", label: "表示名の変更", onSelect: () => setShowProfileDialog(true) },
+    { key: "signout", label: "ログアウト", onSelect: () => signOut() },
+  ];
+
   const common = {
     anchorDate,
     members: filteredMembers,
@@ -625,52 +641,25 @@ function ShiftCalendar({
 
   return (
     <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
-      {/* 1段目: モードと管理系。テキストボタンは 13px/700 / #6B7280 / padding 6px 10px */}
-      <div className="hidden flex-wrap items-center justify-end gap-2.5 px-5 pt-3.5 md:flex">
+      {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
+          毎日は使わない操作を平置きすると、日々の入力と同じ重さに見えてしまう。 */}
+      <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
           書き出し
         </button>
-        <button type="button" onClick={() => setShowShareLinkDialog(true)} className={HEADER_BTN}>
-          カレンダー購読
-        </button>
-        {currentMember.role === "admin" && (
-          <button type="button" onClick={() => setShowSettingsDialog(true)} className={HEADER_BTN}>
-            設定
-          </button>
-        )}
-        {currentMember.role === "admin" && (
-          <button type="button" onClick={() => setShowMemberAdmin(true)} className={HEADER_BTN}>
-            メンバー
-          </button>
-        )}
-        <button type="button" onClick={() => setShowProfileDialog(true)} className={HEADER_BTN}>
-          {currentMember.displayName}
-        </button>
-        <button type="button" onClick={() => signOut()} className={HEADER_BTN}>
-          ログアウト
-        </button>
+        {adminMenuItems.length > 0 && <HeaderMenu label="管理" items={adminMenuItems} />}
+        <HeaderMenu label={currentMember.displayName} items={accountMenuItems} />
       </div>
 
       <div className="flex items-center gap-2 px-3 pt-2 md:hidden">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
-        <details className="relative ml-auto">
-          <summary className={`${HEADER_BTN} cursor-pointer list-none border border-gray-200 bg-white shadow-[0_2px_0_0_#E3E3E3]`}>
-            メニュー
-          </summary>
-          <div className="absolute right-0 top-10 z-40 flex min-w-[150px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
-            <button type="button" onClick={() => setShowExportDialog(true)} className={`${HEADER_BTN} text-left`}>書き出し</button>
-            <button type="button" onClick={() => setShowShareLinkDialog(true)} className={`${HEADER_BTN} text-left`}>カレンダー購読</button>
-            {currentMember.role === "admin" && (
-              <button type="button" onClick={() => setShowSettingsDialog(true)} className={`${HEADER_BTN} text-left`}>設定</button>
-            )}
-            {currentMember.role === "admin" && (
-              <button type="button" onClick={() => setShowMemberAdmin(true)} className={`${HEADER_BTN} text-left`}>メンバー</button>
-            )}
-            <button type="button" onClick={() => setShowProfileDialog(true)} className={`${HEADER_BTN} text-left`}>{currentMember.displayName}</button>
-            <button type="button" onClick={() => signOut()} className={`${HEADER_BTN} text-left`}>ログアウト</button>
-          </div>
-        </details>
+        <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
+            書き出し
+          </button>
+          <HeaderMenu label="メニュー" items={[...adminMenuItems, ...accountMenuItems]} />
+        </div>
       </div>
 
       <CalendarNav
