@@ -10,6 +10,7 @@ import {
   type MonthLayout,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
+import { HeaderMenu } from "./components/HeaderMenu";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
 import { ShiftEditForm } from "./components/ShiftEditForm";
@@ -102,6 +103,30 @@ export function Preview() {
           ))}
         </div>
       </div>
+      {/* まとめた上部バー（書き出し・管理▼・名前▼） */}
+      <div className="flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:px-5 md:pt-3.5">
+        <button
+          type="button"
+          className="rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70"
+        >
+          書き出し
+        </button>
+        <HeaderMenu
+          label="管理"
+          items={[
+            { key: "settings", label: "グループ設定", onSelect: () => {} },
+            { key: "members", label: "メンバー管理", onSelect: () => {} },
+          ]}
+        />
+        <HeaderMenu
+          label={members[0].displayName}
+          items={[
+            { key: "profile", label: "表示名の変更", onSelect: () => setShowDialog(true) },
+            { key: "signout", label: "ログアウト", onSelect: () => {} },
+          ]}
+        />
+      </div>
+
       <CalendarNav
         label="2026年8月"
         view={view}
