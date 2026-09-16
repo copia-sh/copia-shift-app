@@ -16,9 +16,7 @@ import {
 } from "./components/ShiftMatrixViews";
 import {
   canTapCell,
-  nextInCycle,
   parseSelKey,
-  isSimpleCell,
   type BulkOp,
   type CellState,
   type SelKey,
@@ -33,7 +31,10 @@ import {
   type DaySegmentInput,
   type SkippedCell,
 } from "./components/shiftOps";
-import { SegmentEditor } from "./components/SegmentEditor";
+import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
+import { ShiftEditForm } from "./components/ShiftEditForm";
+import { Sheet } from "./components/Sheet";
+import { useIsNarrowViewport } from "./hooks/useViewport";
 import { ProfileDialog } from "./components/ProfileDialog";
 import { MemberAdmin } from "./components/MemberAdmin";
 import { MemberFilter } from "./components/MemberFilter";
@@ -220,10 +221,13 @@ function ShiftCalendar({
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
-  const [editingCell, setEditingCell] = useState<SelKey | null>(null);
+  // タップで開くのは詳細。編集は詳細の「編集」から明示的に始める。
+  const [detailKey, setDetailKey] = useState<SelKey | null>(null);
+  const [draft, setDraft] = useState<DaySegmentInput[] | null>(null);
   // 編集画面は開いた瞬間の写しを編集する。保存時にこの写しと現在の値を比べ、
   // 開いている間に入った他の人の変更を上書きしないようにする。
   const [editorBaseline, setEditorBaseline] = useState<Shift[]>([]);
+  const narrowViewport = useIsNarrowViewport();
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -392,7 +396,7 @@ function ShiftCalendar({
     }
     if (plan.actions.length === 0) {
       setEditorError(null);
-      setEditingCell(null);
+      setDraft(null);
       return;
     }
 
@@ -401,7 +405,8 @@ function ShiftCalendar({
         await applyShiftActions(groupId, uid, plan.actions);
         setEditorError(null);
         setOpError(null);
-        setEditingCell(null);
+        // 保存できたら詳細へ戻る。結果を同じ場所で確かめられるようにする。
+        setDraft(null);
       } catch (err) {
         setEditorError(describeShiftWriteError(err));
       }
@@ -591,34 +596,20 @@ function ShiftCalendar({
     }
   }
 
-  async function onCellTap(k: SelKey, st: CellState) {
+  /**
+   * 通常のタップは「見る」。詳細を開くだけで、1件も書き込まない。
+   * 変えるときは詳細の「編集」から始める（見るつもりの操作で予定が変わらない）。
+   */
+  function onCellTap(k: SelKey, st: CellState) {
     const { memberId } = parseSelKey(k);
-    if (!canTapCell(mode, memberId, currentMember.id, st)) return;
-    // 保存中のセルを押し直しても、同じ書き込みを重ねない。
-    if (busyRef.current) return;
 
     if (mode === "single") {
-      setSelected(new Set([k]));
-      setBulkNotice(null);
-      const target = targetOf(k);
-      if (isSimpleCell(target.states)) {
-        const op = nextInCycle(st, theme?.cycleKeys ?? []);
-        if (!op) return;
-        const outcome = await applyOps([target], op);
-        // 押したのに何も変わらなかった場合は、理由を出す（黙って無視しない）。
-        if (!outcome.error && outcome.writtenSegments === 0 && outcome.skipped.length > 0) {
-          setBulkNotice(
-            describeBulkOutcome({
-              writtenSegments: 0,
-              appliedCells: 0,
-              skipped: outcome.skipped,
-              atomic: true,
-            }),
-          );
-        }
-      }
+      openDetail(k);
       return;
     }
+
+    if (!canTapCell(mode, memberId, currentMember.id, st)) return;
+    if (busyRef.current) return;
     setBulkNotice(null);
     setSelected((prev) => {
       const next = new Set(prev);
@@ -626,6 +617,38 @@ function ShiftCalendar({
       else next.add(k);
       return next;
     });
+  }
+
+  function openDetail(k: SelKey) {
+    setDetailKey(k);
+    setDraft(null);
+    setEditorError(null);
+    setSelected(new Set([k]));
+    setBulkNotice(null);
+  }
+
+  function closeDetail() {
+    setDetailKey(null);
+    setDraft(null);
+    setEditorError(null);
+    setSelected(new Set());
+  }
+
+  /** 詳細から編集へ。確定済みの枠は編集対象に入れず、現在値の写しを下書きにする。 */
+  function startEditing(k: SelKey) {
+    const target = targetOf(k);
+    setEditorBaseline(target.shifts);
+    setDraft(
+      target.shifts
+        .filter((shift) => shift.status !== "confirmed")
+        .map((shift) => ({
+          id: shift.id,
+          type: shift.type,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+        })),
+    );
+    setEditorError(null);
   }
 
   const activeMembers = useMemo(() => (members ?? []).filter((m) => m.active), [members]);
@@ -680,6 +703,86 @@ function ShiftCalendar({
   function handleSelectCurrentMember() {
     updateFilter({ showCurrentMemberOnly: true, attributes: new Set() });
   }
+
+  /**
+   * 開いている詳細（または編集）の中身。PCでは右パネル、狭い端末ではシートへ
+   * 同じものを入れる。編集できない理由は、ここで1つに決めて画面へ渡す。
+   */
+  const detailPanel = (() => {
+    if (!detailKey || !theme || !settings) return null;
+    const { memberId, dateKey } = parseSelKey(detailKey);
+    const member = (members ?? []).find((m) => m.id === memberId);
+    if (!member) return null;
+
+    const target = targetOf(detailKey);
+    const isCurrentMember = member.id === currentMember.id;
+    const editableShifts = target.shifts.filter((shift) => shift.status !== "confirmed");
+    const lockedCount = target.shifts.length - editableShifts.length;
+
+    const lockReason = !isCurrentMember
+      ? "自分以外のメンバーの枠です。内容はそのまま読めます。変更が必要なときは管理者・リーダーへ伝えてください。"
+      : !member.shiftTarget
+        ? "このメンバーはシフト対象外です。設定は管理者が変更できます。"
+        : editableShifts.length === 0 && target.shifts.length > 0
+          ? "確定済みの枠です。変更するには、先に確定を取り消してください。"
+          : null;
+
+    const maxSegments = settings.maxSegmentsPerDay;
+    const changedCount = draft
+      ? planDaySave({
+          memberId: target.memberId,
+          date: target.dateKey,
+          existing: target.shifts,
+          baseline: editorBaseline,
+          next: draft,
+          maxSegments,
+        }).actions.length
+      : 0;
+
+    const body = draft ? (
+      <ShiftEditForm
+        dateKey={dateKey}
+        memberName={member.displayName}
+        isCurrentMember={isCurrentMember}
+        draft={draft}
+        lockedCount={lockedCount}
+        maxSegments={maxSegments}
+        theme={theme}
+        saving={busy}
+        error={editorError}
+        changedCount={changedCount}
+        onChange={setDraft}
+        onSave={() => handleSegmentSave(detailKey, draft)}
+        onCancel={() => {
+          setDraft(null);
+          setEditorError(null);
+        }}
+        embedded={narrowViewport}
+      />
+    ) : (
+      <ShiftDetailPanel
+        dateKey={dateKey}
+        member={member}
+        isCurrentMember={isCurrentMember}
+        shifts={target.shifts}
+        theme={theme}
+        canEdit={lockReason === null}
+        lockReason={lockReason}
+        onEdit={() => startEditing(detailKey)}
+        onClose={closeDetail}
+        embedded={narrowViewport}
+      />
+    );
+
+    return {
+      member,
+      dateLabel: format(new Date(`${dateKey}T00:00:00`), "M月d日（E）", { locale: ja }),
+      editing: draft !== null,
+      canEdit: lockReason === null,
+      changedCount,
+      body,
+    };
+  })();
 
   const common = {
     anchorDate,
@@ -806,7 +909,8 @@ function ShiftCalendar({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1400px] px-2 pb-[120px] md:px-5 md:pb-[140px]">
+      <main className="mx-auto flex max-w-[1400px] gap-4 px-2 pb-[120px] md:px-5 md:pb-[140px]">
+        <div className="min-w-0 flex-1">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">シフトを読み込んでいます…</p>
         ) : emptyReason ? (
@@ -847,8 +951,22 @@ function ShiftCalendar({
         ) : (
           <ShiftWeekView {...common} />
         )}
+        </div>
+
+        {/* 詳細は右に置く。比較しているカレンダーを覆わない。 */}
+        {!narrowViewport && detailPanel && (
+          <aside
+            className="sticky top-3 hidden w-[360px] flex-none self-start lg:block"
+            style={{ maxHeight: "calc(100vh - 140px)" }}
+          >
+            {detailPanel.body}
+          </aside>
+        )}
       </main>
 
+      {/* 単一選択の操作は右パネル（詳細）に集約した。まとめて変更するときだけ
+          下のバーを出す。同じ操作の入口を2か所に置かない。 */}
+      {mode !== "single" && (
       <BulkEditToolbar
         mode={mode}
         targets={selectedTargets}
@@ -865,34 +983,44 @@ function ShiftCalendar({
         }}
         currentMemberId={currentMember.id}
         onOpenSegmentEditor={(k) => {
-          setEditorError(null);
-          setEditorBaseline(targetOf(k).shifts);
-          setEditingCell(k);
+          openDetail(k);
+          startEditing(k);
         }}
         theme={theme}
       />
+      )}
 
-      {editingCell && settings && theme && (
-        <SegmentEditor
-          dateKey={parseSelKey(editingCell).dateKey}
-          memberName={currentMember.displayName}
-          segments={(shifts ?? []).filter(
-            (s) =>
-              s.memberId === parseSelKey(editingCell).memberId &&
-              s.date === parseSelKey(editingCell).dateKey
-          )}
-          theme={theme}
-          busy={busy}
-          error={editorError}
-          maxSegments={settings.maxSegmentsPerDay}
-          onClose={() => {
-            setEditorError(null);
-            setEditingCell(null);
-          }}
-          onSave={async (next) => {
-            await handleSegmentSave(editingCell, next);
-          }}
-        />
+      {narrowViewport && detailPanel && (
+        <Sheet
+          title={detailPanel.editing ? "希望を編集" : "この日の詳細"}
+          subtitle={`${detailPanel.dateLabel}・${detailPanel.member.displayName}`}
+          error={detailPanel.editing ? editorError : null}
+          onClose={closeDetail}
+          dirty={detailPanel.changedCount > 0}
+          confirmClose={() =>
+            window.confirm("保存していない変更があります。閉じてよろしいですか？")
+          }
+          primary={
+            detailPanel.editing
+              ? {
+                  label: busy ? "保存中…" : "保存",
+                  onClick: () => draft && handleSegmentSave(detailKey!, draft),
+                  disabled: busy,
+                }
+              : {
+                  label: "編集",
+                  onClick: () => startEditing(detailKey!),
+                  disabled: !detailPanel.canEdit,
+                }
+          }
+          secondary={
+            detailPanel.editing
+              ? { label: "取消", onClick: () => setDraft(null), disabled: busy }
+              : { label: "閉じる", onClick: closeDetail }
+          }
+        >
+          {detailPanel.body}
+        </Sheet>
       )}
 
       {showProfileDialog && (
