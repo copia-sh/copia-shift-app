@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Dialog } from "./Dialog";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { ja } from "date-fns/locale";
 import { REJECTED_TYPE } from "../types";
@@ -78,7 +77,7 @@ export function ExportDialog({
   }, [anchorDate, customEnd, customStart, monthStart, period]);
 
   const invalidRange = !startDate || !endDate || startDate > endDate;
-  const { shifts, error: shiftsError } = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
+  const shifts = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
   const typeOptions = useMemo(() => {
     const options = [...theme.types];
     const keys = new Set(options.map((type) => type.key));
@@ -168,16 +167,14 @@ export function ExportDialog({
 
   const isLoading = shifts === undefined;
   const canExport =
-    !busy &&
-    !isLoading &&
-    !shiftsError &&
-    !invalidRange &&
-    selectedTypeKeys.size > 0 &&
-    targetShifts.length > 0;
+    !busy && !isLoading && !invalidRange && selectedTypeKeys.size > 0 && targetShifts.length > 0;
 
   return (
-    <Dialog title="シフトを書き出す" onClose={onClose}>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-gray-900">シフトを書き出す</h2>
+        </div>
 
         <fieldset className="mb-5">
           <legend className="mb-1.5 text-sm font-bold text-gray-800">出力方法</legend>
@@ -318,15 +315,6 @@ export function ExportDialog({
           </fieldset>
         </details>
 
-        {/* 読み込み失敗を「0件」と同じ文で出すと、書き出す予定が無いのか
-            取得できていないのか区別できない。失敗は失敗として見せる。 */}
-        {shiftsError ? (
-          <div className="mb-5 rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2">
-            <p role="alert" className="text-xs font-bold text-[#D9736F]">
-              {shiftsError}
-            </p>
-          </div>
-        ) : (
         <div className="mb-5 rounded-md bg-blue-50 px-3 py-2">
           <p className="text-xs text-[#1B6FA8]">
             {isLoading
@@ -338,7 +326,6 @@ export function ExportDialog({
                   : `${targetShifts.length}件の予定を .ics ファイルに書き出します`}
           </p>
         </div>
-        )}
 
         {method === "spreadsheet" && (
           <div className="mb-5 text-xs leading-5 text-gray-600">
@@ -363,7 +350,6 @@ export function ExportDialog({
           </button>
           <button
             type="button"
-            data-autofocus
             onClick={handleExport}
             disabled={!canExport}
             className="flex-1 px-4 py-2 text-[12px] font-bold border border-[#248DD4] rounded bg-[#248DD4] text-white hover:bg-[#1B6FA8] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -371,6 +357,7 @@ export function ExportDialog({
             {copied ? "コピーしました" : method === "spreadsheet" ? "Excel用にコピー" : "書き出す"}
           </button>
         </div>
-    </Dialog>
+      </div>
+    </div>
   );
 }

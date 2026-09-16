@@ -7,14 +7,8 @@ import {
   ShiftListMatrix,
   ShiftMonthGrid,
   ShiftWeekView,
-  type MonthLayout,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
-import { HeaderMenu } from "./components/HeaderMenu";
-import { ProfileDialog } from "./components/ProfileDialog";
-import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
-import { ShiftEditForm } from "./components/ShiftEditForm";
-import type { DaySegmentInput } from "./components/shiftOps";
 import { buildShiftTheme } from "./components/shiftTheme";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import type { Member, Shift } from "./types";
@@ -29,8 +23,6 @@ const members: Member[] = ["田村駿貴", "赤間", "曽根", "佐藤", "鈴木
     color: ["#248DD4", "#1F8A98", "#D9736F", "#8B5CF6", "#16A34A", "#E08A2E"][index],
     role: index === 0 ? "admin" : "member",
     active: true,
-    // 4人目はシフト対象外。対象外の行（氏名は読めて、セルは「—」）を確認するため。
-    shiftTarget: index !== 3,
     attributes: index === 0 ? ["社員"] : [index < 4 ? "スタダ" : "社員"],
     joinedAt: null,
   }),
@@ -60,14 +52,6 @@ const shifts: Shift[] = [
 export function Preview() {
   const [view, setView] = useState<PreviewView>("month");
   const [count, setCount] = useState(4);
-  const [monthLayout, setMonthLayout] = useState<MonthLayout>("members");
-  const [dayOpened, setDayOpened] = useState<string | null>(null);
-  const [showDialog, setShowDialog] = useState(false);
-  // 詳細・編集パネルの見た目を確かめるための下書き（保存はしない）
-  const [draft, setDraft] = useState<DaySegmentInput[]>([
-    { id: "s0", type: "出勤", startTime: "09:00", endTime: "13:00" },
-    { id: "s1", type: "リモート", startTime: "14:00", endTime: "18:00" },
-  ]);
   const visibleMembers = members.slice(0, count);
   const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
   const common = {
@@ -81,9 +65,6 @@ export function Preview() {
     theme,
     onCellTap: () => {},
     onToggleMany: () => {},
-    monthLayout,
-    onChangeMonthLayout: setMonthLayout,
-    onOpenDay: setDayOpened,
   };
 
   return (
@@ -103,30 +84,6 @@ export function Preview() {
           ))}
         </div>
       </div>
-      {/* まとめた上部バー（書き出し・管理▼・名前▼） */}
-      <div className="flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:px-5 md:pt-3.5">
-        <button
-          type="button"
-          className="rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70"
-        >
-          書き出し
-        </button>
-        <HeaderMenu
-          label="管理"
-          items={[
-            { key: "settings", label: "グループ設定", onSelect: () => {} },
-            { key: "members", label: "メンバー管理", onSelect: () => {} },
-          ]}
-        />
-        <HeaderMenu
-          label={members[0].displayName}
-          items={[
-            { key: "profile", label: "表示名の変更", onSelect: () => setShowDialog(true) },
-            { key: "signout", label: "ログアウト", onSelect: () => {} },
-          ]}
-        />
-      </div>
-
       <CalendarNav
         label="2026年8月"
         view={view}
@@ -145,14 +102,8 @@ export function Preview() {
         currentMemberId="m1"
         showCurrentMemberOnly={false}
         selectedAttributes={new Set()}
-        nameQuery=""
-        includeNonTargets={false}
-        counts={{ visible: visibleMembers.length, nonTarget: 0 }}
         onSelectCurrentMember={() => setCount(1)}
         onChange={() => {}}
-        onChangeNameQuery={() => {}}
-        onToggleNonTargets={() => {}}
-        onResetFilters={() => {}}
       />
       <main className="mx-auto max-w-[1400px] px-2 pb-10 md:px-5">
         {view === "list" ? (
@@ -163,70 +114,6 @@ export function Preview() {
           <ShiftWeekView {...common} />
         )}
       </main>
-
-      {dayOpened && (
-        <p className="mx-auto max-w-[1400px] px-3 pb-2 text-[13px] font-bold text-[#0863A0] md:px-5">
-          「この日の全員」を開く: {dayOpened}（実アプリではシートで開きます）
-        </p>
-      )}
-
-      <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-5">
-        <button
-          type="button"
-          onClick={() => setShowDialog(true)}
-          className="h-[38px] rounded-md border border-[#E5E7EB] bg-white px-3.5 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3]"
-        >
-          C1 ダイアログの型を見る
-        </button>
-      </div>
-      {showDialog && (
-        <ProfileDialog
-          member={members[0]}
-          busy={false}
-          onClose={() => setShowDialog(false)}
-          onSave={() => setShowDialog(false)}
-        />
-      )}
-
-      <section className="mx-auto flex max-w-[1400px] flex-wrap items-start gap-6 px-3 pb-12 md:px-5">
-        <div className="w-[360px]">
-          <p className="mb-2 text-[13px] font-bold text-[#4B5563]">P4 詳細（他人・確定済み）</p>
-          <ShiftDetailPanel
-            dateKey="2026-08-03"
-            member={members[1]}
-            isCurrentMember={false}
-            shifts={shifts.filter((s) => s.memberId === "m2" && s.date === "2026-08-03")}
-            theme={theme}
-            canEdit={false}
-            lockReason="自分以外のメンバーの枠です。内容はそのまま読めます。変更が必要なときは管理者・リーダーへ伝えてください。"
-            onEdit={() => {}}
-            onShowWholeDay={() => {}}
-            onClose={() => {}}
-          />
-        </div>
-        <div className="w-[360px]">
-          <p className="mb-2 text-[13px] font-bold text-[#4B5563]">P5 編集中（自分・複数枠）</p>
-          <ShiftEditForm
-            dateKey="2026-08-03"
-            memberName={members[0].displayName}
-            isCurrentMember
-            draft={draft}
-            lockedCount={0}
-            maxSegments={6}
-            theme={theme}
-            saving={false}
-            changedCount={draft.length}
-            onChange={setDraft}
-            shortcuts={[
-              { key: "t1", label: "よく使う型：出勤 9-18", onApply: () => {} },
-              { key: "t2", label: "先週の同じ曜日をコピー", onApply: () => {} },
-              { key: "t3", label: "複数日にまとめて適用", onApply: () => {} },
-            ]}
-            onSave={() => {}}
-            onCancel={() => {}}
-          />
-        </div>
-      </section>
     </div>
   );
 }
