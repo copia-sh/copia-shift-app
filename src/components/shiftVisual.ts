@@ -15,7 +15,7 @@ export interface CellState {
 /** セルタップの意味を切り替えるモード */
 export type ShiftMode = "single" | "multi" | "review";
 
-function cellStateOf(shift: Shift, unavailableKeys: Set<string>): CellState {
+function cellStateOf(shift: Shift, unavailableKeys: ReadonlySet<string>): CellState {
   const base = { type: shift.type, startTime: shift.startTime, endTime: shift.endTime, shift };
   if (shift.status === "confirmed") return { kind: "fixed", ...base };
   if (unavailableKeys.has(shift.type)) return { kind: "no", ...base };
@@ -23,7 +23,7 @@ function cellStateOf(shift: Shift, unavailableKeys: Set<string>): CellState {
 }
 
 /** そのセル（1メンバー×1日）の全セグメントを、開始時刻の早い順に返す。終日枠は先頭。 */
-export function cellStatesOf(shifts: Shift[], unavailableKeys: Set<string>): CellState[] {
+export function cellStatesOf(shifts: Shift[], unavailableKeys: ReadonlySet<string>): CellState[] {
   return shifts
     .map((s) => cellStateOf(s, unavailableKeys))
     .sort((a, b) => {
@@ -235,6 +235,46 @@ export function cellBoxes(
     return states.map((state) => ({ state, leftPct: 0, widthPct: 100 }));
   }
   return segmentLayout(states, startHour, endHour);
+}
+
+export interface LaneBox {
+  state: CellState;
+  /** 重なる枠を横に並べるときの位置。0 が左端 */
+  lane: number;
+}
+
+export interface LaneLayout {
+  boxes: LaneBox[];
+  /** 使用したレーン数。0 なら時間軸に描く枠が無い */
+  laneCount: number;
+}
+
+/**
+ * 時間軸（週表示）に描く枠を、1つも落とさずレーンへ割り当てる。
+ * - 終日枠（時刻を持たない枠）は時間軸に位置を持てないので除く
+ * - 希望・確定・不可・却下の区別では除外しない（表示を切り替えて予定が消えないため）
+ * - 重ならない枠は同じレーンに入れ、横幅を無駄に割らない
+ * - 戻り値は開始時刻の昇順
+ */
+export function timeAxisLanes(states: CellState[]): LaneLayout {
+  const timed = states
+    .filter((s): s is CellState & { startTime: string; endTime: string } =>
+      Boolean(s.startTime && s.endTime),
+    )
+    .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime));
+
+  // 直前までに各レーンが埋まっている終了時刻。空いている一番左のレーンへ入れる。
+  const laneEnds: number[] = [];
+  const boxes: LaneBox[] = timed.map((state) => {
+    const start = hourValue(state.startTime);
+    const end = hourValue(state.endTime);
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
+    if (lane === -1) lane = laneEnds.length;
+    laneEnds[lane] = end;
+    return { state, lane };
+  });
+
+  return { boxes, laneCount: laneEnds.length };
 }
 
 /**
