@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Dialog } from "./Dialog";
 import type { GroupSettings, ShiftTypeDef } from "../types";
 
 const MAX_SHIFT_TYPES = 6;
@@ -94,11 +95,8 @@ export function GroupSettingsDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-xl bg-white p-5 shadow-xl">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">グループ設定</h2>
-        </div>
+    <Dialog title="グループ設定" onClose={onClose}>
+
 
         <div className="mb-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
           <div>
@@ -305,7 +303,6 @@ export function GroupSettingsDialog({
             保存
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

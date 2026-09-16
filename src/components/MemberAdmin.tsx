@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Dialog } from "./Dialog";
 import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
 
 export interface MemberAdminProps {
@@ -254,11 +255,8 @@ export function MemberAdmin({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl flex flex-col max-h-[80vh]">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">メンバー管理</h2>
-        </div>
+    <Dialog title="メンバー管理" onClose={onClose} width={520}>
+
 
         {!canManage && (
           <p className="mb-3 rounded-md bg-[#D1E9F9] px-3 py-2 text-[11px] font-bold text-[#0863A0]">
@@ -288,7 +286,6 @@ export function MemberAdmin({
             閉じる
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

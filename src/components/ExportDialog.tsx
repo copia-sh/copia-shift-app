@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Dialog } from "./Dialog";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { ja } from "date-fns/locale";
 import { REJECTED_TYPE } from "../types";
@@ -175,11 +176,8 @@ export function ExportDialog({
     targetShifts.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">シフトを書き出す</h2>
-        </div>
+    <Dialog title="シフトを書き出す" onClose={onClose}>
+
 
         <fieldset className="mb-5">
           <legend className="mb-1.5 text-sm font-bold text-gray-800">出力方法</legend>
@@ -372,7 +370,6 @@ export function ExportDialog({
             {copied ? "コピーしました" : method === "spreadsheet" ? "Excel用にコピー" : "書き出す"}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
