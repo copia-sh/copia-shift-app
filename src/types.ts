@@ -39,7 +39,13 @@ export interface Member {
   displayName: string;
   color: string;
   role: MemberRole;
+  /** 在籍しているか。退会は false で表す（ドキュメントは消さない） */
   active: boolean;
+  /**
+   * シフト表に載せる人か。希望を出さない人（社員など）を、メンバーのまま
+   * シフト表から外すために使う。既定 true（未設定の既存データも対象扱い）。
+   */
+  shiftTarget: boolean;
   attributes: string[];
   joinedAt: number | null;
 }

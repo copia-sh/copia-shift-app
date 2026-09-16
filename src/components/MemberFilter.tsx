@@ -8,6 +8,8 @@ export interface MemberFilterProps {
   selectedAttributes: Set<string>;
   nameQuery: string;
   visibleCount: number;
+  /** 在籍しているが、シフト表に載せない人数 */
+  nonTargetCount: number;
   hasActiveFilter: boolean;
   onSelectCurrentMember: () => void;
   onChange: (attributes: Set<string>) => void;
@@ -28,6 +30,7 @@ export function MemberFilter({
   selectedAttributes,
   nameQuery,
   visibleCount,
+  nonTargetCount,
   hasActiveFilter,
   onSelectCurrentMember,
   onChange,
@@ -62,8 +65,14 @@ export function MemberFilter({
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 md:flex-wrap md:overflow-visible md:px-5 md:pb-3">
+      {/* 絞り込みで減ったのか、そもそも対象外なのかを分けて出す。 */}
       <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
         表示対象 {visibleCount}人
+        {nonTargetCount > 0 && (
+          <span className="ml-1.5 font-normal text-[#9CA3AF]">
+            （シフト表対象外 {nonTargetCount}人）
+          </span>
+        )}
       </span>
 
       {/* 氏名で直接探せるようにする。人数が増えると属性だけでは絞りきれない。 */}

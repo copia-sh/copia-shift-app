@@ -46,6 +46,7 @@ import { signOut } from "./firebase/auth";
 import {
   updateMemberRole,
   updateMemberActive,
+  updateMemberShiftTarget,
   updateMemberDisplayName,
   updateMemberAttributes,
 } from "./firebase/members";
@@ -67,6 +68,7 @@ import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import {
   emptyRosterReason,
   hasActiveFilter,
+  nonTargetCount,
   rosterMembers,
   type RosterFilter,
 } from "./components/memberRoster";
@@ -467,6 +469,26 @@ function ShiftCalendar({
     }
   }
 
+  async function handleMemberShiftTargetChange(memberId: string, shiftTarget: boolean) {
+    setBusy(true);
+    try {
+      await updateMemberShiftTarget(groupId, memberId, shiftTarget);
+      setOpError(null);
+    } catch (err) {
+      const denied =
+        err instanceof FirebaseError
+          ? err.code === "permission-denied"
+          : String(err).includes("permission-denied");
+      setOpError(
+        denied
+          ? "この操作を行う権限がありません"
+          : "操作に失敗しました。もう一度お試しください。",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleMemberActiveChange(memberId: string, active: boolean) {
     setBusy(true);
     try {
@@ -603,6 +625,7 @@ function ShiftCalendar({
     () => rosterMembers(activeMembers, currentMember.id, effectiveFilter),
     [activeMembers, currentMember.id, effectiveFilter],
   );
+  const nonTargets = useMemo(() => nonTargetCount(activeMembers), [activeMembers]);
   const emptyReason = useMemo(
     () => emptyRosterReason(activeMembers, currentMember.id, effectiveFilter),
     [activeMembers, currentMember.id, effectiveFilter],
@@ -706,6 +729,7 @@ function ShiftCalendar({
         selectedAttributes={effectiveFilter.attributes as Set<string>}
         nameQuery={effectiveFilter.nameQuery}
         visibleCount={filteredMembers.length}
+        nonTargetCount={nonTargets}
         hasActiveFilter={hasActiveFilter(effectiveFilter)}
         onSelectCurrentMember={handleSelectCurrentMember}
         onChange={handleMemberFilterChange}
@@ -803,6 +827,7 @@ function ShiftCalendar({
           onClose={() => setShowMemberAdmin(false)}
           onChangeRole={handleMemberRoleChange}
           onChangeActive={handleMemberActiveChange}
+          onChangeShiftTarget={handleMemberShiftTargetChange}
           onChangeDisplayName={handleMemberDisplayNameChange}
           onChangeAttributes={handleMemberAttributesChange}
         />
