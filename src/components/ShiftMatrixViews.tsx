@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toDateKey } from "../utils/date";
 import {
   DOW_LABELS,
@@ -24,7 +24,17 @@ import {
 } from "./shiftVisual";
 import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
-import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
+import {
+  LIST_DAY_WIDTH,
+  LIST_ROW_EXPANDED,
+  MAX_INLINE_SEGMENTS,
+  MONTH_MAX_CHIPS,
+  WEEK_TIME_COL_WIDTH,
+  listNameWidth,
+  listRowHeight,
+  monthCellMinHeight,
+  weekDayWidth,
+} from "./responsiveLayout";
 import { summarizeTargets, type CellTarget } from "./shiftOps";
 import { shiftTargetMembers } from "./memberRoster";
 import { REJECTED_TYPE } from "../types";
@@ -33,7 +43,6 @@ import type { GroupSettings, Member, Shift, Group } from "../types";
 /* ------------------------------------------------------------------ 共通 */
 
 const HOUR_H = 32;
-const WEEK_GUTTER_W = 44;
 
 /** 選択中を色以外でも示す小さな ✓ バッジ（赤は使わず前景色を流用） */
 function SelectedBadge({ fg }: { fg: string }) {
@@ -283,7 +292,14 @@ interface ViewCommon {
   onToggleMany: (keys: SelKey[]) => void;
   showTimes?: boolean;
   density?: "compact" | "comfortable";
+  /** 月ビューを人ごとに並べるか、日別の要約にするか */
+  monthLayout?: MonthLayout;
+  onChangeMonthLayout?: (layout: MonthLayout) => void;
+  /** 畳んだ枠や日付から、その日の全員を開く */
+  onOpenDay?: (dateKey: string) => void;
 }
+
+export type MonthLayout = "members" | "summary";
 
 function useStateMap(shifts: Shift[]) {
   return useMemo(() => {
@@ -297,6 +313,42 @@ function useStateMap(shifts: Shift[]) {
   }, [shifts]);
 }
 
+
+/** そのセルを押せるか。通常モードは詳細を開くだけなので、どのセルでも押せる。 */
+function canOpenCell(
+  mode: ShiftMode,
+  memberId: string,
+  currentMemberId: string,
+  state: CellState,
+): boolean {
+  return mode === "single" ? true : canTapCell(mode, memberId, currentMemberId, state);
+}
+
+/** セルに積む1枠ぶんのチップ。16px・12px・角丸4px（S1 の寸法）。 */
+function SegmentChip({
+  state,
+  theme,
+  selected,
+  height = 16,
+}: {
+  state: CellState;
+  theme: ShiftTheme | null;
+  selected: boolean;
+  height?: number;
+}) {
+  const skin = theme?.skinFor(state, selected) ?? null;
+  const mark =
+    state.kind === "fixed" && theme ? `${theme.defOf(state.type).mark}✓` : (skin?.mark ?? "·");
+  return (
+    <span
+      className="flex w-full items-center justify-center overflow-hidden rounded-[4px] text-[12px] font-bold leading-none"
+      style={{ height, ...(skin ? skinStyle(skin) : {}) }}
+    >
+      {mark}
+    </span>
+  );
+}
+
 /* ------------------------------------------------- 一覧（縦=メンバー × 横=日付） */
 
 export function ShiftListMatrix({
@@ -306,16 +358,15 @@ export function ShiftListMatrix({
   currentMemberId,
   mode,
   selected,
-  settings,
   theme,
   onCellTap,
   onToggleMany,
-  showTimes = true,
-  density = "compact",
+  density = "comfortable",
 }: ViewCommon) {
-  const comfy = density === "comfortable";
-  const colW = showTimes ? (comfy ? 56 : 48) : comfy ? 42 : 34;
-  const rowH = comfy ? 62 : 50;
+  const colW = LIST_DAY_WIDTH;
+  const rowH = listRowHeight(density);
+  // 全枠を読みたい行だけ開く。行ごとに広げれば、他の行の密度は保てる。
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
   const byKey = useStateMap(shifts);
   const today = new Date();
@@ -391,6 +442,7 @@ export function ShiftListMatrix({
           // シフト対象外の人は行だけ出し、セルは「—」にする。登録済みの予定は
           // 消さないが、表の上では入力対象でないことを見た目で分ける。
           const isNonTarget = !mem.shiftTarget;
+          const expanded = expandedMemberId === mem.id;
           const states = dayMeta.map((d) => primaryCellState(cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [], unavailableKeys)));
           const fixedCount = states.filter((s) => s.kind === "fixed").length;
           const wantCount = states.filter((s) => s.kind === "want").length;
@@ -399,7 +451,7 @@ export function ShiftListMatrix({
               key={mem.id}
               className="flex items-stretch border-b border-[#EFF1F3]"
               style={{
-                height: rowH,
+                minHeight: expanded ? LIST_ROW_EXPANDED : rowH,
                 background: isNonTarget ? "#F9FAFB" : isOwn ? "#F7FBFE" : "#fff",
               }}
             >
@@ -442,6 +494,25 @@ export function ShiftListMatrix({
                 </span>
               </button>
 
+              {/* 3枠以上ある日は「＋n」で畳んでいる。この行だけ開いて全部読む。 */}
+              {!isNonTarget && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedMemberId(expanded ? null : mem.id)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? `${mem.displayName} の全枠を閉じる` : `${mem.displayName} の全枠を開く`}
+                  className="sticky z-10 my-1 mr-1 flex h-7 w-7 flex-none items-center justify-center self-center rounded-md border text-[13px] font-bold"
+                  style={{
+                    left: nameW,
+                    borderColor: expanded ? "#248DD4" : "#E5E7EB",
+                    background: expanded ? "#D1E9F9" : "#fff",
+                    color: expanded ? "#0863A0" : "#4B5563",
+                  }}
+                >
+                  {expanded ? "▴" : "▾"}
+                </button>
+              )}
+
               {dayMeta.map((d) => {
                 if (isNonTarget) {
                   return (
@@ -454,59 +525,44 @@ export function ShiftListMatrix({
                     </div>
                   );
                 }
-                const cellStates = byKey.get(selKey(mem.id, d.dateKey)) ?? [];
-                const allStates = cellStatesOf(cellStates, unavailableKeys);
+                const allStates = cellStatesOf(byKey.get(selKey(mem.id, d.dateKey)) ?? [], unavailableKeys);
                 const st = primaryCellState(allStates);
                 const k = selKey(mem.id, d.dateKey);
                 const isSel = selected.has(k);
-                const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
-                const sk = theme ? theme.skinFor(st, isSel) : null;
+                const tappable = canOpenCell(mode, mem.id, currentMemberId, st);
+                // 並べるのは2枠まで。残りは「＋n」にして、行を開くか詳細で読む。
+                const shown = expanded ? allStates : allStates.slice(0, MAX_INLINE_SEGMENTS);
+                const hidden = allStates.length - shown.length;
                 return (
                   <button
                     key={d.dateKey}
                     type="button"
                     disabled={!tappable}
                     onClick={() => onCellTap(k, st)}
-                    className={`relative flex flex-none items-center justify-center border-l border-[#EFF1F3] ${
-                      tappable ? "" : "cursor-default opacity-60"
+                    className={`relative flex flex-none flex-col justify-center gap-0.5 border-l border-[#F4F6F8] px-1 ${
+                      tappable ? "" : "cursor-default"
                     }`}
-                    style={{ width: colW, boxSizing: "border-box", padding: "4px 0", background: d.bg }}
+                    style={{
+                      width: colW,
+                      boxSizing: "border-box",
+                      background: d.bg,
+                      boxShadow: isSel ? "inset 0 0 0 2px #248DD4" : undefined,
+                    }}
                   >
-                    {boxes.length === 0 ? (
-                      <span
-                        className="relative flex flex-col items-center justify-center gap-px rounded leading-none border"
-                        style={{
-                          width: colW - 4,
-                          height: rowH - 8,
-                          ...(sk ? skinStyle(sk) : {}),
-                        }}
-                      >
-                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                        {sk && <span className="text-[11px] font-bold" style={{ color: sk.fg }}>{sk.mark}</span>}
-                      </span>
+                    {shown.length === 0 ? (
+                      <SegmentChip
+                        state={{ kind: "none", type: "", startTime: null, endTime: null }}
+                        theme={theme}
+                        selected={isSel}
+                      />
                     ) : (
-                      <span className="relative flex gap-px overflow-hidden rounded" style={{ width: colW - 4, height: rowH - 8 }}>
-                        {boxes.map((box, bi) => {
-                          const boxSk = theme ? theme.skinFor(box.state, isSel) : null;
-                          const showMark = box.widthPct >= 25;
-                          const range = showTimes ? shortRange(box.state) : null;
-                          return (
-                            <span
-                              key={bi}
-                              className="flex min-w-0 flex-col items-center justify-center gap-px overflow-hidden rounded border leading-none"
-                              style={{
-                                flexBasis: 0,
-                                flexGrow: box.widthPct,
-                                ...(boxSk ? skinStyle(boxSk) : {}),
-                              }}
-                            >
-                              {showMark && boxSk && <span className="text-[11px] font-bold" style={{ color: boxSk.fg }}>{boxSk.mark}</span>}
-                              {range && boxSk && <span className="text-[7px] font-bold" style={{ color: boxSk.fg }}>{range}</span>}
-                            </span>
-                          );
-                        })}
-                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
+                      shown.map((state, index) => (
+                        <SegmentChip key={index} state={state} theme={theme} selected={isSel} />
+                      ))
+                    )}
+                    {hidden > 0 && (
+                      <span className="text-[10px] font-bold leading-none text-[#6B7280]">
+                        ＋{hidden}
                       </span>
                     )}
                   </button>
@@ -545,6 +601,78 @@ export function ShiftListMatrix({
 
 /* ------------------------------------------------- 月（Google Calendar 型 7列） */
 
+/**
+ * 日別の要約。人数が多いと人ごとのチップは読めない大きさにしかならないので、
+ * 種別ごとの人数と未回答だけを出し、詳細は「この日の全員」で読む。
+ */
+function MonthDaySummary({
+  perMember,
+  blanks,
+  theme,
+  onOpenDay,
+}: {
+  perMember: { states: CellState[] }[];
+  blanks: number;
+  theme: ShiftTheme | null;
+  onOpenDay: () => void;
+}) {
+  const total = Math.max(1, perMember.length);
+  const counts = (theme?.types ?? [])
+    .filter((type) => type.attendance === "available")
+    .map((type) => ({
+      label: type.label,
+      color: type.color,
+      count: perMember.filter((row) => {
+        const state = primaryCellState(row.states);
+        return state.kind !== "none" && state.type === type.key;
+      }).length,
+    }))
+    .filter((row) => row.count > 0);
+
+  // 不可（欠勤など）は出勤人数には入らないが、0人として消すと
+  // 「回答していない」と区別がつかない。件数だけ別に出す。
+  const unavailable = perMember.filter((row) => primaryCellState(row.states).kind === "no").length;
+
+  return (
+    <button type="button" onClick={onOpenDay} className="flex flex-col gap-1.5 text-left">
+      {counts.length === 0 && blanks === 0 && unavailable === 0 && (
+        <span className="text-[12px] text-[#9CA3AF]">対象なし</span>
+      )}
+      {counts.map((row) => (
+        <span key={row.label} className="flex items-center gap-1.5">
+          <span className="w-[68px] flex-none truncate text-[12px] font-bold text-[#374151]">
+            {row.label} {row.count}
+          </span>
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1F3F5]">
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${Math.round((row.count / total) * 100)}%`, background: row.color }}
+            />
+          </span>
+        </span>
+      ))}
+      <span className="flex flex-wrap gap-1">
+        {unavailable > 0 && (
+          <span className="rounded-full bg-[#F4F6F8] px-2 py-0.5 text-[11px] font-bold text-[#4B5563]">
+            不可 {unavailable}人
+          </span>
+        )}
+        {blanks > 0 && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+              blanks >= 8 ? "bg-[#FFF6D6] text-[#8A5310]" : "bg-[#F4F6F8] text-[#6B7280]"
+            }`}
+          >
+            未回答 {blanks}人{blanks >= 8 ? "（要確認）" : ""}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+
+
 export function ShiftMonthGrid({
   anchorDate,
   members: allMembers,
@@ -556,10 +684,11 @@ export function ShiftMonthGrid({
   theme,
   onCellTap,
   onToggleMany,
+  monthLayout = "members",
+  onChangeMonthLayout,
+  onOpenDay,
   showTimes = true,
-  density = "compact",
 }: ViewCommon) {
-  const comfy = density === "comfortable";
   // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
   // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
   const members = shiftTargetMembers(allMembers);
@@ -568,54 +697,82 @@ export function ShiftMonthGrid({
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const memberColumns = monthMemberColumns(members.length);
-  const cellMinHeight = monthCellMinHeight(members.length, comfy);
-
   const dowLabels = dowLabelsFrom(settings.weekStartsOn);
   return (
     <>
     <div className="hidden border-t border-gray-200 md:block">
+      <div className="flex items-center justify-end gap-1.5 px-2 py-1.5">
+        <span className="text-[12px] text-[#6B7280]">表示</span>
+        {([
+          ["members", "人ごと"],
+          ["summary", "日別の要約"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChangeMonthLayout?.(id)}
+            aria-pressed={monthLayout === id}
+            className={`h-[30px] rounded-md border px-2.5 text-[12px] font-bold ${
+              monthLayout === id
+                ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
+                : "border-[#E5E7EB] bg-white text-[#374151]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-7 border-b border-gray-200 bg-[#FBFCFD]">
         {dowLabels.map((l, i) => {
           const actualDow = (i + settings.weekStartsOn) % 7;
           return (
             <div
               key={l + i}
-              className="border-l border-[#EFF1F3] py-1.5 text-center text-[11px] font-bold"
-              style={{ color: actualDow === 0 ? "#D9736F" : actualDow === 6 ? "#248DD4" : "#8E8E8E" }}
+              className="border-l border-[#F1F3F5] py-2 text-center text-[12px] font-bold"
+              style={{ color: actualDow === 0 ? "#B0413E" : actualDow === 6 ? "#0863A0" : "#6B7280" }}
             >
               {l}
             </div>
           );
         })}
       </div>
+
       {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-cols-7 border-b border-[#EFF1F3]">
+        <div key={wi} className="grid grid-cols-7">
           {week.map((day) => {
             const dateKey = toDateKey(day);
             const dow = day.getDay();
             const inMonth = day.getMonth() === anchorDate.getMonth();
             const isToday = isSameDate(day, today);
-            const states: CellState[] = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)));
-            const fixed = states.filter((s) => s.kind === "fixed").length;
+            const perMember = members.map((m) => ({
+              member: m,
+              states: cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys),
+            }));
+            const answered = perMember.filter((row) => row.states.length > 0);
+            const blanks = perMember.length - answered.length;
+            const fixed = answered.filter(
+              (row) => primaryCellState(row.states).kind === "fixed",
+            ).length;
+
+            const cellStyle = {
+              minHeight: monthCellMinHeight(monthLayout === "summary"),
+              background: isToday
+                ? "#FFFDF4"
+                : !inMonth
+                  ? "#FBFCFD"
+                  : dow === 0 || dow === 6
+                    ? "#FBFCFD"
+                    : "#fff",
+            } as const;
+
             return (
               <div
                 key={dateKey}
-                className="border-l border-[#EFF1F3] p-1.5"
-                style={{
-                  minHeight: cellMinHeight,
-                  background: isToday
-                    ? "#FFFBEA"
-                    : inMonth
-                      ? dow === 0 || dow === 6
-                        ? "#FAFBFC"
-                        : "#fff"
-                      : "#FAFAFB",
-                  opacity: inMonth ? 1 : 0.5,
-                  boxShadow: isToday ? "inset 0 3px 0 0 #F9E428" : undefined,
-                }}
+                className="flex flex-col gap-1.5 border-b border-r border-[#F1F3F5] p-2"
+                style={cellStyle}
               >
-                <div className="mb-1.5 flex items-center justify-between">
+                <div className="flex items-center justify-between">
                   <button
                     type="button"
                     disabled={!bulkHeaders}
@@ -623,113 +780,99 @@ export function ShiftMonthGrid({
                     onClick={() =>
                       onToggleMany(
                         members
-                          .filter((m, mi) => canTapCell(mode, m.id, currentMemberId, states[mi]))
+                          .filter((m, mi) =>
+                            canTapCell(mode, m.id, currentMemberId, primaryCellState(perMember[mi].states)),
+                          )
                           .map((m) => selKey(m.id, dateKey)),
                       )
                     }
-                    className="rounded px-1 py-0.5 text-[9px] font-bold text-gray-400"
+                    className="text-[11px] font-bold text-[#6B7280] disabled:text-[#9CA3AF]"
                   >
                     確定 {fixed}
                   </button>
-                  <span
-                    className="text-[13px] font-bold"
-                    style={
-                      isToday
-                        ? {
-                            background: "#248DD4",
-                            color: "#fff",
-                            borderRadius: "50%",
-                            width: 22,
-                            height: 22,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }
-                        : { color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#333" }
-                    }
+                  <button
+                    type="button"
+                    onClick={() => onOpenDay?.(dateKey)}
+                    className="rounded-md text-[14px] font-bold"
+                    style={{
+                      color: !inMonth
+                        ? "#C8CDD2"
+                        : dow === 0
+                          ? "#B0413E"
+                          : dow === 6
+                            ? "#0863A0"
+                            : "#111827",
+                      background: isToday ? "#F9E428" : "transparent",
+                      padding: isToday ? "0 6px" : "0",
+                    }}
                   >
                     {day.getDate()}
-                  </span>
+                  </button>
                 </div>
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${memberColumns}, minmax(0, 1fr))` }}>
-                  {members.map((mem) => {
-                    const cellStates = byKey.get(selKey(mem.id, dateKey)) ?? [];
-                    const allStates = cellStatesOf(cellStates, unavailableKeys);
-                    const st = primaryCellState(allStates);
-                    const sk = theme ? theme.skinFor(st, false) : null;
-                    const k = selKey(mem.id, dateKey);
-                    const isSel = selected.has(k);
-                    const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                    const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
-                    const isSimple = allStates.length <= 1;
-                    const range = showTimes ? shortRange(st) : null;
-                    const isOwn = mem.id === currentMemberId;
-                    const skForSel = theme ? theme.skinFor(st, isSel) : null;
-                    return (
+
+                {monthLayout === "summary" ? (
+                  <MonthDaySummary
+                    perMember={perMember}
+                    blanks={blanks}
+                    theme={theme}
+                    onOpenDay={() => onOpenDay?.(dateKey)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-1">
+                      {answered.slice(0, MONTH_MAX_CHIPS).map(({ member, states }) => {
+                        const st = primaryCellState(states);
+                        const k = selKey(member.id, dateKey);
+                        const isSel = selected.has(k);
+                        const skin = theme?.skinFor(st, isSel) ?? null;
+                        const mark =
+                          st.kind === "fixed" && theme
+                            ? `${theme.defOf(st.type).mark}✓`
+                            : (skin?.mark ?? "·");
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            disabled={!canOpenCell(mode, member.id, currentMemberId, st)}
+                            onClick={() => onCellTap(k, st)}
+                            title={`${member.displayName}・${theme?.defOf(st.type).label ?? ""}`}
+                            className="flex items-center justify-center gap-0.5 overflow-hidden rounded-[4px] text-[12px] font-bold leading-none"
+                            style={{
+                              width: 54,
+                              height: 18,
+                              ...(skin ? skinStyle(skin) : {}),
+                              boxShadow: isSel ? "0 0 0 2px #248DD4" : undefined,
+                            }}
+                          >
+                            <span className="truncate">{member.displayName.slice(0, 2)}</span>
+                            <span>{mark}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {answered.length > MONTH_MAX_CHIPS && (
                       <button
-                        key={mem.id}
                         type="button"
-                        disabled={!tappable}
-                        onClick={() => onCellTap(k, st)}
-                        className={`relative h-[52px] overflow-hidden rounded-md border leading-none ${
-                          isOwn && !isSel ? "shadow-[inset_0_0_0_2px_rgba(36,141,212,0.2)]" : ""
-                        } ${tappable ? "" : "cursor-default opacity-60"}`}
-                        style={{
-                          ...(boxes.length === 0 || isSimple
-                            ? skForSel
-                              ? skinStyle(skForSel)
-                              : {}
-                            : { backgroundColor: "#fff", borderColor: "#E5E7EB" }),
-                        }}
+                        onClick={() => onOpenDay?.(dateKey)}
+                        className="self-start text-[11px] font-bold text-[#0863A0] underline"
                       >
-                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                        {boxes.length === 0 || isSimple ? (
-                          <span className="flex h-full flex-col items-center justify-center gap-px px-1">
-                            <span className="max-w-full truncate text-[9px] font-bold" style={{ color: sk?.fg ?? "#4B5563" }}>
-                              {mem.displayName.slice(0, 2)}
-                            </span>
-                            <span className="text-[12px] font-bold" style={{ color: sk?.fg ?? "#C8CDD2" }}>
-                              {sk?.mark ?? "·"}
-                            </span>
-                            {range && <span className="text-[8px] font-bold" style={{ color: sk?.fg ?? "#4B5563" }}>{range}</span>}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="absolute inset-x-1 top-1 truncate text-center text-[9px] font-bold text-[#4B5563]">
-                              {mem.displayName.slice(0, 2)}
-                            </span>
-                            <span className="absolute inset-x-0.5 bottom-0.5 top-[15px] flex gap-0.5">
-                              {boxes.map((box, bi) => {
-                                const bsk = theme ? theme.skinFor(box.state, isSel) : null;
-                                const boxRange = showTimes ? shortRange(box.state) : null;
-                                return (
-                                  <span
-                                    key={bi}
-                                    className="flex min-w-0 flex-col items-center justify-center gap-px overflow-hidden rounded-sm border"
-                                    style={{
-                                      flexBasis: 0,
-                                      flexGrow: box.widthPct,
-                                      ...(bsk ? skinStyle(bsk) : {}),
-                                    }}
-                                  >
-                                    {bsk && <span className="text-[10px] font-bold" style={{ color: bsk.fg }}>{bsk.mark}</span>}
-                                    {boxRange && bsk && <span className="text-[8px] font-bold" style={{ color: bsk.fg }}>{boxRange}</span>}
-                                  </span>
-                                );
-                              })}
-                            </span>
-                          </>
-                        )}
+                        ＋{answered.length - MONTH_MAX_CHIPS}人
                       </button>
-                    );
-                  })}
-                </div>
+                    )}
+                    {blanks >= 4 && (
+                      <span className="self-start rounded-full bg-[#FFF6D6] px-2 py-0.5 text-[11px] font-bold text-[#8A5310]">
+                        未回答 {blanks}人
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       ))}
     </div>
+
     <MobileMonthGrid
       anchorDate={anchorDate}
       members={members}
@@ -817,7 +960,7 @@ function MobileMonthGrid({
                 const state = states[memberIndex];
                 const key = selKey(member.id, dateKey);
                 const isSelected = selected.has(key);
-                const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                const tappable = canOpenCell(mode, member.id, currentMemberId, state);
                 const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
                 const skin = theme ? theme.skinFor(state, isSelected) : null;
                 return (
@@ -881,6 +1024,7 @@ export function ShiftWeekView({
   theme,
   onCellTap,
   onToggleMany,
+  onOpenDay,
 }: ViewCommon) {
   // 月・週はカレンダーなので、シフト対象外の人は行ではなく単に出さない
   // （「—」を並べても読む情報が増えない）。一覧では対象外の行を出している。
@@ -890,12 +1034,14 @@ export function ShiftWeekView({
   const today = new Date();
   const bulkHeaders = mode !== "single";
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const weekDayW = weekDayWidth(members.length);
-  const gridCols = `${WEEK_GUTTER_W}px repeat(${days.length}, ${weekDayW}px)`;
-  const totalW = WEEK_GUTTER_W + weekDayW * days.length;
+  // 人数に比例して細くするのをやめ、1日の幅は固定。1日に並べるのは2枠までにして、
+  // 3枠以上は「＋n枠」に畳む（8pxまで縮めないための作り）。
+  const weekDayW = weekDayWidth();
+  const gridCols = `${WEEK_TIME_COL_WIDTH}px repeat(${days.length}, ${weekDayW}px)`;
+  const totalW = WEEK_TIME_COL_WIDTH + weekDayW * days.length;
   const hours = Array.from({ length: settings.displayEndHour - settings.displayStartHour }, (_, i) => i + settings.displayStartHour);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useCenterToday(scrollRef, anchorDate, WEEK_GUTTER_W, weekDayW);
+  useCenterToday(scrollRef, anchorDate, WEEK_TIME_COL_WIDTH, weekDayW);
 
   return (
     <>
@@ -958,7 +1104,7 @@ export function ShiftWeekView({
                     const sk = theme ? theme.skinFor(st, false) : null;
                     const k = selKey(mem.id, dateKey);
                     const isSel = selected.has(k);
-                    const tappable = canTapCell(mode, mem.id, currentMemberId, st);
+                    const tappable = canOpenCell(mode, mem.id, currentMemberId, st);
                     const isOwn = mem.id === currentMemberId;
                     const skForSel = theme ? theme.skinFor(st, isSel) : null;
                     return (
@@ -995,7 +1141,7 @@ export function ShiftWeekView({
             {hours.map((h) => (
               <div
                 key={h}
-                className="border-t border-[#F4F6F8] pr-1 text-right text-[9px] text-gray-400"
+                className="border-t border-[#F4F6F8] pr-1.5 text-right text-[12px] text-[#6B7280]"
                 style={{ height: HOUR_H }}
               >
                 {h}:00
@@ -1014,55 +1160,72 @@ export function ShiftWeekView({
                 {hours.map((h) => (
                   <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
                 ))}
-                {members.map((mem, mi) => {
-                  const allStates = cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? [], unavailableKeys);
-                  // 1日に複数の枠があっても1つに絞らない。表示を切り替えただけで
-                  // 予定が消えると、空き時間の判断を誤る。
-                  const { boxes, laneCount } = timeAxisLanes(allStates);
-                  if (boxes.length === 0) return null;
-                  const k = selKey(mem.id, dateKey);
-                  const isSel = selected.has(k);
-                  const people = Math.max(1, members.length);
-                  const columnPct = 100 / people;
-                  const lanePct = columnPct / Math.max(1, laneCount);
-                  return boxes.map(({ state, lane }, bi) => {
-                    const sk = theme ? theme.skinFor(state, false) : null;
-                    const skForSel = theme ? theme.skinFor(state, isSel) : null;
-                    const tappable = canTapCell(mode, mem.id, currentMemberId, state);
-                    const top = (hourValue(state.startTime!) - settings.displayStartHour) * HOUR_H;
-                    const height = Math.max(
-                      (hourValue(state.endTime!) - hourValue(state.startTime!)) * HOUR_H - 3,
-                      24,
-                    );
-                    return (
-                      <button
-                        key={`${mem.id}-${bi}`}
-                        type="button"
-                        disabled={!tappable}
-                        onClick={() => onCellTap(k, state)}
-                        title={`${mem.displayName} ${state.startTime}-${state.endTime}`}
-                        className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
-                          tappable ? "" : "cursor-default opacity-60"
-                        }`}
-                        style={{
-                          top,
-                          height,
-                          left: `calc(${mi * columnPct + lane * lanePct}% + 1px)`,
-                          width: `calc(${lanePct}% - 2px)`,
-                          ...(skForSel ? skinStyle(skForSel) : {}),
-                        }}
-                      >
-                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                        <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
-                          {mem.displayName.slice(0, 2)}
-                        </span>
-                        <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
-                          {Number(state.startTime!.slice(0, 2))}-{Number(state.endTime!.slice(0, 2))}
-                        </span>
-                      </button>
-                    );
+                {(() => {
+                  // 日ごとに全員の枠を集め、時間の重なりでレーンへ分ける。
+                  // 並べるのは2レーンまで。溢れた分は「＋n枠」にして詳細で読む。
+                  const owners = new Map<CellState, Member>();
+                  const dayStates = members.flatMap((mem) => {
+                    const states = cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? [], unavailableKeys);
+                    for (const state of states) owners.set(state, mem);
+                    return states;
                   });
-                })}
+                  const { boxes } = timeAxisLanes(dayStates);
+                  const visible = boxes.filter((box) => box.lane < MAX_INLINE_SEGMENTS);
+                  const hidden = boxes.length - visible.length;
+                  const lanePct = 100 / MAX_INLINE_SEGMENTS;
+
+                  return (
+                    <>
+                      {visible.map(({ state, lane }, index) => {
+                        const mem = owners.get(state)!;
+                        const k = selKey(mem.id, dateKey);
+                        const isSel = selected.has(k);
+                        const skin = theme?.skinFor(state, isSel) ?? null;
+                        const tappable = canOpenCell(mode, mem.id, currentMemberId, state);
+                        const top = (hourValue(state.startTime!) - settings.displayStartHour) * HOUR_H;
+                        const height = Math.max(
+                          (hourValue(state.endTime!) - hourValue(state.startTime!)) * HOUR_H - 3,
+                          28,
+                        );
+                        return (
+                          <button
+                            key={`${mem.id}-${index}`}
+                            type="button"
+                            disabled={!tappable}
+                            onClick={() => onCellTap(k, state)}
+                            title={`${mem.displayName} ${state.startTime}〜${state.endTime}`}
+                            className={`absolute flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-1.5 py-1 text-left ${
+                              tappable ? "" : "cursor-default"
+                            }`}
+                            style={{
+                              top,
+                              height,
+                              left: `calc(${lane * lanePct}% + 2px)`,
+                              width: `calc(${lanePct}% - 4px)`,
+                              ...(skin ? skinStyle(skin) : {}),
+                            }}
+                          >
+                            <span className="w-full truncate text-[13px] font-bold leading-tight">
+                              {mem.displayName.slice(0, 3)}
+                            </span>
+                            <span className="text-[12px] font-bold leading-tight">
+                              {Number(state.startTime!.slice(0, 2))}〜{Number(state.endTime!.slice(0, 2))}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {hidden > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenDay?.(dateKey)}
+                          className="absolute right-1 top-1 rounded-full bg-[#D1E9F9] px-2 py-0.5 text-[11px] font-bold text-[#0863A0]"
+                        >
+                          ＋{hidden}枠
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             );
           })}
@@ -1154,7 +1317,7 @@ function MobileWeekView({
                 const key = selKey(member.id, dateKey);
                 const isSelected = selected.has(key);
                 const skin = theme ? theme.skinFor(state, isSelected) : null;
-                const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                const tappable = canOpenCell(mode, member.id, currentMemberId, state);
                 return (
                   <button
                     key={member.id}
@@ -1179,7 +1342,7 @@ function MobileWeekView({
             <div className="grid" style={{ gridTemplateColumns: `38px minmax(0, 1fr)` }}>
               <div className="border-r border-gray-100 bg-[#FBFCFD]">
                 {hours.map((hour) => (
-                  <div key={hour} className="border-t border-gray-100 pr-1 text-right text-[8px] text-gray-400" style={{ height: HOUR_H }}>
+                  <div key={hour} className="border-t border-gray-100 pr-1.5 text-right text-[12px] text-[#6B7280]" style={{ height: HOUR_H }}>
                     {hour}:00
                   </div>
                 ))}
@@ -1197,7 +1360,7 @@ function MobileWeekView({
                   const lanePct = columnPct / Math.max(1, laneCount);
                   return boxes.map(({ state, lane }, boxIndex) => {
                     const skin = theme ? theme.skinFor(state, isSelected) : null;
-                    const tappable = canTapCell(mode, member.id, currentMemberId, state);
+                    const tappable = canOpenCell(mode, member.id, currentMemberId, state);
                     return (
                       <button
                         key={`${member.id}-${boxIndex}`}
@@ -1217,10 +1380,10 @@ function MobileWeekView({
                         }}
                       >
                         {isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                        <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>
+                        <span className="block truncate text-[13px] font-bold leading-tight" style={{ color: skin?.fg }}>
                           {member.displayName}
                         </span>
-                        <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>
+                        <span className="block text-[12px] font-bold leading-tight" style={{ color: skin?.fg }}>
                           {shortRange(state)}
                         </span>
                       </button>

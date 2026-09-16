@@ -7,6 +7,7 @@ import {
   ShiftListMatrix,
   ShiftMonthGrid,
   ShiftWeekView,
+  type MonthLayout,
 } from "./components/ShiftMatrixViews";
 import { MemberFilter } from "./components/MemberFilter";
 import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
@@ -57,6 +58,8 @@ const shifts: Shift[] = [
 export function Preview() {
   const [view, setView] = useState<PreviewView>("month");
   const [count, setCount] = useState(4);
+  const [monthLayout, setMonthLayout] = useState<MonthLayout>("members");
+  const [dayOpened, setDayOpened] = useState<string | null>(null);
   // 詳細・編集パネルの見た目を確かめるための下書き（保存はしない）
   const [draft, setDraft] = useState<DaySegmentInput[]>([
     { id: "s0", type: "出勤", startTime: "09:00", endTime: "13:00" },
@@ -75,6 +78,9 @@ export function Preview() {
     theme,
     onCellTap: () => {},
     onToggleMany: () => {},
+    monthLayout,
+    onChangeMonthLayout: setMonthLayout,
+    onOpenDay: setDayOpened,
   };
 
   return (
@@ -130,6 +136,12 @@ export function Preview() {
           <ShiftWeekView {...common} />
         )}
       </main>
+
+      {dayOpened && (
+        <p className="mx-auto max-w-[1400px] px-3 pb-2 text-[13px] font-bold text-[#0863A0] md:px-5">
+          「この日の全員」を開く: {dayOpened}（実アプリではシートで開きます）
+        </p>
+      )}
 
       <section className="mx-auto flex max-w-[1400px] flex-wrap items-start gap-6 px-3 pb-12 md:px-5">
         <div className="w-[360px]">
