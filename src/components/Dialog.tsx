@@ -23,7 +23,7 @@ export interface DialogProps {
   primary?: DialogAction;
   secondary?: DialogAction;
   onClose: () => void;
-  /** 既定は 448px（既存のダイアログと同じ幅） */
+  /** 既定は 480px（C1 ダイアログの型） */
   width?: number;
 }
 
@@ -41,7 +41,7 @@ export function Dialog({
   primary,
   secondary,
   onClose,
-  width = 448,
+  width = 480,
 }: DialogProps) {
   const titleId = useId();
   const { containerRef, requestClose } = useModalBehavior<HTMLDivElement>({

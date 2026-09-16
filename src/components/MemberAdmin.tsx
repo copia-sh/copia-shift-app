@@ -255,7 +255,7 @@ export function MemberAdmin({
   };
 
   return (
-    <Dialog title="メンバー管理" onClose={onClose} width={520}>
+    <Dialog title="メンバー管理" onClose={onClose}>
 
 
         {!canManage && (
