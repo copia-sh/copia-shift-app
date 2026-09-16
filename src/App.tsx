@@ -13,6 +13,7 @@ import {
   ShiftMonthGrid,
   ShiftWeekView,
   BulkEditToolbar,
+  type MonthLayout,
 } from "./components/ShiftMatrixViews";
 import {
   canTapCell,
@@ -31,6 +32,7 @@ import {
   type DaySegmentInput,
   type SkippedCell,
 } from "./components/shiftOps";
+import { DayOverviewPanel } from "./components/DayOverviewPanel";
 import { ShiftDetailPanel } from "./components/ShiftDetailPanel";
 import { ShiftEditForm } from "./components/ShiftEditForm";
 import { Sheet } from "./components/Sheet";
@@ -72,6 +74,7 @@ import {
   type RosterFilter,
 } from "./components/memberRoster";
 import { readRosterFilter, storeRosterFilter } from "./utils/rosterFilterStorage";
+import { monthSummaryDefault } from "./components/responsiveLayout";
 import { buildShiftTheme } from "./components/shiftTheme";
 import type { Member, Group, Shift, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
@@ -228,6 +231,10 @@ function ShiftCalendar({
   // 開いている間に入った他の人の変更を上書きしないようにする。
   const [editorBaseline, setEditorBaseline] = useState<Shift[]>([]);
   const narrowViewport = useIsNarrowViewport();
+  // 「＋n人」「＋n枠」で畳んだ内容を読むための、その日の全員。
+  const [dayOverviewKey, setDayOverviewKey] = useState<string | null>(null);
+  // 月の表示方法。人数が多いときだけ要約を既定にし、選び直したら覚える。
+  const [monthLayoutChoice, setMonthLayoutChoice] = useState<MonthLayout | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMemberAdmin, setShowMemberAdmin] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -784,6 +791,9 @@ function ShiftCalendar({
     };
   })();
 
+  const monthLayout: MonthLayout =
+    monthLayoutChoice ?? (monthSummaryDefault(filteredMembers.length) ? "summary" : "members");
+
   const common = {
     anchorDate,
     members: filteredMembers,
@@ -797,8 +807,15 @@ function ShiftCalendar({
     theme,
     onCellTap,
     onToggleMany: toggleMany,
+    monthLayout,
+    onChangeMonthLayout: setMonthLayoutChoice,
+    onOpenDay: (dateKey: string) => {
+      setDetailKey(null);
+      setDraft(null);
+      setDayOverviewKey(dateKey);
+    },
     showTimes: true,
-    density: "compact" as const,
+    density: "comfortable" as const,
   };
 
   return (
@@ -988,6 +1005,30 @@ function ShiftCalendar({
         }}
         theme={theme}
       />
+      )}
+
+      {/* 畳んだ「＋n人」「＋n枠」の中身は、必ずここから全部読めるようにする。 */}
+      {dayOverviewKey && theme && (
+        <Sheet
+          title={`${format(new Date(`${dayOverviewKey}T00:00:00`), "M月d日（E）", { locale: ja })}の全員`}
+          subtitle={`${filteredMembers.length}人を表示中`}
+          onClose={() => setDayOverviewKey(null)}
+          secondary={{ label: "閉じる", onClick: () => setDayOverviewKey(null) }}
+        >
+          <DayOverviewPanel
+            dateKey={dayOverviewKey}
+            members={filteredMembers}
+            shifts={shifts ?? []}
+            theme={theme}
+            currentMemberId={currentMember.id}
+            onOpenCell={(key) => {
+              setDayOverviewKey(null);
+              openDetail(key);
+            }}
+            onClose={() => setDayOverviewKey(null)}
+            embedded
+          />
+        </Sheet>
       )}
 
       {narrowViewport && detailPanel && (

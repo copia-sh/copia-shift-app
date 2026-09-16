@@ -35,13 +35,16 @@
   --c-ink-none: #C8CDD2;
 
   /* Design Tokens - Dimensions */
-  --w-name-col: 132px;
-  --w-day-col: 48px;
-  --h-row: 50px;
-  --h-week-hour: 32px;
-  --w-week-time-col: 44px;
-  --h-month-chip: 52px;
-  --h-month-cell: 158px;
+  --w-name-col: 168px;          /* 6文字を14pxで省略せずに収める */
+  --w-day-col: 56px;            /* 16pxの記号を2つ縦に積む */
+  --h-row: 50px;                /* 標準。コンパクトは --h-row-compact */
+  --h-row-compact: 40px;
+  --h-row-expanded: 116px;      /* 全枠を開いたとき（最大6枠） */
+  --h-week-hour: 32px;          /* 据え置き。11時間＝352px */
+  --w-week-time-col: 56px;      /* 「9:00」を12pxで切らない */
+  --h-month-chip: 54px;
+  --h-month-cell: 118px;        /* 人ごと。日別の要約は 122px */
+  --h-month-cell-summary: 122px;
 }
 
 body {
