@@ -51,6 +51,7 @@ import { signOut } from "./firebase/auth";
 import {
   updateMemberRole,
   updateMemberActive,
+  updateMemberShiftTarget,
   updateMemberDisplayName,
   updateMemberAttributes,
 } from "./firebase/members";
@@ -62,7 +63,14 @@ import {
   toDateKey,
 } from "./utils/date";
 import { applyShiftActions, ShiftWriteError } from "./firebase/shifts";
-import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES, filterMembersByAttributes } from "./types";
+import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
+import {
+  emptyRosterReason,
+  rosterCounts,
+  rosterMembers,
+  type RosterFilter,
+} from "./components/memberRoster";
+import { readRosterFilter, storeRosterFilter } from "./utils/rosterFilterStorage";
 import { buildShiftTheme } from "./components/shiftTheme";
 import type { Member, Group, Shift, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
@@ -199,8 +207,9 @@ function ShiftCalendar({
   const [mode, setMode] = useState<ShiftMode>("single");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
-  const [selectedAttributes, setSelectedAttributes] = useState<Set<string>>(new Set());
-  const [showCurrentMemberOnly, setShowCurrentMemberOnly] = useState(false);
+  // 絞り込みは1つの値としてまとめて持つ。条件がばらばらの state に散ると、
+  // 保存・復元・解除のたびに一部だけ取り残される。
+  const [rosterFilter, setRosterFilter] = useState<RosterFilter>(() => readRosterFilter(groupId));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [busy, setBusy] = useState(false);
@@ -474,6 +483,18 @@ function ShiftCalendar({
     }
   }
 
+  async function handleMemberShiftTargetChange(memberId: string, shiftTarget: boolean) {
+    setBusy(true);
+    try {
+      await updateMemberShiftTarget(groupId, memberId, shiftTarget);
+      setOpError(null);
+    } catch (err) {
+      setOpError(describeWriteError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleMemberActiveChange(memberId: string, active: boolean) {
     setBusy(true);
     try {
@@ -607,19 +628,41 @@ function ShiftCalendar({
     });
   }
 
-  const activeMembers = useMemo(() => {
-    return (members ?? []).filter((m) => m.active);
-  }, [members]);
-  const effectiveSelectedAttributes = useMemo(() => {
+  const activeMembers = useMemo(() => (members ?? []).filter((m) => m.active), [members]);
+
+  // 保存済みの条件に、今は存在しない属性が残っていることがある（属性の削除・改名）。
+  // そのまま使うと0件になるので、実在する属性だけに落とす。
+  const effectiveFilter = useMemo<RosterFilter>(() => {
     const available = new Set(activeMembers.flatMap((member) => member.attributes));
-    return new Set([...selectedAttributes].filter((attribute) => available.has(attribute)));
-  }, [activeMembers, selectedAttributes]);
-  const filteredMembers = useMemo(() => {
-    if (showCurrentMemberOnly) {
-      return activeMembers.filter((member) => member.id === currentMember.id);
-    }
-    return filterMembersByAttributes(activeMembers, effectiveSelectedAttributes);
-  }, [activeMembers, currentMember.id, effectiveSelectedAttributes, showCurrentMemberOnly]);
+    return {
+      ...rosterFilter,
+      attributes: new Set([...rosterFilter.attributes].filter((a) => available.has(a))),
+    };
+  }, [activeMembers, rosterFilter]);
+
+  const filteredMembers = useMemo(
+    () => rosterMembers(activeMembers, currentMember.id, effectiveFilter),
+    [activeMembers, currentMember.id, effectiveFilter],
+  );
+  const counts = useMemo(
+    () => rosterCounts(activeMembers, currentMember.id, effectiveFilter),
+    [activeMembers, currentMember.id, effectiveFilter],
+  );
+  const emptyReason = useMemo(
+    () => emptyRosterReason(activeMembers, currentMember.id, effectiveFilter),
+    [activeMembers, currentMember.id, effectiveFilter],
+  );
+
+  useEffect(() => {
+    storeRosterFilter(groupId, rosterFilter);
+  }, [groupId, rosterFilter]);
+
+  /** 絞り込みを変えたら選択は捨てる。画面から消えたセルを操作対象に残さない。 */
+  function updateFilter(patch: Partial<RosterFilter>) {
+    setRosterFilter((current) => ({ ...current, ...patch }));
+    setSelected(new Set());
+    setBulkNotice(null);
+  }
 
   // 選択セルは「枠の集まり」として扱う。件数の要約も操作の判定も、
   // ここで作った同じ対象から導く（画面ごとに数え方が変わらないようにする）。
@@ -631,17 +674,11 @@ function ShiftCalendar({
   );
 
   function handleMemberFilterChange(attributes: Set<string>) {
-    setShowCurrentMemberOnly(false);
-    setSelectedAttributes(attributes);
-    setSelected(new Set());
-    setBulkNotice(null);
+    updateFilter({ showCurrentMemberOnly: false, attributes });
   }
 
   function handleSelectCurrentMember() {
-    setShowCurrentMemberOnly(true);
-    setSelectedAttributes(new Set());
-    setSelected(new Set());
-    setBulkNotice(null);
+    updateFilter({ showCurrentMemberOnly: true, attributes: new Set() });
   }
 
   const common = {
@@ -724,10 +761,27 @@ function ShiftCalendar({
       <MemberFilter
         members={activeMembers}
         currentMemberId={currentMember.id}
-        showCurrentMemberOnly={showCurrentMemberOnly}
-        selectedAttributes={effectiveSelectedAttributes}
+        showCurrentMemberOnly={effectiveFilter.showCurrentMemberOnly}
+        selectedAttributes={effectiveFilter.attributes as Set<string>}
+        nameQuery={effectiveFilter.nameQuery}
+        includeNonTargets={effectiveFilter.includeNonTargets}
+        counts={counts}
         onSelectCurrentMember={handleSelectCurrentMember}
         onChange={handleMemberFilterChange}
+        onChangeNameQuery={(nameQuery) =>
+          updateFilter({ nameQuery, showCurrentMemberOnly: false })
+        }
+        onToggleNonTargets={() =>
+          updateFilter({ includeNonTargets: !effectiveFilter.includeNonTargets })
+        }
+        onResetFilters={() =>
+          updateFilter({
+            showCurrentMemberOnly: false,
+            attributes: new Set(),
+            nameQuery: "",
+            includeNonTargets: false,
+          })
+        }
       />
 
       {shiftsError && (
@@ -754,7 +808,38 @@ function ShiftCalendar({
 
       <main className="mx-auto max-w-[1400px] px-2 pb-[120px] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
-          <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
+          <p className="py-8 text-center text-sm text-gray-400">シフトを読み込んでいます…</p>
+        ) : emptyReason ? (
+          /* 0件のときは、条件のせいなのか対象外のせいなのかを書く。
+             空の表だけを見せると、原因が分からず条件を外して回ることになる。 */
+          <div className="mx-auto max-w-[560px] rounded-xl border border-[#E5E7EB] bg-white px-5 py-8 text-center">
+            <p className="text-[15px] font-bold leading-relaxed text-[#374151]">{emptyReason}</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {counts.nonTarget > 0 && !effectiveFilter.includeNonTargets && (
+                <button
+                  type="button"
+                  onClick={() => updateFilter({ includeNonTargets: true })}
+                  className="h-[38px] rounded-md border border-[#248DD4] bg-[#248DD4] px-4 text-[13px] font-bold text-white shadow-[0_2px_0_0_#0863A0] active:translate-y-0.5 active:shadow-none"
+                >
+                  対象外を表示する
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  updateFilter({
+                    showCurrentMemberOnly: false,
+                    attributes: new Set(),
+                    nameQuery: "",
+                    includeNonTargets: false,
+                  })
+                }
+                className="h-[38px] rounded-md border border-[#E5E7EB] bg-white px-4 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] active:translate-y-0.5 active:shadow-none"
+              >
+                条件を解除
+              </button>
+            </div>
+          </div>
         ) : view === "list" ? (
           <ShiftListMatrix {...common} />
         ) : view === "month" ? (
@@ -828,6 +913,7 @@ function ShiftCalendar({
           onClose={() => setShowMemberAdmin(false)}
           onChangeRole={handleMemberRoleChange}
           onChangeActive={handleMemberActiveChange}
+          onChangeShiftTarget={handleMemberShiftTargetChange}
           onChangeDisplayName={handleMemberDisplayNameChange}
           onChangeAttributes={handleMemberAttributesChange}
         />

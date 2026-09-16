@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap">
+<link rel="stylesheet" href="_ds/ai-design-system-2d7328ad-e11c-465c-a3d9-0dcda6096ba0/colors_and_type.css">
+<script src="_ds/ai-design-system-2d7328ad-e11c-465c-a3d9-0dcda6096ba0/_ds_bundle.js"></script>
+<style>
+body { margin: 0; background: #EDEFF2; }
+a { color: #248DD4; }
+a:hover { color: #0863A0; }
+</style>
+</helmet>
+
+<div style="font-family:'Noto Sans JP',system-ui,sans-serif;color:#111827;background:#EDEFF2;padding:48px;display:flex;flex-direction:column;gap:64px;-webkit-font-smoothing:antialiased">
+
+<div style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+<div style="font-size:13px;font-weight:700;color:#248DD4;letter-spacing:0.08em">COPIA SHIFT ／ 段階2A</div>
+<div style="font-size:32px;font-weight:700;line-height:1.3">見る／変える の分離・密度・共通ダイアログ</div>
+<div style="font-size:14px;line-height:1.6;color:#4B5563;text-wrap:pretty">I-02 詳細と編集の分離、I-05 配置と密度、I-07 共通ダイアログ。PC 1280px と スマートフォン 375px のアートボード、状態バリエーション、共通ダイアログの雛形、既存トークンからの差分メモ。</div>
+</div>
+
+<section id="ab-p1" data-screen-label="P1 一覧ビュー" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P1 シフトを見る（一覧ビュー）</span><span style="font-size:13px;color:#6B7280">PC 1280px ／ 縦=メンバー・横=日付 ／ 右に詳細</span></div>
+<div style="width:1280px;background:#F7F9FB;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;box-shadow:0 2px 4px rgba(57,57,57,0.12)">
+
+  <div style="background:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #F1F3F5">
+    <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff"><span style="font-size:14px;font-weight:700">第一営業チーム</span><span style="font-size:12px;color:#9CA3AF">▼</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151">書き出し</div>
+      <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:14px;color:#374151">管理<span style="font-size:12px;color:#9CA3AF">▼</span></div>
+      <div style="height:34px;padding:0 10px 0 6px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:50%;background:#D1E9F9;color:#0863A0;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">田</span><span style="font-size:14px;font-weight:700">田村駿貴</span><span style="font-size:12px;color:#9CA3AF">▼</span></div>
+    </div>
+  </div>
+
+  <div style="background:#fff;padding:0 16px;display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid #E5E7EB">
+    <div style="height:40px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:15px;font-weight:700;color:#0863A0;border-bottom:3px solid #248DD4">シフトを見る</div>
+    <div style="height:40px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:15px;color:#4B5563;border-bottom:3px solid transparent">希望を入力</div>
+    <div style="height:40px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:15px;color:#4B5563;border-bottom:3px solid transparent">確定・調整</div>
+  </div>
+
+  <div style="background:#FBFCFD;border-bottom:1px solid #E5E7EB;padding:10px 16px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151" title="前の月">‹</div>
+        <div style="font-size:16px;font-weight:700;min-width:210px">2026年9月<span style="color:#9CA3AF;font-weight:400;font-size:14px">／9月14日〜20日</span></div>
+        <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151" title="次の月">›</div>
+        <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;color:#374151">今日</div>
+      </div>
+      <div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff">
+        <div style="height:34px;padding:0 16px;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;background:#248DD4;color:#fff">一覧</div>
+        <div style="height:34px;padding:0 16px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">月</div>
+        <div style="height:34px;padding:0 16px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">週</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff">
+        <div style="height:34px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;background:#D1E9F9;color:#0863A0">全員</div>
+        <div style="height:34px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">自分</div>
+      </div>
+      <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="氏名で絞り込む" aria-label="氏名で絞り込む" style="height:34px;width:180px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;padding:0 10px;font-size:14px;font-family:inherit;color:#111827;outline:none">
+      <sc-for list="{{ attrFilters }}" as="a" hint-placeholder-count="3">
+        <button onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}<span style="font-size:12px;opacity:0.7">{{ a.count }}</span></button>
+      </sc-for>
+      <button onClick="{{ onToggleExcludedVisible }}" style="{{ exToggleStyle }}">{{ exToggleLabel }}</button>
+      <button onClick="{{ onResetFilters }}" style="height:34px;padding:0 12px;border:0;background:transparent;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-family:inherit;color:#248DD4;text-decoration:underline;cursor:pointer">条件解除</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;color:#6B7280">表示 {{ shownCountLabel }}／シフト対象外 {{ excludedCountLabel }}</span>
+        <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151">凡例</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:2px">
+      <sc-for list="{{ legend }}" as="l" hint-placeholder-count="7">
+        <div style="display:flex;align-items:center;gap:6px"><div style="{{ l.style }}">{{ l.text }}</div><span style="font-size:12px;color:#4B5563">{{ l.label }}</span></div>
+      </sc-for>
+      <span style="font-size:12px;color:#9CA3AF">｜ 確定は塗り＋✓・希望は破線・不可は薄い実線・未回答は点線</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ showNotice }}" hint-placeholder-val="{{ true }}">
+  <div style="background:#FFFBEA;border-bottom:1px solid #F9E428;padding:10px 16px;display:flex;align-items:center;gap:12px">
+    <span style="width:20px;height:20px;border-radius:50%;background:#F9E428;color:#111827;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">!</span>
+    <span style="font-size:14px;font-weight:700">未回答 3人・確認待ち 5枠・変更あり 1件</span>
+    <span style="font-size:13px;color:#4B5563">押すと対象へ移動します。</span>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;color:#374151">未回答を見る</div>
+      <div style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151">確認待ちを見る</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="display:flex;align-items:stretch;background:#fff">
+    <div style="flex:1;min-width:0;overflow-x:auto">
+      <div style="min-width:max-content">
+        <div style="display:flex;position:sticky;top:0;background:#FBFCFD;border-bottom:1px solid #E5E7EB">
+          <div style="width:168px;flex:0 0 168px;box-sizing:border-box;position:sticky;left:0;z-index:2;background:#FBFCFD;border-right:1px solid #E5E7EB;padding:8px;font-size:12px;font-weight:700;color:#6B7280;display:flex;align-items:center">メンバー（{{ shownCountLabel }}）</div>
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="30">
+            <div style="{{ d.headStyle }}"><span style="font-size:12px;{{ d.dowColor }}">{{ d.dow }}</span><span style="font-size:14px;font-weight:700">{{ d.d }}</span></div>
+          </sc-for>
+        </div>
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="12">
+          <div style="display:flex;border-bottom:1px solid #F1F3F5">
+            <div style="{{ row.nameStyle }}">
+              <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
+                <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.name }}</span>
+                <span style="font-size:12px;color:#6B7280;background:#F4F6F8;border-radius:9999px;padding:1px 6px;white-space:nowrap">{{ row.attr }}</span>
+              </div>
+              <div style="{{ row.expandStyle }}">{{ row.expandMark }}</div>
+            </div>
+            <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="30">
+              <div style="{{ cell.style }}">
+                <sc-for list="{{ cell.chips }}" as="chip" hint-placeholder-count="1">
+                  <div style="{{ chip.style }}">{{ chip.text }}</div>
+                </sc-for>
+                <sc-if value="{{ cell.hasMore }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;font-weight:700;color:#4B5563;text-align:center;line-height:1.1">{{ cell.moreText }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:28px 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:#fff">
+            <span style="font-size:16px;font-weight:700">表示するメンバーがいません</span>
+            <span style="font-size:14px;color:#4B5563;line-height:1.6">{{ emptyReason }}</span>
+            <div style="display:flex;gap:8px;padding-top:4px">
+              <button onClick="{{ onToggleExcludedVisible }}" style="height:38px;padding:0 16px;border:0;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;cursor:pointer;box-shadow:0 2px 0 0 #0863A0">対象外を表示する</button>
+              <button onClick="{{ onResetFilters }}" style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;font-family:inherit;color:#374151;white-space:nowrap;cursor:pointer;box-shadow:0 2px 0 0 #E3E3E3">条件を解除</button>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:10px 16px;background:#FBFCFD">
+          <span style="font-size:12px;color:#6B7280">行の「▾」で、その人の全枠（最大6枠）を積んで表示します。時刻は詳細パネルと週ビューで読みます（8pxの縮小表示は使いません）。</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;color:#6B7280">シフト対象外 {{ excludedCountLabel }}（{{ excludedNames }}）はこの表に出しません。</span>
+            <a href="#ab-target" style="font-size:12px;font-weight:700">メンバー設定で変更</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside style="width:360px;flex:0 0 360px;border-left:1px solid #E5E7EB;background:#fff;display:flex;flex-direction:column">
+      <div style="padding:14px 16px;border-bottom:1px solid #F1F3F5;display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:700">9月17日（木）</span>
+          <span style="font-size:14px;color:#4B5563">田村駿貴（社員）</span>
+        </div>
+        <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151" title="詳細を閉じる">✕</div>
+      </div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;color:#6B7280">時間枠 2件</span>
+          <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div style="width:26px;height:20px;border-radius:4px;background:#248DD4;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">○✓</div><span style="font-size:14px;font-weight:700">9:00〜13:00</span><span style="font-size:14px;color:#4B5563">出勤</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#0863A0;background:#D1E9F9;border-radius:9999px;padding:2px 8px">確定</span></div>
+          <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div style="width:26px;height:20px;border-radius:4px;background:color-mix(in srgb,#1F8A98 12%,#fff);border:1.5px dashed #1F8A98;color:#1F8A98;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">R</div><span style="font-size:14px;font-weight:700">14:00〜18:00</span><span style="font-size:14px;color:#4B5563">リモート</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#4B5563;background:#F4F6F8;border-radius:9999px;padding:2px 8px">希望</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;color:#6B7280">履歴</span>
+          <span style="font-size:13px;color:#4B5563;line-height:1.6">9/10 14:32　田村駿貴 が希望を提出<br>9/12 09:05　赤間 が 9:00〜13:00 を確定</span>
+        </div>
+      </div>
+      <div style="margin-top:auto;padding:14px 16px;border-top:1px solid #F1F3F5;display:flex;align-items:center;gap:8px">
+        <div style="height:38px;padding:0 18px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">編集</div>
+        <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">この日をまとめて入力</div>
+      </div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<section id="ab-p2" data-screen-label="P2 月ビュー" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P2 シフトを見る（月ビュー）</span><span style="font-size:13px;color:#6B7280">PC 1280px ／ 7列カレンダー ／ 表示人数はフィルタ連動</span></div>
+<div style="width:1280px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+  <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E7EB;background:#FBFCFD">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="前の月">‹</div>
+      <div style="font-size:16px;font-weight:700">2026年9月</div>
+      <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="次の月">›</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px;color:#6B7280">表示 {{ shownCountLabel }}／シフト対象外 {{ excludedCountLabel }}</span>
+      <div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff">
+        <div style="height:34px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151">一覧</div>
+        <div style="height:34px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;background:#248DD4;color:#fff;border-left:1px solid #E5E7EB">月</div>
+        <div style="height:34px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">週</div>
+      </div>
+      <div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff">
+        <div style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;background:#D1E9F9;color:#0863A0">人ごと</div>
+        <div style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">日別の要約</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+    <sc-for list="{{ dowHeads }}" as="h" hint-placeholder-count="7">
+      <div style="{{ h.style }}">{{ h.label }}</div>
+    </sc-for>
+    <sc-for list="{{ monthCells }}" as="c" hint-placeholder-count="35">
+      <div style="{{ c.style }}">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="{{ c.dateStyle }}">{{ c.d }}</span>
+          <sc-if value="{{ c.hasWarn }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#4B5563;background:#FFF6D6;border:1px solid #F9E428;border-radius:9999px;padding:0 6px">未回答{{ c.warn }}</span></sc-if>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <sc-for list="{{ c.chips }}" as="chip" hint-placeholder-count="4">
+            <div style="{{ chip.style }}">{{ chip.text }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ c.hasMore }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px;font-weight:700;color:#248DD4">{{ c.moreText }}</div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</section>
+
+<section id="ab-p2b" data-screen-label="P2b 月ビュー30人要約" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P2b 月ビュー（30人・日別の要約）</span><span style="font-size:13px;color:#6B7280">人数が多いときは文字を縮めず、日別の人数要約に切り替える</span></div>
+<div style="width:1280px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #E5E7EB;background:#FBFCFD">
+    <span style="font-size:16px;font-weight:700">2026年9月</span>
+    <span style="font-size:13px;color:#6B7280">{{ pool30Label }}。18人を超えると「日別の要約」を初期表示にします（切替は保持）。</span>
+    <div style="margin-left:auto;display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff">
+      <div style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;font-size:14px;color:#374151">人ごと</div>
+      <div style="height:34px;padding:0 12px;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;background:#248DD4;color:#fff;border-left:1px solid #E5E7EB">日別の要約</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+    <sc-for list="{{ dowHeads }}" as="h" hint-placeholder-count="7">
+      <div style="{{ h.style }}">{{ h.label }}</div>
+    </sc-for>
+    <sc-for list="{{ month30Cells }}" as="c" hint-placeholder-count="35">
+      <div style="{{ c.style }}">
+        <span style="{{ c.dateStyle }}">{{ c.d }}</span>
+        <sc-if value="{{ c.filled }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:#248DD4"></span><span style="font-size:14px;font-weight:700">{{ c.work }}</span><span style="font-size:12px;color:#6B7280">出勤</span><span style="width:14px;height:14px;border-radius:3px;background:#1F8A98;margin-left:6px"></span><span style="font-size:14px;font-weight:700">{{ c.remote }}</span><span style="font-size:12px;color:#6B7280">リモート</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:#fff;border:1px dotted #C8CDD2"></span><span style="font-size:14px;font-weight:700;color:#4B5563">{{ c.blank }}</span><span style="font-size:12px;color:#6B7280">未回答</span></div>
+            <div style="height:8px;border-radius:9999px;background:#F1F3F5;overflow:hidden;display:flex"><div style="{{ c.barWork }}"></div><div style="{{ c.barRemote }}"></div></div>
+            <sc-if value="{{ c.hasWarn }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#4B5563;background:#FFF6D6;border:1px solid #F9E428;border-radius:6px;padding:1px 6px;align-self:flex-start">{{ c.warnText }}</span></sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid #EFF1F3;background:#FBFCFD;font-size:13px;color:#4B5563;line-height:1.6">日をクリックすると、その日の30人を一覧ビュー（1日分の縦並び）で開きます。要約では「出勤・リモート・未回答」の3つだけを数え、残りは詳細で読みます。</div>
+</div>
+</section>
+
+<section id="ab-p3" data-screen-label="P3 週ビュー" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P3 シフトを見る（週ビュー）</span><span style="font-size:13px;color:#6B7280">PC 1280px ／ 9:00〜20:00・30分刻み ／ 時刻は12px以上</span></div>
+<div style="width:1280px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #E5E7EB;background:#FBFCFD">
+    <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="前の週">‹</div>
+    <span style="font-size:16px;font-weight:700">9月14日〜20日</span>
+    <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="次の週">›</div>
+    <span style="font-size:13px;color:#6B7280">週開始 月曜／表示 9:00〜20:00（グループ設定）</span>
+    <div style="margin-left:auto;height:34px;padding:0 12px;border:1px solid #248DD4;border-radius:6px;background:#D1E9F9;display:flex;align-items:center;white-space:nowrap;font-size:14px;font-weight:700;color:#0863A0">{{ weekPickLabel }}</div>
+  </div>
+  <div style="display:flex">
+    <div style="width:56px;flex:0 0 56px;border-right:1px solid #EFF1F3;padding-top:38px">
+      <sc-for list="{{ weekHours }}" as="h" hint-placeholder-count="12">
+        <div style="height:32px;display:flex;align-items:flex-start;justify-content:flex-end;padding-right:8px"><span style="font-size:12px;color:#6B7280;transform:translateY(-6px)">{{ h }}</span></div>
+      </sc-for>
+    </div>
+    <div style="flex:1;display:grid;grid-template-columns:repeat(7,1fr)">
+      <sc-for list="{{ weekCols }}" as="col" hint-placeholder-count="7">
+        <div style="{{ col.style }}">
+          <div style="{{ col.headStyle }}"><span style="font-size:12px;{{ col.dowColor }}">{{ col.dow }}</span><span style="font-size:14px;font-weight:700">{{ col.d }}</span></div>
+          <div style="position:relative;height:352px;background-image:repeating-linear-gradient(to bottom,#F4F6F8 0 1px,transparent 1px 32px)">
+            <sc-for list="{{ col.blocks }}" as="b" hint-placeholder-count="2">
+              <div style="{{ b.style }}"><span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0">{{ b.title }}</span><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0">{{ b.time }}</span></div>
+            </sc-for>
+            <sc-if value="{{ col.hasMore }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:2px;right:2px;bottom:2px;height:22px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:12px;font-weight:700;color:#248DD4">{{ col.moreText }}</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid #EFF1F3;background:#FBFCFD;font-size:13px;color:#4B5563">1時間=32px、時刻ラベルは12px。枠が重なる日は横に並べ、3枠以上は幅を詰めずに「＋n枠」から詳細を開きます。</div>
+</div>
+</section>
+
+<section id="ab-p4p5" data-screen-label="P4 P5 詳細パネル" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P4・P5 詳細パネル</span><span style="font-size:13px;color:#6B7280">閲覧のみ／編集中 ― 幅360px（PCは右パネル、狭い端末はシート）</span></div>
+<div style="display:flex;gap:24px;align-items:flex-start">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">P4 閲覧のみ（他人・確定済み）</span>
+    <div style="width:360px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid #F1F3F5;display:flex;align-items:flex-start;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:16px;font-weight:700">9月18日（金）</span><span style="font-size:14px;color:#4B5563">長谷川美咲（スタダ）</span></div>
+        <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#374151" title="詳細を閉じる">✕</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="border:1px solid #E5E7EB;border-radius:6px;background:#FBFCFD;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:14px;font-weight:700;color:#111827">編集できません</span>
+          <span style="font-size:13px;color:#374151;line-height:1.6">自分以外のメンバーの枠です。内容はそのまま読めます。変更が必要なときはリーダー（赤間）へ伝えてください。</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;color:#6B7280">時間枠 3件</span>
+          <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div style="width:26px;height:20px;border-radius:4px;background:#248DD4;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">○✓</div><span style="font-size:14px;font-weight:700">9:00〜12:00</span><span style="font-size:14px;color:#4B5563">出勤</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#0863A0;background:#D1E9F9;border-radius:9999px;padding:2px 8px">確定</span></div>
+          <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div style="width:26px;height:20px;border-radius:4px;background:#248DD4;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">○✓</div><span style="font-size:14px;font-weight:700">13:00〜17:30</span><span style="font-size:14px;color:#4B5563">出勤</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#0863A0;background:#D1E9F9;border-radius:9999px;padding:2px 8px">確定</span></div>
+          <div style="border:1px solid #F0C7C7;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;background:#FDF1F1"><div style="width:26px;height:20px;border-radius:4px;background:color-mix(in srgb,#E08A2E 12%,#fff);border:1px solid color-mix(in srgb,#E08A2E 40%,#fff);color:#8A5310;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">×</div><span style="font-size:14px;font-weight:700">18:00〜20:00</span><span style="font-size:14px;color:#4B5563">却下</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#8A5310;background:#FFF6D6;border-radius:9999px;padding:2px 8px">却下</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;color:#6B7280">履歴</span>
+          <span style="font-size:13px;color:#4B5563;line-height:1.6">9/08 21:14　長谷川美咲 が希望を提出<br>9/11 10:02　赤間 が 18:00〜20:00 を却下<br>9/11 10:02　赤間 が 2枠を確定</span>
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-top:1px solid #F1F3F5;display:flex;gap:8px">
+        <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">この日の全員を見る</div>
+        <div style="height:38px;padding:0 14px;border-radius:6px;background:#F4F6F8;font-size:14px;color:#9CA3AF;display:flex;align-items:center" title="自分以外の枠は編集できません">編集</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">P5 編集中（自分の枠・複数枠）</span>
+    <div style="width:360px;background:#fff;border:1px solid #248DD4;border-radius:12px;overflow:hidden;box-shadow:0 2px 4px rgba(36,141,212,0.2)">
+      <div style="padding:14px 16px;border-bottom:1px solid #F1F3F5;display:flex;align-items:flex-start;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:16px;font-weight:700">9月17日（木）を編集</span><span style="font-size:14px;color:#4B5563">田村駿貴（自分）</span></div>
+        <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#374151" title="編集をやめる">✕</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:700;color:#6B7280">1枠目</span><span style="font-size:12px;color:#248DD4;text-decoration:underline">削除</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:12px;color:#4B5563">種別</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ kindChoices }}" as="k" hint-placeholder-count="6">
+                <div style="{{ k.style }}"><span style="font-size:13px;font-weight:700">{{ k.sym }}</span><span style="font-size:14px">{{ k.label }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px"><label style="font-size:12px;color:#4B5563">開始時刻</label><div style="height:44px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:space-between;padding:0 10px"><span style="font-size:16px;font-weight:700">9:00</span><span style="font-size:12px;color:#9CA3AF">▼</span></div></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px"><label style="font-size:12px;color:#4B5563">終了時刻</label><div style="height:44px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:space-between;padding:0 10px"><span style="font-size:16px;font-weight:700">13:00</span><span style="font-size:12px;color:#9CA3AF">▼</span></div></div>
+          </div>
+        </div>
+        <div style="height:1px;background:#F1F3F5"></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:700;color:#6B7280">2枠目</span><span style="font-size:12px;color:#248DD4;text-decoration:underline">削除</span></div>
+          <div style="display:flex;align-items:center;gap:8px;border:1px solid #EFF1F3;border-radius:6px;padding:8px 10px"><div style="width:26px;height:20px;border-radius:4px;background:color-mix(in srgb,#1F8A98 12%,#fff);border:1.5px dashed #1F8A98;color:#1F8A98;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">R</div><span style="font-size:14px;font-weight:700">14:00〜18:00</span><span style="font-size:14px;color:#4B5563">リモート</span><span style="margin-left:auto;font-size:13px;color:#248DD4;text-decoration:underline">開く</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="height:38px;padding:0 14px;border:1px dashed #248DD4;border-radius:6px;color:#0863A0;font-size:14px;font-weight:700;display:flex;align-items:center;background:#fff">＋ 枠を追加</div>
+          <span style="font-size:12px;color:#6B7280">あと4枠（最大6枠）</span>
+        </div>
+        <div style="border:1px solid #E5E7EB;border-radius:6px;background:#FBFCFD;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:#6B7280">手数を減らす</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <div style="height:34px;padding:0 10px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:13px;font-weight:700;color:#374151;display:flex;align-items:center">よく使う型：平日9-18</div>
+            <div style="height:34px;padding:0 10px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:13px;font-weight:700;color:#374151;display:flex;align-items:center">先週の同じ曜日をコピー</div>
+            <div style="height:34px;padding:0 10px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:13px;font-weight:700;color:#374151;display:flex;align-items:center">複数日にまとめて適用</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-top:1px solid #F1F3F5;display:flex;align-items:center;gap:8px;background:#fff">
+        <div style="height:38px;padding:0 20px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">保存</div>
+        <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">取消</div>
+        <span style="margin-left:auto;font-size:12px;color:#6B7280">未保存の変更 2件</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:320px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">I-02 の決まり</span>
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ i02Rules }}" as="r" hint-placeholder-count="5">
+        <div style="display:flex;gap:8px;align-items:flex-start"><span style="width:18px;height:18px;border-radius:50%;background:#D1E9F9;color:#0863A0;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;margin-top:2px">✓</span><span style="font-size:13px;line-height:1.6;color:#374151">{{ r }}</span></div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-p6" data-screen-label="P6 複数選択中" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P6 複数選択中</span><span style="font-size:13px;color:#6B7280">PC 1280px ／ 下部に選択サマリーと操作バー</span></div>
+<div style="width:1280px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #E5E7EB;background:#FBFCFD">
+    <span style="font-size:16px;font-weight:700">2026年9月</span>
+    <span style="font-size:13px;color:#6B7280">一覧ビュー／ドラッグまたは Shift＋クリックで範囲選択</span>
+    <div style="margin-left:auto;height:34px;padding:0 12px;border:1px solid #248DD4;border-radius:6px;background:#D1E9F9;font-size:14px;font-weight:700;color:#0863A0;display:flex;align-items:center">選択モード</div>
+  </div>
+  <div style="overflow-x:auto">
+    <div style="min-width:max-content">
+      <div style="display:flex;background:#FBFCFD;border-bottom:1px solid #E5E7EB">
+        <div style="width:168px;flex:0 0 168px;box-sizing:border-box;padding:8px;font-size:12px;font-weight:700;color:#6B7280">メンバー</div>
+        <sc-for list="{{ selDays }}" as="d" hint-placeholder-count="14">
+          <div style="{{ d.headStyle }}"><span style="font-size:12px;{{ d.dowColor }}">{{ d.dow }}</span><span style="font-size:14px;font-weight:700">{{ d.d }}</span></div>
+        </sc-for>
+      </div>
+      <sc-for list="{{ selRows }}" as="row" hint-placeholder-count="6">
+        <div style="display:flex;border-bottom:1px solid #F1F3F5">
+          <div style="{{ row.nameStyle }}">
+            <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1"><span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.name }}</span><span style="font-size:12px;color:#6B7280;background:#F4F6F8;border-radius:9999px;padding:1px 6px">{{ row.attr }}</span></div>
+          </div>
+          <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="14">
+            <div style="{{ cell.style }}">
+              <sc-if value="{{ cell.selected }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#248DD4;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+              </sc-if>
+              <sc-for list="{{ cell.chips }}" as="chip" hint-placeholder-count="1">
+                <div style="{{ chip.style }}">{{ chip.text }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="border-top:1px solid #E5E7EB;background:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 -2px 4px rgba(57,57,57,0.08)">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:15px;font-weight:700">3日・2人・5枠を選択中</span>
+      <span style="font-size:12px;color:#6B7280">編集できない枠（確定済み1枠）は操作対象から外れます</span>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">種別をまとめて変更</div>
+      <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">時間をまとめて変更</div>
+      <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">クリア</div>
+      <div style="height:38px;padding:0 20px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">まとめて編集</div>
+      <div style="height:38px;padding:0 12px;font-size:14px;color:#248DD4;text-decoration:underline;display:flex;align-items:center">選択解除</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-p7" data-screen-label="P7 状態バリエーション" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">P7 状態バリエーション</span><span style="font-size:13px;color:#6B7280">読み込み中／0件／権限エラー／通信失敗／保存中／保存失敗</span></div>
+<div style="display:grid;grid-template-columns:repeat(3,400px);gap:20px">
+
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">読み込み中</div>
+    <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ skeletonRows }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex;gap:8px;align-items:center"><div style="width:110px;height:14px;border-radius:4px;background:#F1F3F5"></div><div style="{{ s.style }}"></div></div>
+      </sc-for>
+      <span style="font-size:13px;color:#6B7280">シフトを読み込んでいます…</span>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">0件</div>
+    <div style="padding:28px 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+      <span style="font-size:16px;font-weight:700">条件に合うシフトがありません</span>
+      <span style="font-size:14px;color:#4B5563;line-height:1.6">「状態：希望のみ」と「属性：スタダ」で絞り込んでいます。条件をひとつ外すと表示される場合があります。</span>
+      <div style="display:flex;gap:8px;padding-top:4px">
+        <div style="height:38px;padding:0 16px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">条件を解除</div>
+        <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">絞り込みを開く</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">権限エラー</div>
+    <div style="padding:28px 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+      <span style="font-size:12px;font-weight:700;color:#8A5310;background:#FFF6D6;border:1px solid #F9E428;border-radius:9999px;padding:2px 10px">権限</span>
+      <span style="font-size:16px;font-weight:700">「確定・調整」はリーダー以上が使えます</span>
+      <span style="font-size:14px;color:#4B5563;line-height:1.6">あなたの役割はメンバーです。自分の希望入力と、全員のシフト閲覧はできます。</span>
+      <div style="height:38px;padding:0 16px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0;margin-top:4px">シフトを見るへ戻る</div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">通信失敗（読み込み）</div>
+    <div style="padding:28px 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+      <span style="font-size:16px;font-weight:700;color:#111827">読み込めませんでした</span>
+      <span style="font-size:14px;color:#4B5563;line-height:1.6">通信が不安定なようです。表示している内容は 14:02 時点のものです。</span>
+      <div style="display:flex;gap:8px;padding-top:4px">
+        <div style="height:38px;padding:0 16px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">再読み込み</div>
+        <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;color:#374151;display:flex;align-items:center;box-shadow:0 2px 0 0 #E3E3E3">詳細</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #248DD4;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">保存中（編集パネル内）</div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;opacity:1"><div style="width:26px;height:20px;border-radius:4px;background:color-mix(in srgb,#248DD4 12%,#fff);border:1.5px dashed #248DD4;color:#0863A0;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">○</div><span style="font-size:14px;font-weight:700">9:00〜13:00</span><span style="font-size:14px;color:#4B5563">出勤</span></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="height:38px;padding:0 20px;border-radius:6px;background:#0863A0;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.45);border-top-color:#fff;border-radius:50%;display:inline-block"></span>保存中…</div>
+        <span style="font-size:13px;color:#6B7280">入力は編集できません（約2秒）</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #D9736F;border-radius:12px;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid #F1F3F5;font-size:13px;font-weight:700;color:#6B7280">保存失敗（操作した場所の中に出す）</div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="border:1px solid #F0C7C7;background:#FDF1F1;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:14px;font-weight:700;color:#111827">保存できませんでした</span>
+        <span style="font-size:13px;color:#374151;line-height:1.6">14:06 に通信が切れました。入力した内容はそのまま残っています。もう一度お試しください。</span>
+        <div style="display:flex;gap:8px;padding-top:2px">
+          <div style="height:38px;padding:0 16px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">再試行</div>
+          <div style="height:38px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;color:#374151;display:flex;align-items:center">編集を続ける</div>
+        </div>
+      </div>
+      <div style="border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div style="width:26px;height:20px;border-radius:4px;background:color-mix(in srgb,#248DD4 12%,#fff);border:1.5px dashed #248DD4;color:#0863A0;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">○</div><span style="font-size:14px;font-weight:700">9:00〜13:00</span><span style="font-size:14px;color:#4B5563">出勤</span><span style="margin-left:auto;font-size:12px;font-weight:700;color:#B0413E">未保存</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-mobile" data-screen-label="M1-M4 スマートフォン" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">M1〜M4 スマートフォン</span><span style="font-size:13px;color:#6B7280">375px ／ 主なタップ対象44px ／ 下部は safe-area-inset-bottom を確保</span></div>
+<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">M1 月ビュー</span>
+    <div style="width:375px;background:#F7F9FB;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <div style="background:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #F1F3F5">
+        <div style="display:flex;align-items:center;gap:6px;height:44px;padding:0 10px;border:1px solid #E5E7EB;border-radius:6px"><span style="font-size:14px;font-weight:700">第一営業チーム</span><span style="font-size:12px;color:#9CA3AF">▼</span></div>
+        <div style="width:44px;height:44px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151" title="メニュー">≡</div>
+      </div>
+      <div style="background:#fff;display:flex;border-bottom:1px solid #E5E7EB">
+        <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;font-weight:700;color:#0863A0;border-bottom:3px solid #248DD4">シフトを見る</div>
+        <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#4B5563;border-bottom:3px solid transparent">希望を入力</div>
+        <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#4B5563;border-bottom:3px solid transparent">確定・調整</div>
+      </div>
+      <div style="background:#FBFCFD;padding:8px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #E5E7EB">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:44px;height:44px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="前の月">‹</div>
+          <span style="font-size:16px;font-weight:700;flex:1;text-align:center">2026年9月</span>
+          <div style="width:44px;height:44px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;color:#374151" title="次の月">›</div>
+          <div style="height:44px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center">今日</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;background:#fff;flex:1">
+            <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151">一覧</div>
+            <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;font-weight:700;background:#248DD4;color:#fff;border-left:1px solid #E5E7EB">月</div>
+            <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;color:#374151;border-left:1px solid #E5E7EB">週</div>
+          </div>
+          <div style="height:44px;padding:0 12px;border:1px solid #248DD4;border-radius:6px;background:#D1E9F9;font-size:14px;font-weight:700;color:#0863A0;display:flex;align-items:center;gap:6px">絞り込み<span style="width:18px;height:18px;border-radius:9999px;background:#248DD4;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center">2</span></div>
+        </div>
+      </div>
+      <div style="background:#fff;margin:8px 12px;border:1px solid #E5E7EB;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:#6B7280">次の自分のシフト</span><span style="font-size:16px;font-weight:700">9月17日（木）9:00〜13:00 出勤</span><span style="font-size:12px;color:#6B7280">未提出の日 3日</span></div>
+        <div style="margin-left:auto;height:44px;padding:0 12px;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;box-shadow:0 2px 0 0 #0863A0">入力</div>
+      </div>
+      <div style="background:#fff;margin:0 12px;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+          <sc-for list="{{ mDowHeads }}" as="h" hint-placeholder-count="7"><div style="{{ h.style }}">{{ h.label }}</div></sc-for>
+          <sc-for list="{{ mMonthCells }}" as="c" hint-placeholder-count="35">
+            <div style="{{ c.style }}"><span style="{{ c.dateStyle }}">{{ c.d }}</span><div style="{{ c.dotsStyle }}"><sc-for list="{{ c.dots }}" as="dot" hint-placeholder-count="2"><span style="{{ dot.style }}"></span></sc-for></div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="margin:12px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+        <div style="padding:12px;border-bottom:1px solid #F1F3F5;display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:700">9月17日（木）</span><span style="font-size:12px;color:#6B7280">{{ mDayCountLabel }}</span></div>
+        <sc-for list="{{ mDayRows }}" as="r" hint-placeholder-count="4">
+          <div style="padding:10px 12px;border-bottom:1px solid #F4F6F8;display:flex;align-items:center;gap:10px;min-height:44px">
+            <span style="font-size:14px;font-weight:700;width:96px;flex:0 0 96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0">
+              <sc-for list="{{ r.slots }}" as="s" hint-placeholder-count="2"><div style="{{ s.style }}">{{ s.text }}</div></sc-for>
+            </div>
+            <span style="font-size:12px;color:#9CA3AF">›</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ hasMRest }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:12px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:14px;font-weight:700;color:#248DD4;min-height:44px">残り{{ mRestLabel }}を表示</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">M2 希望を入力（編集シート）</span>
+    <div style="width:375px;height:760px;position:relative;background:#F7F9FB;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <div style="position:absolute;inset:0;background:#fff;opacity:1"></div>
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(17,24,39,0.35)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:12px 12px 0 0;box-shadow:0 -2px 4px rgba(57,57,57,0.2);display:flex;flex-direction:column;max-height:660px">
+        <div style="padding:10px 0 0;display:flex;justify-content:center"><div style="width:44px;height:4px;border-radius:9999px;background:#E3E3E3"></div></div>
+        <div style="padding:10px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #F1F3F5">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700">9月17日（木）を入力</span><span style="font-size:13px;color:#4B5563">田村駿貴（自分）・2枠</span></div>
+          <div style="width:44px;height:44px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#374151" title="閉じる">✕</div>
+        </div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px;overflow:auto">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:12px;font-weight:700;color:#6B7280">1枠目　種別</span>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ mKindChoices }}" as="k" hint-placeholder-count="6">
+                <div style="{{ k.style }}"><span style="{{ k.symStyle }}">{{ k.sym }}</span><span style="font-size:16px;font-weight:700">{{ k.label }}</span><span style="{{ k.checkStyle }}">✓</span></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:14px;color:#374151">開始時刻</label><div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:space-between;padding:0 12px"><span style="font-size:16px;font-weight:700">9:00</span><span style="font-size:12px;color:#9CA3AF">▼</span></div></div>
+              <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:14px;color:#374151">終了時刻</label><div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:space-between;padding:0 12px"><span style="font-size:16px;font-weight:700">13:00</span><span style="font-size:12px;color:#9CA3AF">▼</span></div></div>
+            </div>
+          </div>
+          <div style="height:1px;background:#F1F3F5"></div>
+          <div style="display:flex;align-items:center;gap:10px;border:1px solid #EFF1F3;border-radius:6px;padding:10px 12px;min-height:44px"><div style="width:28px;height:22px;border-radius:4px;background:color-mix(in srgb,#1F8A98 12%,#fff);border:1.5px dashed #1F8A98;color:#1F8A98;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">R</div><span style="font-size:15px;font-weight:700">14:00〜18:00 リモート</span><span style="margin-left:auto;font-size:14px;color:#248DD4">開く</span></div>
+          <div style="height:48px;border:1px dashed #248DD4;border-radius:6px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:15px;font-weight:700;color:#0863A0">＋ 枠を追加（あと4枠）</div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;font-weight:700;color:#6B7280">手数を減らす</span><div style="display:flex;flex-direction:column;gap:8px"><div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:15px;font-weight:700;color:#374151">よく使う型「平日9-18」を適用</div><div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:15px;font-weight:700;color:#374151">同じ内容を複数日にまとめて適用</div></div></div>
+        </div>
+        <div style="padding:12px 16px 28px;border-top:1px solid #F1F3F5;background:#fff;display:flex;flex-direction:column;gap:8px">
+          <div style="height:52px;border-radius:6px;background:#248DD4;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 0 #0863A0">保存</div>
+          <span style="font-size:12px;color:#6B7280;text-align:center">保存するまで反映されません。閉じると入力内容は残ります。</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">M3 複数選択中</span>
+    <div style="width:375px;height:680px;position:relative;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="padding:12px;border-bottom:1px solid #F1F3F5;display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:700">9月14日〜20日</span><div style="height:44px;padding:0 12px;border:1px solid #248DD4;border-radius:6px;background:#D1E9F9;font-size:14px;font-weight:700;color:#0863A0;display:flex;align-items:center">選択モード</div></div>
+      <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ mSelRows }}" as="r" hint-placeholder-count="5">
+          <div style="{{ r.style }}"><span style="{{ r.checkStyle }}">{{ r.check }}</span><span style="font-size:15px;font-weight:700;flex:1">{{ r.label }}</span><div style="{{ r.chipStyle }}">{{ r.chip }}</div></div>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid #E5E7EB;background:#fff;padding:10px 12px 28px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -2px 4px rgba(57,57,57,0.1)">
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px">
+          <span style="font-size:15px;font-weight:700">3枠を選択中</span>
+          <div style="margin-left:auto;height:44px;padding:0 12px;border:1px solid #E5E7EB;border-radius:6px;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px">操作を開く<span style="font-size:12px;color:#9CA3AF">▲</span></div>
+          <div style="height:44px;padding:0 10px;font-size:14px;color:#248DD4;display:flex;align-items:center">解除</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #F1F3F5;padding-top:10px">
+          <div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:15px;font-weight:700;color:#374151">種別をまとめて変更</div>
+          <div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:15px;font-weight:700;color:#374151">時間をまとめて変更</div>
+          <div style="height:52px;border-radius:6px;background:#248DD4;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 0 #0863A0">まとめて編集</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">M4 絞り込みシート</span>
+    <div style="width:375px;height:640px;position:relative;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <div style="position:absolute;inset:0;background:rgba(17,24,39,0.35)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:12px 12px 0 0;display:flex;flex-direction:column;max-height:580px">
+        <div style="padding:10px 0 0;display:flex;justify-content:center"><div style="width:44px;height:4px;border-radius:9999px;background:#E3E3E3"></div></div>
+        <div style="padding:10px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #F1F3F5"><span style="font-size:18px;font-weight:700">絞り込み</span><div style="width:44px;height:44px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#374151" title="閉じる">✕</div></div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:18px;overflow:auto">
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;font-weight:700;color:#6B7280">氏名</span><div style="height:48px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;gap:8px;padding:0 12px"><span style="font-size:13px;color:#9CA3AF">検索</span><span style="font-size:16px;color:#C8CDD2">氏名を入力</span></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;font-weight:700;color:#6B7280">属性（いずれかに一致）</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ attrChips }}" as="a" hint-placeholder-count="5"><div style="{{ a.style }}">{{ a.label }}</div></sc-for></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;font-weight:700;color:#6B7280">状態</span><div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ stateChoices }}" as="s" hint-placeholder-count="4"><div style="{{ s.style }}"><span style="{{ s.boxStyle }}">{{ s.mark }}</span><span style="font-size:16px;font-weight:700">{{ s.label }}</span><span style="margin-left:auto;font-size:13px;color:#6B7280">{{ s.count }}</span></div></sc-for></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;font-weight:700;color:#6B7280">対象</span><div style="display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden"><div style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:15px;font-weight:700;background:#D1E9F9;color:#0863A0">全員</div><div style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:15px;color:#374151;border-left:1px solid #E5E7EB">自分だけ</div></div></div>
+        </div>
+        <div style="padding:12px 16px 28px;border-top:1px solid #F1F3F5;display:flex;gap:8px;align-items:center">
+          <div style="height:52px;padding:0 14px;border:1px solid #E5E7EB;border-radius:6px;font-size:15px;font-weight:700;color:#374151;display:flex;align-items:center">条件解除</div>
+          <div style="flex:1;height:52px;border-radius:6px;background:#248DD4;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 0 #0863A0">12人に絞り込む</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-c1" data-screen-label="C1 ダイアログの型" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">C1 ダイアログ／シートの型</span><span style="font-size:13px;color:#6B7280">I-07 タイトル・本文・主/副ボタン・エラーの位置</span></div>
+<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">PC ダイアログ（幅480px）</span>
+    <div style="width:560px;padding:40px;background:rgba(17,24,39,0.35);border-radius:12px;display:flex;justify-content:center">
+      <div style="width:448px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 4px rgba(57,57,57,0.3)">
+        <div style="padding:20px 20px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <span style="font-size:20px;font-weight:700;line-height:1.3">5枠を確定しますか？</span>
+          <div style="width:34px;height:34px;border:1px solid #E5E7EB;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#374151" title="閉じる">✕</div>
+        </div>
+        <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:15px;line-height:1.6;color:#374151">田村駿貴・赤間 の 9月17日〜19日、合計5枠を確定します。確定後はメンバーが自分で変更できなくなります。</span>
+          <div style="border:1px solid #F0C7C7;background:#FDF1F1;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:14px;font-weight:700">1枠を確定できませんでした</span>
+            <span style="font-size:13px;color:#374151;line-height:1.6">9月19日 赤間 18:00〜20:00 は「欠勤」のため確定できません。残り4枠は確定できます。</span>
+          </div>
+        </div>
+        <div style="padding:14px 20px;border-top:1px solid #F1F3F5;background:#FBFCFD;display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;color:#6B7280">Esc で閉じる</span>
+          <div style="margin-left:auto;display:flex;gap:8px;flex:1;max-width:260px">
+            <div style="flex:1;height:38px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 2px 0 0 #E3E3E3">やめる</div>
+            <div style="flex:1;height:38px;border:1px solid #248DD4;border-radius:6px;background:#248DD4;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 2px 0 0 #0863A0;outline:2px solid #248DD4;outline-offset:2px">4枠を確定</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;width:420px">
+    <span style="font-size:14px;font-weight:700;color:#4B5563">型の決まり</span>
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ dialogRules }}" as="r" hint-placeholder-count="8">
+        <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:12px;font-weight:700;color:#0863A0;background:#D1E9F9;border-radius:9999px;padding:2px 8px;white-space:nowrap">{{ r.tag }}</span><span style="font-size:13px;line-height:1.6;color:#374151">{{ r.text }}</span></div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-target" data-screen-label="C2 シフト対象の設定" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">C2 メンバー設定（シフト対象の切替）</span><span style="font-size:13px;color:#6B7280">社員など希望を出さない人を、登録も表示もしない状態にする</span></div>
+<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+  <div style="width:520px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid #F1F3F5;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px;font-weight:700">シフト対象のメンバー</span>
+      <span style="font-size:13px;color:#6B7280">対象 {{ shownCountLabel }}／対象外 {{ excludedCountLabel }}</span>
+    </div>
+    <sc-for list="{{ targetList }}" as="m" hint-placeholder-count="12">
+      <div style="{{ m.style }}">
+        <span style="{{ m.nameStyle }}">{{ m.name }}</span>
+        <span style="font-size:12px;color:#6B7280;background:#F4F6F8;border-radius:9999px;padding:1px 8px;white-space:nowrap">{{ m.attr }}</span>
+        <span style="font-size:12px;color:#6B7280">{{ m.note }}</span>
+        <button onClick="{{ m.onClick }}" style="{{ m.switchStyle }}">{{ m.switchLabel }}</button>
+      </div>
+    </sc-for>
+    <div style="padding:12px 16px;background:#FBFCFD;font-size:13px;color:#4B5563;line-height:1.7">対象外にすると、一覧・月・週のどのビューにも行が出ず、希望入力タブもその人には出ません。切替は管理者のみ。過去に登録済みの枠は消さず、履歴と書き出しには残します。</div>
+  </div>
+  <div style="width:400px;display:flex;flex-direction:column;gap:20px">
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:15px;font-weight:700">動きの確認</span>
+      <span style="font-size:13px;color:#4B5563;line-height:1.7">左のボタンを押すと、P1 一覧ビューと P2 月ビューの行・チップがその場で増減します。P1 のフィルタ（氏名検索・属性・対象外を表示）も同じ状態を見ています。</span>
+      <a href="#ab-p1" style="font-size:13px;font-weight:700">P1 を見る</a>
+    </div>
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:15px;font-weight:700">データ側に必要なもの</span>
+      <span style="font-size:13px;color:#4B5563;line-height:1.7">メンバーに真偽値を1つ追加します（例: `shiftTarget`、既定 true）。false のとき、メンバー一覧の取得元でシフト表の行と希望入力の対象から除きます。属性タグとは別物にしてください（属性は絞り込み、こちらは在籍したまま登録対象から外す設定）。</span>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ab-spec" data-screen-label="S1 差分メモ" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:18px;font-weight:700">S1 変更した寸法・色・文字サイズ（既存トークンとの差分）</span></div>
+<div style="width:1280px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+  <div style="flex:1;min-width:560px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+    <div style="display:grid;grid-template-columns:150px 110px 110px 1fr">
+      <sc-for list="{{ diffTable }}" as="c" hint-placeholder-count="28">
+        <div style="{{ c.style }}">{{ c.text }}</div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="width:400px;display:flex;flex-direction:column;gap:20px">
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:15px;font-weight:700">追加した種別色（既定3種を超える場合）</span>
+      <sc-for list="{{ addedColors }}" as="a" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:10px"><span style="{{ a.swatch }}"></span><span style="font-size:14px;font-weight:700">{{ a.label }}</span><span style="font-size:13px;color:#6B7280">{{ a.hex }}</span><span style="margin-left:auto;font-size:12px;color:#6B7280">{{ a.note }}</span></div>
+      </sc-for>
+      <span style="font-size:12px;color:#6B7280;line-height:1.6">既定の3種（出勤・リモート・欠勤）と予約語「却下」は変更なし。4〜6種目は管理者定義のため、青基調を崩さない範囲で上記3色を候補にしています。</span>
+    </div>
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:15px;font-weight:700">増える手数をどう減らすか</span>
+      <sc-for list="{{ effortPlan }}" as="e" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid #F4F6F8;padding-top:8px"><span style="font-size:14px;font-weight:700">{{ e.title }}</span><span style="font-size:13px;color:#4B5563;line-height:1.6">{{ e.body }}</span></div>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:15px;font-weight:700">今回やらないが場所を残したもの</span>
+      <span style="font-size:13px;color:#4B5563;line-height:1.7">提出・締切（N-01）、変更申請（N-03）、通知（N-06）、必要人数の不足（N-05）は、P1 上部の案内バー（未回答・確認待ちの行）に並べる想定で場所だけ空けています。カレンダー購読の入口は置いていません。</span>
+    </div>
+  </div>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:980},&quot;memberCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1人&quot;,&quot;6人&quot;,&quot;12人&quot;,&quot;30人&quot;],&quot;default&quot;:&quot;12人&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;検証条件&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;標準&quot;,&quot;コンパクト&quot;],&quot;default&quot;:&quot;標準&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;検証条件&quot;},&quot;showNotice&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;検証条件&quot;}}">
+class Component extends DCLogic {
+  kinds = [
+    { k: 'work', label: '出勤', sym: '○', color: '#248DD4' },
+    { k: 'remote', label: 'リモート', sym: 'R', color: '#1F8A98' },
+    { k: 'absent', label: '欠勤', sym: '×', color: '#D9736F' },
+    { k: 'train', label: '研修', sym: '研', color: '#0863A0' },
+    { k: 'half', label: '半休', sym: '半', color: '#6B7280' },
+    { k: 'night', label: '夜勤', sym: '夜', color: '#7B59A2' }
+  ];
+  reject = { label: '却下', sym: '×', color: '#E08A2E' };
+  names = ['田村駿貴','赤間','曽根','佐藤','鈴木','高橋','長谷川美咲','森','小早川真理子','西村健太郎','井上','大野','桑原','三枝','神谷麻衣子','関','岩本','久保田悠真','中西','浜田','柴','藤村理沙子','沖','南雲','早坂','戸田','日下部祐介','千葉','宮','梶原'];
+  attrs = ['社員','スタダ','社員','パート','スタダ','社員','パート','社員','スタダ','社員','パート','社員'];
+
+  rnd(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+  officeStaff = ['赤間', '佐藤', '高橋', '森', '関'];
+  state = { q: '', attrSel: [], showEx: false, target: {} };
+
+  attrOf(name, i) { return this.officeStaff.indexOf(name) >= 0 ? '社員' : (i % 2 ? 'パート' : 'スタダ'); }
+
+  rosterFor(count) {
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const name = this.names[i % this.names.length];
+      const attr = this.attrOf(name, i);
+      const ov = this.state.target[name];
+      out.push({ i, name, attr, target: ov === undefined ? attr !== '社員' : ov });
+    }
+    return out;
+  }
+
+  visibleOf(roster) {
+    const q = this.state.q.trim(), sel = this.state.attrSel;
+    return roster.filter((m) =>
+      (sel.length === 0 || sel.indexOf(m.attr) >= 0) &&
+      (q === '' || m.name.indexOf(q) >= 0) &&
+      (m.target || this.state.showEx)
+    );
+  }
+
+  dowOf(d) { return (d + 1) % 7; } // 2026-09-01 = 火曜
+  dowLabel(w) { return ['日','月','火','水','木','金','土'][w]; }
+  dowColor(w) { return w === 0 ? 'color:#B0413E' : w === 6 ? 'color:#0863A0' : 'color:#6B7280'; }
+
+  chipStyle(color, state, h) {
+    const base = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1px', height: (h || 16) + 'px', borderRadius: '4px', fontSize: '12px', fontWeight: 700, lineHeight: 1, boxSizing: 'border-box', width: '100%' };
+    if (state === 'confirmed') return Object.assign(base, { background: color, border: '1px solid ' + color, color: '#fff' });
+    if (state === 'request') return Object.assign(base, { background: 'color-mix(in srgb, ' + color + ' 12%, #fff)', border: '1.5px dashed ' + color, color: color === '#6B7280' ? '#374151' : color });
+    if (state === 'blocked') return Object.assign(base, { background: 'color-mix(in srgb, ' + color + ' 10%, #fff)', border: '1px solid color-mix(in srgb, ' + color + ' 40%, #fff)', color: '#4B5563' });
+    return Object.assign(base, { background: '#fff', border: '1px dotted #E3E3E3', color: '#C8CDD2' });
+  }
+  chipText(kind, state) {
+    if (state === 'confirmed') return kind.sym + '✓';
+    if (state === 'request') return kind.sym;
+    if (state === 'blocked') return '×';
+    return '·';
+  }
+
+  slotsFor(mi, di) {
+    const r = this.rnd(mi * 31 + di), w = this.dowOf(di + 1);
+    if (mi === 0 && di === 16) {
+      return [0, 1, 2, 3, 4, 5].map((n) => ({ kind: this.kinds[n % 3], state: n === 0 ? 'confirmed' : 'request' }));
+    }
+    if (w === 0 || w === 6) return r < 0.72 ? [] : [{ kind: this.kinds[1], state: 'request' }];
+    if (r < 0.1) return [];
+    const n = r < 0.62 ? 1 : r < 0.9 ? 2 : 3;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const s = this.rnd(mi * 71 + di * 7 + i * 13);
+      const kind = this.kinds[s < 0.55 ? 0 : s < 0.78 ? 1 : s < 0.88 ? 2 : s < 0.94 ? 3 : 4];
+      const st = kind.k === 'absent' ? 'blocked' : s < 0.42 ? 'confirmed' : 'request';
+      out.push({ kind, state: st });
+    }
+    return out;
+  }
+
+  buildRows(list, dayCount, rowH, expandIdx) {
+    const rows = [];
+    list.forEach((m, ri) => {
+      const mi = m.i;
+      const expanded = ri === expandIdx && m.target;
+      const cells = [];
+      for (let di = 0; di < dayCount; di++) {
+        const slots = m.target ? this.slotsFor(mi, di) : [];
+        const w = this.dowOf(di + 1);
+        const isToday = di + 1 === 16;
+        const shown = expanded ? slots : slots.slice(0, 2);
+        const chips = shown.length
+          ? shown.map((s) => ({ style: this.chipStyle(s.kind.color, s.state, 16), text: this.chipText(s.kind, s.state) }))
+          : m.target
+            ? [{ style: this.chipStyle('#C8CDD2', 'none', 16), text: '·' }]
+            : [{ style: Object.assign(this.chipStyle('#C8CDD2', 'none', 16), { border: '0', background: 'transparent' }), text: '—' }];
+        cells.push({
+          style: {
+            width: '56px', flex: '0 0 56px', minHeight: (expanded ? 116 : rowH) + 'px',
+            borderRight: '1px solid #F4F6F8', padding: '4px 4px', display: 'flex', flexDirection: 'column',
+            gap: '2px', justifyContent: 'center', boxSizing: 'border-box',
+            background: isToday ? '#FFFDF4' : (w === 0 || w === 6) ? '#FBFCFD' : '#fff'
+          },
+          chips, hasMore: !expanded && slots.length > 2, moreText: '＋' + (slots.length - 2)
+        });
+      }
+      rows.push({
+        name: m.name,
+        attr: m.target ? m.attr : '対象外',
+        cells,
+        expandStyle: { width: '28px', flex: '0 0 28px', height: '28px', borderRadius: '6px', border: '1px solid ' + (expanded ? '#248DD4' : '#E5E7EB'), background: expanded ? '#D1E9F9' : '#fff', color: expanded ? '#0863A0' : '#4B5563', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        expandMark: expanded ? '▴' : '▾',
+        nameStyle: { width: '168px', flex: '0 0 168px', position: 'sticky', left: 0, zIndex: 1, background: m.target ? '#fff' : '#F9FAFB', borderRight: '1px solid #E5E7EB', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', minHeight: (expanded ? 116 : rowH) + 'px', boxSizing: 'border-box' }
+      });
+    });
+    return rows;
+  }
+
+  renderVals() {
+    const density = this.props.density ?? '標準';
+    const rowH = density === 'コンパクト' ? 40 : 50;
+    const mcRaw = this.props.memberCount ?? '12人';
+    const count = parseInt(mcRaw, 10) || 12;
+
+    const days = [];
+    for (let d = 1; d <= 30; d++) {
+      const w = this.dowOf(d), isToday = d === 16;
+      days.push({
+        d, dow: this.dowLabel(w), dowColor: this.dowColor(w),
+        headStyle: { width: '56px', flex: '0 0 56px', padding: '6px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', borderRight: '1px solid #F1F3F5', boxSizing: 'border-box', background: isToday ? '#FFF6D6' : 'transparent' }
+      });
+    }
+
+    const legend = this.kinds.map((k) => ({ label: k.label, text: k.sym, style: Object.assign(this.chipStyle(k.color, 'request', 18), { width: '30px' }) }));
+    legend.push({ label: '却下', text: '×', style: Object.assign(this.chipStyle(this.reject.color, 'blocked', 18), { width: '30px' }) });
+    legend.push({ label: '未回答', text: '·', style: Object.assign(this.chipStyle('#C8CDD2', 'none', 18), { width: '30px' }) });
+
+    const dowHead = (arr) => arr.map((l, i) => ({
+      label: l,
+      style: { padding: '8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', background: '#FBFCFD', borderBottom: '1px solid #E5E7EB', borderRight: i < 6 ? '1px solid #F1F3F5' : 'none', color: i === 0 ? '#B0413E' : i === 6 ? '#0863A0' : '#6B7280' }
+    }));
+
+    const monthCells = [];
+    for (let i = 0; i < 35; i++) {
+      const d = i - 0; // 2026-09-01 は火曜 → 週開始日曜で index2
+      const day = i - 1;
+      const blank = day < 1 || day > 30;
+      const w = i % 7, isToday = day === 16;
+      if (blank) {
+        monthCells.push({ d: '', blank: true, chips: [], hasMore: false, moreText: '', hasWarn: false, warn: 0, dateStyle: { fontSize: '14px', color: '#C8CDD2' }, style: { minHeight: '118px', padding: '8px', borderRight: w < 6 ? '1px solid #F1F3F5' : 'none', borderBottom: '1px solid #F1F3F5', background: '#FBFCFD', display: 'flex', flexDirection: 'column', gap: '6px' } });
+        continue;
+      }
+      const chips = []; let blanks = 0;
+      const monthMembers = this.visibleOf(this.rosterFor(count)).filter((m) => m.target);
+      monthMembers.forEach((m) => {
+        const s = this.slotsFor(m.i, day - 1);
+        if (!s.length) { blanks++; return; }
+        if (chips.length < 4) chips.push({ style: Object.assign(this.chipStyle(s[0].kind.color, s[0].state, 18), { width: '54px', gap: '2px' }), text: m.name.slice(0, 2) + s[0].kind.sym });
+      });
+      const total = monthMembers.length - blanks;
+      monthCells.push({
+        d: day, blank: false, chips, hasMore: total > 4, moreText: '＋' + (total - 4) + '人',
+        hasWarn: blanks >= 4, warn: blanks,
+        dateStyle: { fontSize: '14px', fontWeight: 700, color: w === 0 ? '#B0413E' : w === 6 ? '#0863A0' : '#111827', background: isToday ? '#F9E428' : 'transparent', borderRadius: '6px', padding: isToday ? '0 6px' : '0' },
+        style: { minHeight: '118px', padding: '8px', borderRight: w < 6 ? '1px solid #F1F3F5' : 'none', borderBottom: '1px solid #F1F3F5', background: isToday ? '#FFFDF4' : (w === 0 || w === 6) ? '#FBFCFD' : '#fff', display: 'flex', flexDirection: 'column', gap: '6px' }
+      });
+    }
+
+    const roster30 = this.rosterFor(30);
+    const pool30 = roster30.filter((m) => m.target);
+    const month30Cells = [];
+    for (let i = 0; i < 35; i++) {
+      const day = i - 1, w = i % 7, blank = day < 1 || day > 30, isToday = day === 16;
+      if (blank) {
+        month30Cells.push({ d: '', filled: false, style: { minHeight: '122px', padding: '8px', borderRight: w < 6 ? '1px solid #F1F3F5' : 'none', borderBottom: '1px solid #F1F3F5', background: '#FBFCFD', display: 'flex', flexDirection: 'column', gap: '8px' }, dateStyle: { fontSize: '14px', color: '#C8CDD2' }, work: 0, remote: 0, blank: 0, hasWarn: false, warnText: '', barWork: {}, barRemote: {} });
+        continue;
+      }
+      let work = 0, remote = 0, none = 0;
+      pool30.forEach((m) => {
+        const s = this.slotsFor(m.i, day - 1);
+        if (!s.length) { none++; return; }
+        if (s[0].kind.k === 'remote') remote++; else work++;
+      });
+      month30Cells.push({
+        d: day, filled: true, work, remote, blank: none,
+        hasWarn: none >= 8, warnText: '未回答 ' + none + '人（要確認）',
+        barWork: { width: Math.round((work / Math.max(1, pool30.length)) * 100) + '%', background: '#248DD4' },
+        barRemote: { width: Math.round((remote / Math.max(1, pool30.length)) * 100) + '%', background: '#1F8A98' },
+        dateStyle: { fontSize: '14px', fontWeight: 700, color: w === 0 ? '#B0413E' : w === 6 ? '#0863A0' : '#111827', background: isToday ? '#F9E428' : 'transparent', borderRadius: '6px', padding: isToday ? '0 6px' : '0', alignSelf: 'flex-start' },
+        style: { minHeight: '122px', padding: '8px', borderRight: w < 6 ? '1px solid #F1F3F5' : 'none', borderBottom: '1px solid #F1F3F5', background: isToday ? '#FFFDF4' : (w === 0 || w === 6) ? '#FBFCFD' : '#fff', display: 'flex', flexDirection: 'column', gap: '8px' }
+      });
+    }
+
+    const weekHours = [];
+    for (let h = 9; h <= 20; h++) weekHours.push(h + ':00');
+
+    const weekMembers = this.visibleOf(this.rosterFor(count)).filter((m) => m.target);
+    const wName = (idx) => (weekMembers.length ? weekMembers[idx % weekMembers.length].name : '—');
+    const weekCols = [];
+    for (let i = 0; i < 7; i++) {
+      const day = 14 + i, w = this.dowOf(day), isToday = day === 16;
+      const blocks = [];
+      const set = [
+        [{ mi: 0, s: 9, e: 13, st: 'confirmed', k: 0 }, { mi: 0, s: 14, e: 18, st: 'request', k: 1 }],
+        [{ mi: 1, s: 9, e: 18, st: 'confirmed', k: 0 }, { mi: 2, s: 13, e: 20, st: 'request', k: 0 }],
+        [{ mi: 0, s: 10, e: 15, st: 'request', k: 3 }],
+        [{ mi: 1, s: 9, e: 12, st: 'confirmed', k: 0 }, { mi: 2, s: 12, e: 16, st: 'request', k: 1 }, { mi: 0, s: 18, e: 20, st: 'blocked', k: 2 }],
+        [{ mi: 0, s: 9, e: 13, st: 'confirmed', k: 0 }, { mi: 1, s: 13, e: 18, st: 'confirmed', k: 0 }],
+        [{ mi: 2, s: 9, e: 14, st: 'request', k: 1 }],
+        []
+      ][i];
+      const shown = set.slice(0, 2);
+      const n = Math.max(shown.length, 1);
+      shown.forEach((b, bi) => {
+        const kind = this.kinds[b.k];
+        const sty = this.chipStyle(kind.color, b.st, 0);
+        blocks.push({
+          title: n > 1 ? wName(b.mi).slice(0, 2) : wName(b.mi) + ' ' + kind.label,
+          time: n > 1 ? b.s + '〜' + b.e : b.s + ':00〜' + b.e + ':00',
+          style: Object.assign({}, sty, {
+            position: 'absolute', top: (b.s - 9) * 32 + 'px', height: (b.e - b.s) * 32 - 2 + 'px',
+            left: 'calc(' + (bi / n) * 100 + '% + 2px)', width: 'calc(' + (100 / n) + '% - 4px)',
+            height: (b.e - b.s) * 32 - 2 + 'px', flexDirection: 'column', alignItems: 'flex-start',
+            justifyContent: 'flex-start', gap: '2px', padding: '4px 6px', overflow: 'hidden', borderRadius: '6px'
+          })
+        });
+      });
+      weekCols.push({
+        d: day + '日', dow: this.dowLabel(w), dowColor: this.dowColor(w), blocks,
+        hasMore: set.length > 2, moreText: '＋' + (set.length - 2) + '枠',
+        style: { borderRight: i < 6 ? '1px solid #F1F3F5' : 'none', background: isToday ? '#FFFDF4' : (w === 0 || w === 6) ? '#FBFCFD' : '#fff' },
+        headStyle: { height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', borderBottom: '1px solid #E5E7EB', background: isToday ? '#FFF6D6' : 'transparent' }
+      });
+    }
+
+    const roster = this.rosterFor(count);
+    const visible = this.visibleOf(roster);
+    const excludedList = roster.filter((m) => !m.target);
+    const rows = this.buildRows(visible, 30, rowH, 0);
+
+    const attrFilters = ['社員', 'スタダ', 'パート'].map((a) => {
+      const on = this.state.attrSel.indexOf(a) >= 0;
+      return {
+        label: a, count: roster.filter((m) => m.attr === a).length + '人',
+        onClick: () => this.setState((s) => ({ attrSel: on ? s.attrSel.filter((x) => x !== a) : s.attrSel.concat([a]) })),
+        style: { height: '34px', padding: '0 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid ' + (on ? '#248DD4' : '#E5E7EB'), background: on ? '#D1E9F9' : '#fff', color: on ? '#0863A0' : '#374151' }
+      };
+    });
+
+    const targetList = roster.map((m) => ({
+      name: m.name, attr: m.attr,
+      note: m.target ? 'シフト表に表示・登録する' : 'シフト表に出さない（登録もしない）',
+      switchLabel: m.target ? '対象' : '対象外',
+      onClick: () => this.setState((s) => ({ target: Object.assign({}, s.target, { [m.name]: !m.target }) })),
+      style: { minHeight: '52px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', borderBottom: '1px solid #F4F6F8', background: m.target ? '#fff' : '#F9FAFB' },
+      switchStyle: { marginLeft: 'auto', height: '34px', padding: '0 12px', borderRadius: '9999px', border: '1px solid ' + (m.target ? '#248DD4' : '#E5E7EB'), background: m.target ? '#D1E9F9' : '#fff', color: m.target ? '#0863A0' : '#6B7280', fontSize: '13px', fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: 'pointer' },
+      nameStyle: { fontSize: '15px', fontWeight: 700, color: m.target ? '#111827' : '#4B5563' }
+    }));
+
+    const selDays = days.slice(13, 27);
+    const selRows = this.buildRows(this.rosterFor(30).filter((m) => m.target).slice(0, 6), 14, rowH, -1).map((r, ri) => {
+      r.cells = r.cells.map((c, ci) => {
+        const sel = (ri === 0 || ri === 1) && ci >= 3 && ci <= 5;
+        return Object.assign({}, c, {
+          selected: sel,
+          style: Object.assign({}, c.style, { position: 'relative', background: sel ? '#D1E9F9' : c.style.background, boxShadow: sel ? 'inset 0 0 0 2px #248DD4' : 'none' })
+        });
+      });
+      return r;
+    });
+
+    const kindChoices = this.kinds.map((k, i) => ({
+      sym: k.sym, label: k.label,
+      style: { height: '38px', padding: '0 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px', border: i === 0 ? '2px solid #248DD4' : '1px solid #E5E7EB', background: i === 0 ? '#D1E9F9' : '#fff', color: i === 0 ? '#0863A0' : '#374151', fontWeight: 700 }
+    }));
+
+    const mKindChoices = this.kinds.map((k, i) => ({
+      sym: k.sym, label: k.label,
+      style: { minHeight: '48px', padding: '0 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px', border: i === 0 ? '2px solid #248DD4' : '1px solid #E5E7EB', background: i === 0 ? '#D1E9F9' : '#fff', color: i === 0 ? '#0863A0' : '#374151' },
+      symStyle: { width: '30px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, background: 'color-mix(in srgb, ' + k.color + ' 14%, #fff)', border: '1px solid ' + k.color, color: k.color === '#6B7280' ? '#374151' : k.color },
+      checkStyle: { marginLeft: 'auto', fontSize: '16px', fontWeight: 700, color: '#0863A0', visibility: i === 0 ? 'visible' : 'hidden' }
+    }));
+
+    const mDowHeads = dowHead(['日','月','火','水','木','金','土']).map((h) => ({ label: h.label, style: Object.assign({}, h.style, { padding: '6px' }) }));
+    const mMonthCells = [];
+    for (let i = 0; i < 35; i++) {
+      const day = i - 1, w = i % 7, blank = day < 1 || day > 30, isToday = day === 16, sel = day === 17;
+      const dots = [];
+      if (!blank) {
+        const s = this.slotsFor(0, day - 1);
+        s.slice(0, 3).forEach((x) => dots.push({ style: { width: '6px', height: '6px', borderRadius: '50%', background: x.state === 'confirmed' ? x.kind.color : 'color-mix(in srgb, ' + x.kind.color + ' 35%, #fff)', border: x.state === 'confirmed' ? 'none' : '1px solid ' + x.kind.color, boxSizing: 'border-box' } }));
+        if (!s.length) dots.push({ style: { width: '6px', height: '6px', borderRadius: '50%', background: '#fff', border: '1px dotted #C8CDD2', boxSizing: 'border-box' } });
+      }
+      mMonthCells.push({
+        d: blank ? '' : day, dots,
+        dotsStyle: { display: 'flex', gap: '3px', justifyContent: 'center', minHeight: '8px' },
+        dateStyle: { fontSize: '14px', fontWeight: 700, textAlign: 'center', color: blank ? '#C8CDD2' : w === 0 ? '#B0413E' : w === 6 ? '#0863A0' : '#111827' },
+        style: { minHeight: '48px', padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center', borderRight: w < 6 ? '1px solid #F4F6F8' : 'none', borderBottom: '1px solid #F4F6F8', background: sel ? '#D1E9F9' : isToday ? '#FFF6D6' : '#fff', boxShadow: sel ? 'inset 0 0 0 2px #248DD4' : 'none' }
+      });
+    }
+
+    const slotTimes = ['9:00〜11:00', '11:00〜13:00', '13:00〜15:00', '15:00〜17:00', '17:00〜18:30', '18:30〜20:00'];
+    const mMembers = visible.filter((m) => m.target);
+    const mDayRows = mMembers.slice(0, 4).map((mm) => {
+      const mi = mm.i;
+      const s = this.slotsFor(mi, 16);
+      return {
+        name: mm.name,
+        slots: (s.length ? s : [{ kind: this.kinds[0], state: 'none' }]).map((x, si) => ({
+          style: Object.assign(this.chipStyle(x.kind.color, x.state, 24), { width: 'auto', padding: '0 8px', fontSize: '13px', gap: '4px' }),
+          text: x.state === 'none' ? '未回答' : this.chipText(x.kind, x.state) + ' ' + slotTimes[si % slotTimes.length]
+        }))
+      };
+    });
+
+    const mSelRows = [
+      { label: '9月15日（火）出勤 9:00〜18:00', on: true },
+      { label: '9月16日（水）出勤 9:00〜18:00', on: true },
+      { label: '9月17日（木）リモート 14:00〜18:00', on: true },
+      { label: '9月18日（金）確定済み 9:00〜12:00', on: false, locked: true },
+      { label: '9月19日（土）未回答', on: false }
+    ].map((r) => ({
+      label: r.label,
+      check: r.on ? '✓' : '',
+      checkStyle: { width: '24px', height: '24px', borderRadius: '6px', border: '2px solid ' + (r.on ? '#248DD4' : '#C8CDD2'), background: r.on ? '#248DD4' : '#fff', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 24px' },
+      chip: r.locked ? '編集不可' : r.on ? '選択中' : '',
+      chipStyle: { fontSize: '12px', fontWeight: 700, color: r.locked ? '#4B5563' : '#0863A0', background: r.locked ? '#F4F6F8' : r.on ? '#D1E9F9' : 'transparent', borderRadius: '9999px', padding: r.chip === '' ? '0' : '2px 8px' },
+      style: { minHeight: '52px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', border: '1px solid ' + (r.on ? '#248DD4' : '#E5E7EB'), borderRadius: '6px', background: r.on ? '#F4FAFE' : '#fff' }
+    }));
+
+    const attrChips = ['社員','スタダ','パート','新人','夜勤可'].map((l, i) => ({
+      label: l,
+      style: { minHeight: '44px', padding: '0 14px', borderRadius: '9999px', display: 'flex', alignItems: 'center', fontSize: '15px', fontWeight: 700, border: '1px solid ' + (i < 2 ? '#248DD4' : '#E5E7EB'), background: i < 2 ? '#D1E9F9' : '#fff', color: i < 2 ? '#0863A0' : '#374151' }
+    }));
+
+    const stateChoices = [
+      { label: '希望', count: '38枠', on: true },
+      { label: '確定', count: '52枠', on: false },
+      { label: '不可・却下', count: '6枠', on: false },
+      { label: '未回答', count: '14人日', on: true }
+    ].map((s) => ({
+      label: s.label, count: s.count, mark: s.on ? '✓' : '',
+      boxStyle: { width: '24px', height: '24px', borderRadius: '6px', border: '2px solid ' + (s.on ? '#248DD4' : '#C8CDD2'), background: s.on ? '#248DD4' : '#fff', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      style: { minHeight: '48px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', border: '1px solid ' + (s.on ? '#248DD4' : '#E5E7EB'), borderRadius: '6px', background: s.on ? '#F4FAFE' : '#fff' }
+    }));
+
+    const skeletonRows = [1, 2, 3, 4, 5].map((i) => ({ style: { flex: 1, height: '14px', borderRadius: '4px', background: i % 2 ? '#F4F6F8' : '#EFF1F3' } }));
+
+    const i02Rules = [
+      'セルをタップすると詳細が開く。種別の循環や即保存はしない。',
+      '編集は詳細の「編集」から始める。保存するまでカレンダーには反映しない。',
+      '空欄のセルは、日付が入った入力フォームを開くだけ（保存はしない）。',
+      '確定済み・他人の枠も内容は同じ濃さで読める。編集できないことは不透明度で表さず、短い文で理由を書く。',
+      '編集不可の「編集」ボタンは消さずに無効表示で残し、title に理由を入れる。'
+    ];
+
+    const dialogRules = [
+      { tag: 'タイトル', text: '1行・20px/700。何が起きるかを動詞で書く（「5枠を確定しますか？」）。' },
+      { tag: '本文', text: '15px/1.6。対象（氏名・日付・枠数）を必ず含める。取り消せない操作はその旨を書く。' },
+      { tag: 'エラー', text: '本文の下・ボタンの上に置く。ダイアログの外（主画面）には出さない。入力値は保持する。' },
+      { tag: 'ボタン', text: '主＝右端（青・押し込み影 #0863A0）、副＝その左（白）。破壊的操作は主をコーラルにする。' },
+      { tag: 'フォーカス', text: '開いた直後は主ボタンにフォーカス。Tabはダイアログ内で循環し、閉じたら呼び出した要素へ戻す。' },
+      { tag: 'キー', text: 'Escapeで閉じる（未保存があるときは確認）。Enterは主ボタン。' },
+      { tag: '寸法', text: 'PCは幅480px・角丸12px。スマホは下からのシートで、最大高は画面の85%、下端に safe-area-inset-bottom + 16px。' },
+      { tag: '読み上げ', text: 'role="dialog" aria-modal="true"、タイトルを aria-labelledby、エラーは aria-live="polite"。' }
+    ];
+
+    const diff = [
+      ['対象', '現状', '変更後', '理由'],
+      ['日付列（一覧）', '48px', '56px', '2枠を縦に積み、12px以上の記号を並べる'],
+      ['行高（一覧）', '50px', '50px（標準）／40px（コンパクト）', '密度は切替。既定は50pxのまま'],
+      ['行高（全枠展開）', '—', '116px', '最大6枠を16px×6＋余白で全部見せる'],
+      ['氏名列', '132px', '132px（スマホ96px）', '6文字を14pxで省略なしに収める'],
+      ['週の時刻列', '44px', '56px', '「9:00」を12pxで切らずに置く'],
+      ['週の1時間', '32px', '32px', '据え置き。11時間＝352px'],
+      ['週の時刻文字', '8〜9px', '12px', '下限を守る。枠内の氏名は13px'],
+      ['月のメンバーチップ', '52px', '54px', '氏名2文字＋記号を12pxで収める'],
+      ['月セル高', '—', '118px（人ごと）／122px（要約）', '4人分＋「＋n人」が入る高さ'],
+      ['ボタン高', '34/38px', '34/38px（PC）・44/48/52px（スマホ）', '主なタップ対象44pxの目標'],
+      ['詳細パネル', '—', '360px（右固定）／幅1024px未満はシート', 'カレンダーを隠しすぎない'],
+      ['ダイアログ', '—', '480px・角丸12px', 'C1の型に統一']
+    ];
+    const diffTable = [];
+    diff.forEach((r, ri) => r.forEach((t, ci) => diffTable.push({
+      text: t,
+      style: {
+        padding: '10px 12px', fontSize: ri === 0 ? '12px' : '13px', fontWeight: ri === 0 || ci === 0 ? 700 : 400,
+        color: ri === 0 ? '#6B7280' : ci === 3 ? '#4B5563' : '#111827', lineHeight: 1.5,
+        background: ri === 0 ? '#FBFCFD' : ri % 2 ? '#fff' : '#FBFCFD',
+        borderBottom: '1px solid #F1F3F5', borderRight: ci < 3 ? '1px solid #F4F6F8' : 'none'
+      }
+    })));
+
+    const addedColors = [
+      { label: '研修', hex: '#0863A0', note: '既存 --c-blue-deep を流用' },
+      { label: '半休', hex: '#6B7280', note: '既存の文字グレーを流用' },
+      { label: '夜勤', hex: '#7B59A2', note: '新規追加（要確認）' }
+    ].map((a) => Object.assign(a, { swatch: { width: '22px', height: '18px', borderRadius: '4px', background: a.hex, display: 'inline-block' } }));
+
+    const effortPlan = [
+      { title: 'よく使う型（テンプレート）', body: '編集パネルと編集シートの最下部に常設。自分の直近3か月で最も多い組み合わせを「平日9-18」などの名前で1タップ適用。' },
+      { title: '複数日にまとめて適用', body: '同じ入口から「適用先の日を選ぶ」へ。カレンダーで日を複数タップ → 保存1回で反映。確定済みは自動で対象外。' },
+      { title: '先週の同じ曜日をコピー', body: '空欄セルから開いたフォームで最初に出す候補。押すと種別と時刻が埋まり、保存だけで済む。' },
+      { title: '範囲選択（PC）', body: 'ドラッグまたは Shift＋クリックで日×人を選び、P6の操作バーからまとめて編集。選択中も詳細は右パネルで読める。' }
+    ];
+
+    return {
+      memberCountLabel: count + '人', showNotice: this.props.showNotice ?? true,
+      query: this.state.q,
+      onQuery: (e) => this.setState({ q: e.target.value }),
+      onResetFilters: () => this.setState({ q: '', attrSel: [], showEx: false }),
+      onToggleExcludedVisible: () => this.setState((s) => ({ showEx: !s.showEx })),
+      exToggleLabel: this.state.showEx ? '対象外を表示中' : '対象外を表示',
+      exToggleStyle: { height: '34px', padding: '0 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid ' + (this.state.showEx ? '#248DD4' : '#E5E7EB'), background: this.state.showEx ? '#D1E9F9' : '#fff', color: this.state.showEx ? '#0863A0' : '#374151' },
+      attrFilters, targetList,
+      weekPickLabel: weekMembers.length ? '自分＋' + Math.max(0, Math.min(3, weekMembers.length) - 1) + '人' : '対象者なし',
+      pool30Label: '対象' + pool30.length + '人／対象外' + (roster30.length - pool30.length) + '人',
+      isEmpty: visible.length === 0,
+      emptyReason: this.state.attrSel.length && this.state.attrSel.every((a) => a === '社員')
+        ? '「社員」はシフト対象外に設定されているため、この表には出ません。'
+        : '条件に合うメンバーがいません。属性や氏名の条件を外すと表示されます。',
+      shownCountLabel: visible.length + '人',
+      mDayCountLabel: mMembers.length + '人・未回答' + mMembers.filter((m) => !this.slotsFor(m.i, 16).length).length + '人',
+      mRestLabel: Math.max(0, mMembers.length - 4) + '人',
+      hasMRest: mMembers.length > 4,
+      excludedCountLabel: excludedList.length + '人',
+      excludedNames: excludedList.map((m) => m.name).join('・') || 'なし',
+      hasExcluded: excludedList.length > 0,
+      days, legend, rows, dowHeads: dowHead(['日','月','火','水','木','金','土']), monthCells, month30Cells,
+      weekHours, weekCols, selDays, selRows, kindChoices, mKindChoices, mDowHeads, mMonthCells, mDayRows,
+      mSelRows, attrChips, stateChoices, skeletonRows, i02Rules, dialogRules, diffTable, addedColors, effortPlan
+    };
+  }
+}
+</script>
+</body>
+</html>

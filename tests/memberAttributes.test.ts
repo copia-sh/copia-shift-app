@@ -14,6 +14,7 @@ const member = (id: string, attributes: string[]): Member => ({
   color: "#248DD4",
   role: "member",
   active: true,
+  shiftTarget: true,
   attributes,
   joinedAt: null,
 });
