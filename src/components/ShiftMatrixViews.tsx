@@ -158,7 +158,7 @@ export function CalendarNav({
         <button
           type="button"
           onClick={onToday}
-          className="h-[34px] rounded-md border border-[#248DD4] bg-white px-2.5 text-[12px] font-bold text-[#248DD4] shadow-[0_2px_0_0_#D1E9F9] hover:bg-[#D1E9F9] active:translate-y-0.5 active:shadow-none md:px-3.5 md:text-[13px]"
+          className="h-[34px] rounded-md border border-gray-200 bg-white px-2.5 text-[12px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none md:px-3.5 md:text-[13px]"
         >
           今月
         </button>
