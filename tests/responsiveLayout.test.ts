@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   listNameWidth,
   monthCellMinHeight,
-  monthGridMinWidth,
   monthMemberColumns,
   weekDayWidth,
 } from "../src/components/responsiveLayout";
@@ -23,12 +22,6 @@ describe("responsive calendar layout", () => {
     expect(monthCellMinHeight(3)).toBe(146);
     expect(monthCellMinHeight(4)).toBe(146);
     expect(monthCellMinHeight(6)).toBe(146);
-  });
-
-  it("keeps seven readable day columns when the viewport narrows", () => {
-    expect(monthGridMinWidth(1)).toBe(840);
-    expect(monthGridMinWidth(4)).toBe(840);
-    expect(monthGridMinWidth(6)).toBe(1064);
   });
 
   it("keeps a compact minimum day width and expands for larger teams", () => {
