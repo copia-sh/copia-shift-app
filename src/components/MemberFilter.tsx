@@ -69,7 +69,7 @@ export function MemberFilter({
       <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
         表示対象 {visibleCount}人
         {nonTargetCount > 0 && (
-          <span className="ml-1.5 font-normal text-[#9CA3AF]">
+          <span className="ml-1.5 hidden font-normal text-[#9CA3AF] md:inline">
             （シフト表対象外 {nonTargetCount}人）
           </span>
         )}
