@@ -447,7 +447,7 @@ export function ShiftListMatrix({
                 onPointerLeave={hidePeek}
                 onPointerCancel={hidePeek}
                 onContextMenu={(e) => e.preventDefault()}
-                className="sticky left-0 z-10 flex flex-none select-none items-center gap-2 border-r border-gray-200 px-2.5 text-left [-webkit-touch-callout:none]"
+                className="sticky left-0 z-10 flex flex-none select-none items-center gap-1.5 border-r border-gray-200 px-2 text-left md:gap-2 md:px-2.5 [-webkit-touch-callout:none]"
                 style={{
                   width: nameW,
                   boxSizing: "border-box",
@@ -464,7 +464,10 @@ export function ShiftListMatrix({
                     className="block truncate text-[10px] text-gray-400"
                     title={`確定 ${fixedCount}・希望 ${wantCount}`}
                   >
-                    確定{fixedCount}・希望{wantCount}
+                    <span className="md:hidden">登録{fixedCount + wantCount}</span>
+                    <span className="hidden md:inline">
+                      確定{fixedCount}・希望{wantCount}
+                    </span>
                   </span>
                 </span>
               </button>
