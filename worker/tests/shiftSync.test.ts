@@ -102,24 +102,35 @@ describe("buildShiftSyncPayloads", () => {
   });
 });
 
-/** Sheets API のレスポンスを順番に積むヘルパー。 */
-function sheetsFetch(...responses: Response[]) {
-  const impl = vi.fn<typeof fetch>();
-  for (const response of responses) impl.mockResolvedValueOnce(response);
-  return impl;
+/**
+ * Sheets API の代わり。呼ばれた順ではなくURLで応答する。
+ *
+ * 順番に積む方式だと、書き込み先が増えるたびに全テストの件数を直すことになり、
+ * 何を確かめたいテストなのかが読めなくなる。
+ */
+function sheetsFetch(options: { tabs?: string[]; failOn?: (url: string) => number | null } = {}) {
+  const tabs = options.tabs ?? ["シフト同期", "シフト月間表"];
+  return vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    const status = options.failOn?.(url);
+    if (status) return new Response(null, { status });
+    if (url.includes(":clear") || url.includes(":batchUpdate") || url.includes("valueInputOption")) {
+      return new Response("{}", { status: 200 });
+    }
+    return new Response(
+      JSON.stringify({ sheets: tabs.map((title) => ({ properties: { title } })) }),
+      { status: 200 },
+    );
+  });
 }
 
-function tabList(...titles: string[]): Response {
-  const sheets = titles.map((title) => ({ properties: { title } }));
-  return new Response(JSON.stringify({ sheets }), { status: 200 });
-}
-
-const ok = () => new Response("{}", { status: 200 });
+type SheetsFetch = ReturnType<typeof sheetsFetch>;
 
 const SHEET_ID = "1TestSpreadsheetIdForUnitTests_00";
+const MATRIX_SHEET_ID = "1TestMatrixSpreadsheetIdForUnit_01";
 const NOW = new Date("2026-09-09T00:00:00.000Z");
 
-function run(fetchImpl: ReturnType<typeof sheetsFetch>, includeMatrix = false) {
+function run(fetchImpl: SheetsFetch, extra: Partial<Parameters<typeof syncShiftSheet>[0]> = {}) {
   return syncShiftSheet({
     firestore,
     groupId: "g1",
@@ -127,93 +138,84 @@ function run(fetchImpl: ReturnType<typeof sheetsFetch>, includeMatrix = false) {
     accessToken: "token",
     now: NOW,
     fetchImpl,
-    includeMatrix,
+    ...extra,
   });
 }
 
-/** 月間表も書く実行（30分ごとのCron相当） */
-const runWithMatrix = (fetchImpl: ReturnType<typeof sheetsFetch>) => run(fetchImpl, true);
+/** 月間表も書く実行（毎時0分・30分の Cron 相当） */
+const runWithMatrix = (fetchImpl: SheetsFetch, extra = {}) =>
+  run(fetchImpl, { includeMatrix: true, ...extra });
+
+const urlsOf = (fetchImpl: SheetsFetch) => fetchImpl.mock.calls.map(([url]) => String(url));
+
+/** 指定タブへ書き込んだ内容（values）。書いていなければ null。 */
+function writtenValues(fetchImpl: SheetsFetch, title: string, spreadsheetId = SHEET_ID) {
+  const call = fetchImpl.mock.calls.find(
+    ([url]) =>
+      String(url).includes(spreadsheetId) &&
+      String(url).includes(encodeURIComponent(`'${title}'!A1`)),
+  );
+  return call ? (JSON.parse(call[1]?.body as string).values as string[][]) : null;
+}
 
 describe("syncShiftSheet", () => {
-  it("clears the whole data range, then writes a JST timestamped table", async () => {
-    const fetchImpl = sheetsFetch(tabList("シフト同期"), ok(), ok());
+  it("列全体を消してから、JSTの更新日時つきで一覧を書く", async () => {
+    const fetchImpl = sheetsFetch();
 
     await expect(run(fetchImpl)).resolves.toEqual({ rowCount: 16, matrixRowCount: 0 });
 
-    const urls = fetchImpl.mock.calls.map(([url]) => String(url));
     // 行数が減ったときに古い行が残らないよう、行数を決め打ちせず列全体を消す。
-    expect(urls[1]).toContain(encodeURIComponent("'シフト同期'!A:G"));
-    expect(urls[1]).toContain(":clear");
-    expect(fetchImpl.mock.calls[1][1]).toMatchObject({ method: "POST" });
+    const clear = fetchImpl.mock.calls.find(([url]) => String(url).includes(":clear"));
+    expect(String(clear?.[0])).toContain(encodeURIComponent("'シフト同期'!A:G"));
+    expect(clear?.[1]).toMatchObject({ method: "POST" });
 
-    const [writeUrl, writeInit] = fetchImpl.mock.calls[2];
-    expect(String(writeUrl)).toContain(encodeURIComponent("'シフト同期'!A1"));
-    expect(writeInit).toMatchObject({ method: "PUT" });
-    const rows = JSON.parse(writeInit?.body as string).values;
-    expect(rows[0]).toEqual(["更新日時", "日付", "氏名", "勤務開始", "勤務終了", "勤務区分", "同期状態"]);
-    expect(rows[1]).toEqual(["2026-09-09 09:00:00 JST", "2026-09-09", "田村 駿貴", "10:00", "18:00", "出勤", "同期済み"]);
+    const rows = writtenValues(fetchImpl, "シフト同期");
+    expect(rows?.[0]).toEqual(["更新日時", "日付", "氏名", "勤務開始", "勤務終了", "勤務区分", "同期状態"]);
+    expect(rows?.[1]).toEqual(["2026-09-09 09:00:00 JST", "2026-09-09", "田村 駿貴", "10:00", "18:00", "出勤", "同期済み"]);
   });
 
-  it("creates the シフト同期 tab when the spreadsheet does not have one yet", async () => {
-    // 初回有効化時にタブが無いと、書き込みが400で落ちる。無ければ作ってから進む。
-    const fetchImpl = sheetsFetch(tabList("更新履歴"), ok(), ok(), ok(), ok(), ok());
+  it("タブが無ければ作る（初回は書き込みが400で落ちるため）", async () => {
+    const fetchImpl = sheetsFetch({ tabs: ["更新履歴"] });
 
     await expect(runWithMatrix(fetchImpl)).resolves.toEqual({ rowCount: 16, matrixRowCount: 2 });
 
-    const [addUrl, addInit] = fetchImpl.mock.calls[1];
-    expect(String(addUrl)).toContain(":batchUpdate");
-    const body = JSON.parse(addInit?.body as string);
-    expect(body.requests.map((request: { addSheet: { properties: { title: string } } }) => request.addSheet.properties.title)).toEqual([
-      "シフト同期",
-      "シフト月間表",
-    ]);
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    const added = fetchImpl.mock.calls
+      .filter(([url]) => String(url).includes(":batchUpdate"))
+      .flatMap(([, init]) => JSON.parse(init?.body as string).requests)
+      .map((request: { addSheet: { properties: { title: string } } }) => request.addSheet.properties.title);
+    expect(added).toEqual(["シフト同期", "シフト月間表"]);
   });
 
-  it("月間表タブだけが無ければ、それだけを作る", async () => {
-    // 一覧の読み取り → タブ追加 → 一覧のclear/write → 月間表のclear/write
-    const fetchImpl = sheetsFetch(tabList("シフト同期"), ok(), ok(), ok(), ok(), ok());
+  it("タブが揃っていれば作らない", async () => {
+    const fetchImpl = sheetsFetch();
 
     await runWithMatrix(fetchImpl);
 
-    const body = JSON.parse(fetchImpl.mock.calls[1][1]?.body as string);
-    expect(body.requests).toHaveLength(1);
-    expect(body.requests[0].addSheet.properties.title).toBe("シフト月間表");
-  });
-
-  it("does not create the tab when it already exists", async () => {
-    const fetchImpl = sheetsFetch(tabList("更新履歴", "シフト同期", "シフト月間表"), ok(), ok(), ok(), ok());
-
-    await runWithMatrix(fetchImpl);
-
-    expect(fetchImpl.mock.calls.map(([url]) => String(url)).some((url) => url.includes(":batchUpdate"))).toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    expect(urlsOf(fetchImpl).some((url) => url.includes(":batchUpdate"))).toBe(false);
   });
 
   it("月間表を書かない実行では、月間表タブに触れない", async () => {
-    const fetchImpl = sheetsFetch(tabList("シフト同期", "シフト月間表"), ok(), ok());
+    const fetchImpl = sheetsFetch();
 
     await expect(run(fetchImpl)).resolves.toEqual({ rowCount: 16, matrixRowCount: 0 });
 
-    const urls = fetchImpl.mock.calls.map(([url]) => String(url));
-    expect(urls.some((url) => url.includes(encodeURIComponent("シフト月間表")))).toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(urlsOf(fetchImpl).some((url) => url.includes(encodeURIComponent("シフト月間表")))).toBe(false);
   });
 
   it("メンバー×日付の月間表を、30日分の別タブへ書く", async () => {
-    const fetchImpl = sheetsFetch(tabList("シフト同期", "シフト月間表"), ok(), ok(), ok(), ok());
+    const fetchImpl = sheetsFetch();
 
     await runWithMatrix(fetchImpl);
 
-    const [clearUrl] = fetchImpl.mock.calls[3];
-    expect(String(clearUrl)).toContain(encodeURIComponent("'シフト月間表'!A:AE"));
+    const clear = fetchImpl.mock.calls.find(
+      ([url]) => String(url).includes(":clear") && String(url).includes(encodeURIComponent("シフト月間表")),
+    );
+    expect(String(clear?.[0])).toContain(encodeURIComponent("'シフト月間表'!A:AE"));
 
-    const [writeUrl, writeInit] = fetchImpl.mock.calls[4];
-    expect(String(writeUrl)).toContain(encodeURIComponent("'シフト月間表'!A1"));
-    const rows = JSON.parse(writeInit?.body as string).values;
-
+    const rows = writtenValues(fetchImpl, "シフト月間表")!;
     expect(rows[0][0]).toBe("更新日時");
     expect(rows[0][1]).toBe("2026-09-09 09:00:00 JST");
+
     // 2行目は日付。30日分ぶん並ぶ
     expect(rows[1][0]).toBe("氏名");
     expect(rows[1]).toHaveLength(31);
@@ -221,7 +223,7 @@ describe("syncShiftSheet", () => {
     expect(rows[1][30]).toBe("10/8(木)");
 
     // 3行目以降が1人1行。シフト表対象外・退会者は出ない
-    expect(rows.slice(2).map((row: string[]) => row[0])).toEqual(["田村 駿貴", "曽根"]);
+    expect(rows.slice(2).map((row) => row[0])).toEqual(["田村 駿貴", "曽根"]);
     expect(rows[2][1]).toBe("10:00-18:00");
     // 同じ日の複数枠はカンマ区切り。リモートは (リ) を付ける
     expect(rows[2][2]).toBe("9:00-13:00,14:00-18:00(リ)");
@@ -229,31 +231,59 @@ describe("syncShiftSheet", () => {
     expect(rows[3][3]).toBe("");
   });
 
-  it("fails loudly when the spreadsheet cannot be read", async () => {
-    const fetchImpl = sheetsFetch(new Response(null, { status: 403 }));
+  it("単体スプレッドシートが設定されていれば、同じ月間表をそちらにも書く", async () => {
+    const fetchImpl = sheetsFetch();
+
+    await runWithMatrix(fetchImpl, { matrixSpreadsheetId: MATRIX_SHEET_ID });
+
+    // 片方だけ古い内容が残ると、共有先が誤った予定を見ることになる
+    const shared = writtenValues(fetchImpl, "シフト月間表", MATRIX_SHEET_ID);
+    expect(shared).toEqual(writtenValues(fetchImpl, "シフト月間表"));
+    expect(shared?.[1]).toHaveLength(31);
+  });
+
+  it("単体スプレッドシートには一覧タブを書かない（共有用に月間表だけ置く）", async () => {
+    const fetchImpl = sheetsFetch();
+
+    await runWithMatrix(fetchImpl, { matrixSpreadsheetId: MATRIX_SHEET_ID });
+
+    expect(writtenValues(fetchImpl, "シフト同期", MATRIX_SHEET_ID)).toBeNull();
+  });
+
+  it("月間表を書かない実行では、単体スプレッドシートにも触れない", async () => {
+    const fetchImpl = sheetsFetch();
+
+    await run(fetchImpl, { matrixSpreadsheetId: MATRIX_SHEET_ID });
+
+    expect(urlsOf(fetchImpl).some((url) => url.includes(MATRIX_SHEET_ID))).toBe(false);
+  });
+
+  it("単体スプレッドシートのIDが不正なら書かない", async () => {
+    const fetchImpl = sheetsFetch();
+
+    await expect(
+      runWithMatrix(fetchImpl, { matrixSpreadsheetId: "../../etc/passwd" }),
+    ).rejects.toThrow("invalid_matrix_spreadsheet_id");
+  });
+
+  it("読み取りに失敗したら落ちる（黙って古い表を残さない）", async () => {
+    const fetchImpl = sheetsFetch({ failOn: (url) => (url.includes(":clear") ? null : 403) });
 
     await expect(run(fetchImpl)).rejects.toThrow(/403/);
   });
 
-  it("fails loudly when the write is rejected", async () => {
-    const fetchImpl = sheetsFetch(tabList("シフト同期"), ok(), new Response(null, { status: 500 }));
+  it("書き込みを拒否されたら落ちる", async () => {
+    const fetchImpl = sheetsFetch({ failOn: (url) => (url.includes("valueInputOption") ? 500 : null) });
 
     await expect(run(fetchImpl)).rejects.toThrow(/500/);
   });
 
-  it("rejects a spreadsheet id that is not a plausible Google file id, before any request", async () => {
+  it("Googleのファイルidとして通らない値は、1度も通信せずに弾く", async () => {
     const fetchImpl = sheetsFetch();
 
-    await expect(
-      syncShiftSheet({
-        firestore,
-        groupId: "g1",
-        spreadsheetId: "../../etc/passwd",
-        accessToken: "token",
-        now: NOW,
-        fetchImpl,
-      }),
-    ).rejects.toThrow("invalid_spreadsheet_id");
+    await expect(run(fetchImpl, { spreadsheetId: "../../etc/passwd" })).rejects.toThrow(
+      "invalid_spreadsheet_id",
+    );
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

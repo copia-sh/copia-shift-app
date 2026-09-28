@@ -52,6 +52,8 @@ export interface Env {
   MCP_API_TOKEN?: string;
   /** Google Sheets へ同期する更新履歴スプレッドシート。 */
   SHIFT_SYNC_SPREADSHEET_ID?: string;
+  /** 月間表だけを置く単体スプレッドシート。未設定なら作らない */
+  SHIFT_MATRIX_SPREADSHEET_ID?: string;
   /** `"true"` のときだけ毎時のスプレッドシート同期を有効にする。 */
   SHIFT_SYNC_ENABLED?: string;
 }
@@ -122,6 +124,7 @@ async function handleScheduledSync(env: Env, includeMatrix = false): Promise<voi
       spreadsheetId,
       accessToken: sheetsToken,
       includeMatrix,
+      matrixSpreadsheetId: env.SHIFT_MATRIX_SPREADSHEET_ID,
     });
     console.info(
       `copia-shift-ics-feed: shift sync completed (${result.rowCount} rows, ${result.matrixRowCount} members)`,
