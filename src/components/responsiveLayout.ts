@@ -9,6 +9,10 @@ export function monthCellMinHeight(memberCount: number, comfortable = false): nu
   return 38 + rows * (comfortable ? 56 : 52) + Math.max(0, rows - 1) * 4;
 }
 
+export function monthGridMinWidth(memberCount: number): number {
+  return memberCount > 4 ? 1064 : 840;
+}
+
 export function weekDayWidth(memberCount: number): number {
   return Math.max(76, 30 * Math.max(1, memberCount));
 }

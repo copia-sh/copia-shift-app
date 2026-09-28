@@ -24,7 +24,7 @@ import {
 } from "./shiftVisual";
 import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
-import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
+import { listNameWidth, monthCellMinHeight, monthGridMinWidth, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
 import { REJECTED_TYPE } from "../types";
 import { formatHours, summarizeWorkHours, type WorkHoursSummary } from "./workHours";
 import type { GroupSettings, Member, Shift, Group } from "../types";
@@ -593,11 +593,12 @@ export function ShiftMonthGrid({
   const unavailableKeys = theme?.unavailableKeys ?? new Set();
   const memberColumns = monthMemberColumns(members.length);
   const cellMinHeight = monthCellMinHeight(members.length, comfy);
+  const minWidth = monthGridMinWidth(members.length);
 
   const dowLabels = dowLabelsFrom(settings.weekStartsOn);
   return (
-    <>
-    <div className="hidden border-t border-gray-200 md:block">
+    <div className="overflow-x-auto border-t border-gray-200">
+      <div style={{ minWidth }}>
       <div className="grid grid-cols-7 border-b border-gray-200 bg-[#FBFCFD]">
         {dowLabels.map((l, i) => {
           const actualDow = (i + settings.weekStartsOn) % 7;
@@ -752,138 +753,7 @@ export function ShiftMonthGrid({
           })}
         </div>
       ))}
-    </div>
-    <MobileMonthGrid
-      anchorDate={anchorDate}
-      members={members}
-      shifts={shifts}
-      currentMemberId={currentMemberId}
-      mode={mode}
-      selected={selected}
-      settings={settings}
-      theme={theme}
-      onCellTap={onCellTap}
-      onToggleMany={onToggleMany}
-      showTimes={showTimes}
-    />
-    </>
-  );
-}
-
-function MobileMonthGrid({
-  anchorDate,
-  members,
-  shifts,
-  currentMemberId,
-  mode,
-  selected,
-  settings,
-  theme,
-  onCellTap,
-  onToggleMany,
-  showTimes = true,
-}: ViewCommon) {
-  const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
-  const byKey = useStateMap(shifts);
-  const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const today = new Date();
-  const bulkHeaders = mode !== "single";
-
-  return (
-    <div className="space-y-2 md:hidden">
-      {days.map((day) => {
-        const dateKey = toDateKey(day);
-        const dow = day.getDay();
-        const isToday = isSameDate(day, today);
-        const states = members.map((member) =>
-          primaryCellState(cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys)),
-        );
-        const fixed = states.filter((state) => state.kind === "fixed").length;
-        return (
-          <section
-            key={dateKey}
-            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
-            style={{ boxShadow: isToday ? "inset 3px 0 0 0 #F9E428" : undefined }}
-          >
-            <div className="flex items-center justify-between border-b border-gray-100 bg-[#FBFCFD] px-3 py-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[16px] font-bold text-gray-900">{day.getDate()}日</span>
-                <span
-                  className="text-[11px] font-bold"
-                  style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}
-                >
-                  {DOW_LABELS[dow]}
-                </span>
-                {isToday && <span className="rounded-full bg-[#248DD4] px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
-              </div>
-              <button
-                type="button"
-                disabled={!bulkHeaders}
-                onClick={() =>
-                  onToggleMany(
-                    members
-                      .filter((member, index) => canTapCell(mode, member.id, currentMemberId, states[index]))
-                      .map((member) => selKey(member.id, dateKey)),
-                  )
-                }
-                className="text-[11px] font-bold text-gray-400"
-              >
-                確定 {fixed}
-              </button>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {members.map((member, memberIndex) => {
-                const allStates = cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys);
-                const state = states[memberIndex];
-                const key = selKey(member.id, dateKey);
-                const isSelected = selected.has(key);
-                const tappable = canTapCell(mode, member.id, currentMemberId, state);
-                const boxes = cellBoxes(allStates, settings.displayStartHour, settings.displayEndHour);
-                const skin = theme ? theme.skinFor(state, isSelected) : null;
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    disabled={!tappable}
-                    onClick={() => onCellTap(key, state)}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
-                  >
-                    <span className="flex w-[96px] flex-none items-center gap-2">
-                      <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: member.color }} />
-                      <span className="truncate text-[12px] font-bold text-gray-800">{member.displayName}</span>
-                    </span>
-                    <span className="relative flex h-9 min-w-0 flex-1 gap-px overflow-hidden rounded-md">
-                      {boxes.length === 0 ? (
-                        <span className="flex h-full w-full items-center justify-center rounded-md border" style={skin ? skinStyle(skin) : {}}>
-                          {isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                          <span className="text-[12px] font-bold" style={{ color: skin?.fg }}>{skin?.mark ?? "·"}</span>
-                        </span>
-                      ) : (
-                        boxes.map((box, index) => {
-                          const boxSkin = theme ? theme.skinFor(box.state, isSelected) : null;
-                          return (
-                            <span
-                              key={index}
-                              className="flex min-w-0 items-center justify-center gap-1 overflow-hidden rounded border px-1"
-                              style={{ flexBasis: 0, flexGrow: box.widthPct, ...(boxSkin ? skinStyle(boxSkin) : {}) }}
-                            >
-                              <span className="text-[11px] font-bold" style={{ color: boxSkin?.fg }}>{boxSkin?.mark}</span>
-                              {showTimes && box.widthPct >= 28 && (
-                                <span className="truncate text-[9px] font-bold" style={{ color: boxSkin?.fg }}>{shortRange(box.state)}</span>
-                              )}
-                            </span>
-                          );
-                        })
-                      )}
-                      {boxes.length > 0 && isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+      </div>
     </div>
   );
 }
