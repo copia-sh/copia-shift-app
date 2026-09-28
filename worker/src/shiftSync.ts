@@ -33,6 +33,13 @@ export interface SyncShiftSheetParams {
    * 人が読む月間表だけ頻度を落とす（README「読み取り量の目安」）。
    */
   includeMatrix?: boolean;
+  /**
+   * 月間表だけを置く単体スプレッドシートのID。
+   *
+   * 他チームへ渡すのに、運用用の更新履歴シートごと共有せずに済ませるため。
+   * 未設定なら書かない（同じ内容が `シフト月間表` タブには入る）。
+   */
+  matrixSpreadsheetId?: string;
 }
 
 function jstTimestamp(now: Date): string {
@@ -117,6 +124,32 @@ async function replaceSheetValues({
   );
 }
 
+const spreadsheetUrl = (id: string) =>
+  `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}`;
+
+/** 月間表タブを用意して丸ごと置換する。複数のスプレッドシートへ同じ表を書くために使う。 */
+async function writeMatrix({
+  baseUrl,
+  headers,
+  fetchImpl,
+  values,
+}: {
+  baseUrl: string;
+  headers: Record<string, string>;
+  fetchImpl: typeof fetch;
+  values: string[][];
+}): Promise<void> {
+  await ensureSheetExists(baseUrl, headers, fetchImpl, [MATRIX_SHEET_TITLE]);
+  await replaceSheetValues({
+    baseUrl,
+    headers,
+    fetchImpl,
+    title: MATRIX_SHEET_TITLE,
+    range: `A:${MATRIX_LAST_COLUMN}`,
+    values,
+  });
+}
+
 /**
  * 月間表の1セル。同じ日に複数の枠があればカンマ区切りで並べる。
  *
@@ -153,6 +186,7 @@ export async function syncShiftSheet({
   now = new Date(),
   fetchImpl = fetch,
   includeMatrix = false,
+  matrixSpreadsheetId,
 }: SyncShiftSheetParams): Promise<{ rowCount: number; matrixRowCount: number }> {
   if (!SPREADSHEET_ID.test(spreadsheetId)) throw new Error("invalid_spreadsheet_id");
 
@@ -181,15 +215,10 @@ export async function syncShiftSheet({
   // 表の行の並びは同期のたびに変わらない。
   const names = [...new Set(shifts.map((shift) => shift.name))];
 
-  const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`;
+  const baseUrl = spreadsheetUrl(spreadsheetId);
   const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
 
-  await ensureSheetExists(
-    baseUrl,
-    headers,
-    fetchImpl,
-    includeMatrix ? [SHEET_TITLE, MATRIX_SHEET_TITLE] : [SHEET_TITLE],
-  );
+  await ensureSheetExists(baseUrl, headers, fetchImpl, [SHEET_TITLE]);
 
   await replaceSheetValues({
     baseUrl,
@@ -206,14 +235,21 @@ export async function syncShiftSheet({
       .map((shift) => [matrixKey(shift.name, shift.date), matrixCell(shift)] as const)
       .filter(([, cell]) => cell !== ""),
   );
-  await replaceSheetValues({
-    baseUrl,
-    headers,
-    fetchImpl,
-    title: MATRIX_SHEET_TITLE,
-    range: `A:${MATRIX_LAST_COLUMN}`,
-    values: buildShiftMatrix({ dates, names, cells, updatedAt }),
-  });
+  const matrix = buildShiftMatrix({ dates, names, cells, updatedAt });
+
+  await writeMatrix({ baseUrl, headers, fetchImpl, values: matrix });
+
+  // 単体スプレッドシートにも同じ表を置く。運用用シートごと他チームへ共有せずに
+  // 済ませるため。未設定なら何もしない。
+  if (matrixSpreadsheetId) {
+    if (!SPREADSHEET_ID.test(matrixSpreadsheetId)) throw new Error("invalid_matrix_spreadsheet_id");
+    await writeMatrix({
+      baseUrl: spreadsheetUrl(matrixSpreadsheetId),
+      headers,
+      fetchImpl,
+      values: matrix,
+    });
+  }
 
   return { rowCount: listRows.length, matrixRowCount: names.length };
 }
