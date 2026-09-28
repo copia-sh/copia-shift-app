@@ -14,5 +14,5 @@ export function weekDayWidth(memberCount: number): number {
 }
 
 export function listNameWidth(viewportWidth: number): number {
-  return viewportWidth < 768 ? 88 : 148;
+  return viewportWidth < 768 ? 70 : 148;
 }
