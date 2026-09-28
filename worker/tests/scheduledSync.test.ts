@@ -15,8 +15,6 @@ async function generateServiceAccountJson(): Promise<string> {
 }
 
 const controller = { scheduledTime: 0, cron: "*/5 * * * *", noRetry: () => {} } as unknown as ScheduledController;
-/** 月間表も書く実行。`worker/wrangler.toml` の2本目の Cron に対応する。 */
-const matrixController = { ...controller, cron: "*/30 * * * *" } as unknown as ScheduledController;
 const ctx = {
   waitUntil: () => {},
   passThroughOnException: () => {},
@@ -95,7 +93,8 @@ describe("scheduled shift sync", () => {
     expect(sheetsUrls.some((url) => url.includes("?valueInputOption=RAW"))).toBe(true);
   });
 
-  it("5分ごとの実行では月間表タブを書かない（30日分の読み取りを毎回行わない）", async () => {
+  it("0分・30分以外の実行では月間表タブを書かない（30日分の読み取りを毎回行わない）", async () => {
+    vi.setSystemTime(new Date("2026-09-28T02:05:00Z"));
     const fetchMock = stubFetch(sheetsOk);
     vi.stubGlobal("fetch", fetchMock);
 
@@ -103,16 +102,43 @@ describe("scheduled shift sync", () => {
 
     const urls = fetchMock.mock.calls.map(([input]) => String(input));
     expect(urls.some((url) => url.includes(encodeURIComponent("シフト月間表")))).toBe(false);
+    vi.useRealTimers();
   });
 
-  it("30分ごとの実行では月間表タブも書く", async () => {
+  it.each(["2026-09-28T02:00:00Z", "2026-09-28T02:30:00Z"])(
+    "%s の実行では月間表タブも書く",
+    async (time) => {
+      vi.setSystemTime(new Date(time));
+      const fetchMock = stubFetch(sheetsOk);
+      vi.stubGlobal("fetch", fetchMock);
+
+      await worker.scheduled(controller, env, ctx);
+
+      const urls = fetchMock.mock.calls.map(([input]) => String(input));
+      expect(urls.some((url) => url.includes(encodeURIComponent("シフト月間表")))).toBe(true);
+      vi.useRealTimers();
+    },
+  );
+
+  it("手動起動では時刻によらず月間表も書く（今すぐ全部更新したいときに使うため）", async () => {
+    vi.setSystemTime(new Date("2026-09-28T02:07:00Z"));
     const fetchMock = stubFetch(sheetsOk);
     vi.stubGlobal("fetch", fetchMock);
+    env.SHIFT_SYNC_TRIGGER_TOKEN = "a".repeat(64);
 
-    await worker.scheduled(matrixController, env, ctx);
+    const response = await worker.fetch(
+      new Request("https://example.com/agent/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.SHIFT_SYNC_TRIGGER_TOKEN}` },
+      }),
+      env,
+      ctx,
+    );
 
+    expect(response.status).toBe(200);
     const urls = fetchMock.mock.calls.map(([input]) => String(input));
     expect(urls.some((url) => url.includes(encodeURIComponent("シフト月間表")))).toBe(true);
+    vi.useRealTimers();
   });
 
   it("rejects so the cron run is reported as failed when Sheets errors", async () => {

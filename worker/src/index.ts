@@ -7,8 +7,17 @@ import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShift
 import { handleMcpRequest } from "./mcp";
 import { syncShiftSheet } from "./shiftSync";
 
-/** 月間表も書く実行の Cron 式。`worker/wrangler.toml` の triggers と一致させる。 */
-const MATRIX_CRON = "*/30 * * * *";
+/**
+ * 月間表（30日分）も書く分。毎時0分と30分の実行だけ。
+ *
+ * Cron式の文字列一致では判定しない。Cloudflareが返す `controller.cron` の表記に
+ * 依存するうえ、5分ごとと30分ごとのCronを両方登録すると、0分・30分に二重で発火する。
+ * 実行時刻で決めれば、Cronは1本で済み、表記にも左右されない。
+ */
+export function shouldIncludeMatrix(now: Date): boolean {
+  const minutes = now.getUTCMinutes();
+  return minutes === 0 || minutes === 30;
+}
 
 export interface Env {
   SHIFT_SYNC_TRIGGER_TOKEN?: string;
@@ -239,7 +248,8 @@ export default {
       if (env.SHIFT_SYNC_ENABLED !== "true" || !token || !isTokenStrongEnough(token)) return notFound();
       if (!(await isAuthorizedAgentRequest(request.headers.get("Authorization"), token))) return jsonError(401, "unauthorized");
       try {
-        await handleScheduledSync(env);
+        // 手動起動は「今すぐ全部更新したい」ときに使うので、月間表も書く。
+        await handleScheduledSync(env, true);
         return jsonResponse(200, { ok: true });
       } catch {
         return jsonError(500, "sync_failed");
@@ -260,8 +270,8 @@ export default {
   },
   // waitUntil ではなく await する。waitUntil だと同期の成否に関わらず実行が成功扱いになり、
   // Cron の実行履歴から失敗を読み取れない。
-  async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-    // 30分ごとの実行でだけ月間表（30日分）を書く。5分ごとの実行は8日分の一覧だけ。
-    await handleScheduledSync(env, controller.cron === MATRIX_CRON);
+  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    // 0分・30分の実行でだけ月間表（30日分）を書く。ほかは8日分の一覧だけ。
+    await handleScheduledSync(env, shouldIncludeMatrix(new Date()));
   },
 };
