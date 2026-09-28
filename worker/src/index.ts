@@ -7,7 +7,11 @@ import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShift
 import { handleMcpRequest } from "./mcp";
 import { syncShiftSheet } from "./shiftSync";
 
+/** 月間表も書く実行の Cron 式。`worker/wrangler.toml` の triggers と一致させる。 */
+const MATRIX_CRON = "*/30 * * * *";
+
 export interface Env {
+  SHIFT_SYNC_TRIGGER_TOKEN?: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_SERVICE_ACCOUNT_KEY: string;
   /**
@@ -84,8 +88,12 @@ async function connectFirestore(env: Env): Promise<FirestoreClient> {
   });
 }
 
-/** Cloudflare Cron から `シフト同期` タブを更新する。通常のHTTP経路からは起動できない。 */
-async function handleScheduledSync(env: Env): Promise<void> {
+/**
+ * Cloudflare Cron からスプレッドシートを更新する。通常のHTTP経路からは起動できない。
+ *
+ * `includeMatrix` は30日分を読むため、毎回は実行しない（Firestoreの無料枠を超える）。
+ */
+async function handleScheduledSync(env: Env, includeMatrix = false): Promise<void> {
   if (env.SHIFT_SYNC_ENABLED !== "true") return;
   const groupId = env.AGENT_GROUP_ID;
   const spreadsheetId = env.SHIFT_SYNC_SPREADSHEET_ID;
@@ -99,8 +107,16 @@ async function handleScheduledSync(env: Env): Promise<void> {
       connectFirestore(env),
       fetchAccessToken(account, { scopes: [SPREADSHEETS_SCOPE] }),
     ]);
-    const result = await syncShiftSheet({ firestore, groupId, spreadsheetId, accessToken: sheetsToken });
-    console.info(`copia-shift-ics-feed: shift sync completed (${result.rowCount} rows)`);
+    const result = await syncShiftSheet({
+      firestore,
+      groupId,
+      spreadsheetId,
+      accessToken: sheetsToken,
+      includeMatrix,
+    });
+    console.info(
+      `copia-shift-ics-feed: shift sync completed (${result.rowCount} rows, ${result.matrixRowCount} members)`,
+    );
   } catch (error) {
     console.error("copia-shift-ics-feed: shift sync failed", error);
     // 握りつぶすと Cloudflare の Cron 実行履歴が常に成功と表示され、
@@ -218,6 +234,17 @@ async function handleMcp(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/agent/sync" && request.method === "POST") {
+      const token = env.SHIFT_SYNC_TRIGGER_TOKEN;
+      if (env.SHIFT_SYNC_ENABLED !== "true" || !token || !isTokenStrongEnough(token)) return notFound();
+      if (!(await isAuthorizedAgentRequest(request.headers.get("Authorization"), token))) return jsonError(401, "unauthorized");
+      try {
+        await handleScheduledSync(env);
+        return jsonResponse(200, { ok: true });
+      } catch {
+        return jsonError(500, "sync_failed");
+      }
+    }
 
     if (url.pathname === MCP_PATH) return handleMcp(request, env);
     if (request.method !== "GET") return notFound();
@@ -233,7 +260,8 @@ export default {
   },
   // waitUntil ではなく await する。waitUntil だと同期の成否に関わらず実行が成功扱いになり、
   // Cron の実行履歴から失敗を読み取れない。
-  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-    await handleScheduledSync(env);
+  async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    // 30分ごとの実行でだけ月間表（30日分）を書く。5分ごとの実行は8日分の一覧だけ。
+    await handleScheduledSync(env, controller.cron === MATRIX_CRON);
   },
 };

@@ -34,6 +34,19 @@ export function toActiveMember(member: FirestoreDocument): ActiveMember[] {
 }
 
 /**
+ * シフト表に載せるメンバーだけを返す。
+ *
+ * 在籍している(active)ことと、シフトを登録する人である(shiftTarget)ことは別の設定。
+ * 社員のように希望を出さない人は在籍したままシフト表から外れる。
+ * 既存ドキュメントには shiftTarget が無いので、`false` のときだけ除く
+ * (未設定は対象として扱う。アプリ側の既定値と揃える)。
+ */
+export function toShiftTargetMember(member: FirestoreDocument): ActiveMember[] {
+  if (member.data.shiftTarget === false) return [];
+  return toActiveMember(member);
+}
+
+/**
  * 在籍中(active)のメンバーの中から、氏名が一致する1名を特定する。
  *
  * 同姓同名が2件以上あるときは、どちらか一方を選ぶと他人のシフトを本人へ返してしまうため、

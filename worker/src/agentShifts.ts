@@ -1,6 +1,6 @@
 import { DEFAULT_SHIFT_TYPES } from "../../src/types";
 import type { FirestoreClient } from "./firestoreRest";
-import { findActiveMemberByName, toActiveMember } from "./memberName";
+import { findActiveMemberByName, toShiftTargetMember } from "./memberName";
 import { isValidPathSegment } from "./pathSegment";
 
 const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -163,6 +163,8 @@ export interface ShiftSyncPayload {
   workStart: string | null;
   workEnd: string | null;
   labels: string[];
+  /** 月間表のセルを組み立てるための、時刻つきの枠一覧 */
+  segments: AgentShiftSegment[];
 }
 
 /**
@@ -194,7 +196,8 @@ export async function buildShiftSyncPayloads({
       { field: "date", op: "<=", value: uniqueDates.at(-1) as string },
     ]),
   ]);
-  const members = memberDocs.flatMap(toActiveMember);
+  // シフト表対象外のメンバーは同期にも出さない。アプリの画面と対象を揃える。
+  const members = memberDocs.flatMap(toShiftTargetMember);
   const memberIds = new Set(members.map((member) => member.memberId));
   const datesSet = new Set(uniqueDates);
   const segmentsByMemberAndDate = new Map<string, AgentShiftSegment[]>();
@@ -212,7 +215,13 @@ export async function buildShiftSyncPayloads({
   return uniqueDates.flatMap((date) =>
     members.map((member) => {
       const segments = (segmentsByMemberAndDate.get(`${member.memberId}\u0000${date}`) ?? []).sort(compareSegments);
-      return { date, name: member.displayName, ...workWindow(segments), labels: segments.map((segment) => segment.label) };
+      return {
+        date,
+        name: member.displayName,
+        ...workWindow(segments),
+        labels: segments.map((segment) => segment.label),
+        segments,
+      };
     }),
   );
 }
