@@ -32,8 +32,8 @@ describe("responsive calendar layout", () => {
   });
 
   it("reduces the sticky member column below the tablet breakpoint", () => {
-    expect(listNameWidth(375)).toBe(96);
-    expect(listNameWidth(767)).toBe(96);
-    expect(listNameWidth(768)).toBe(132);
+    expect(listNameWidth(375)).toBe(120);
+    expect(listNameWidth(767)).toBe(120);
+    expect(listNameWidth(768)).toBe(148);
   });
 });

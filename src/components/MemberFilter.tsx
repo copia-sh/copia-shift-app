@@ -66,7 +66,7 @@ export function MemberFilter({
   return (
     <div className="mx-auto flex max-w-[1400px] flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 md:flex-wrap md:overflow-visible md:px-5 md:pb-3">
       {/* 絞り込みで減ったのか、そもそも対象外なのかを分けて出す。 */}
-      <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
+      <span className="mr-1 flex-none whitespace-nowrap text-[15px] font-bold text-[#6B7280] md:text-[14px]">
         表示対象 {visibleCount}人
         {nonTargetCount > 0 && (
           <span className="ml-1.5 font-normal text-[#9CA3AF]">

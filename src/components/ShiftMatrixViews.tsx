@@ -456,12 +456,15 @@ export function ShiftListMatrix({
                 }}
               >
                 <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: mem.color }} />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-bold text-gray-900">
                     {mem.displayName}
                   </span>
-                  <span className="block whitespace-nowrap text-[10px] text-gray-400">
-                    確定 {fixedCount} ・ 希望 {wantCount}
+                  <span
+                    className="block truncate text-[10px] text-gray-400"
+                    title={`確定 ${fixedCount}・希望 ${wantCount}`}
+                  >
+                    確定{fixedCount}・希望{wantCount}
                   </span>
                 </span>
               </button>
