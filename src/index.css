@@ -52,3 +52,10 @@ body {
 #root {
   min-height: 100svh;
 }
+
+/* 34px の操作ボタンの約 1/4（8.5px）を切り上げ、ホーム画面表示だけ上余白を増やす。 */
+@media (display-mode: standalone) and (max-width: 767px) {
+  .standalone-mobile-header {
+    padding-top: 17px;
+  }
+}

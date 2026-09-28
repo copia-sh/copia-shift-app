@@ -698,7 +698,7 @@ function ShiftCalendar({
         <HeaderMenu label={currentMember.displayName} items={accountMenuItems} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:hidden">
+      <div className="standalone-mobile-header flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:hidden">
         <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
