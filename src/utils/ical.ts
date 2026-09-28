@@ -177,18 +177,36 @@ function spreadsheetTime(time: string): string {
   return time.replace(/^0(?=\d:)/, "");
 }
 
+/**
+ * 1枠ぶんのセル表示。「8月シフト」の日付セルに合わせる。
+ *
+ * Worker のスプレッドシート同期からも使う。同じ表記の規則を2か所に書くと、
+ * アプリの書き出しと同期先で見え方がずれる。
+ */
+export function formatSpreadsheetSegment(segment: {
+  label: string;
+  startTime: string | null;
+  endTime: string | null;
+}): string {
+  const { label, startTime, endTime } = segment;
+  if (!startTime || !endTime) return label;
+
+  const timeRange = `${spreadsheetTime(startTime)}-${spreadsheetTime(endTime)}`;
+  if (label === "出勤") return timeRange;
+  if (label === "リモート") return `${timeRange}(リ)`;
+  return `${timeRange}(${label})`;
+}
+
 /** 「8月シフト」の日付セルに合わせた表示へ変換する。 */
 export function formatSpreadsheetShift(
   shift: Shift,
   labelOf: (typeKey: string) => string,
 ): string {
-  const label = labelOf(shift.type);
-  if (!shift.startTime || !shift.endTime) return label;
-
-  const timeRange = `${spreadsheetTime(shift.startTime)}-${spreadsheetTime(shift.endTime)}`;
-  if (label === "出勤") return timeRange;
-  if (label === "リモート") return `${timeRange}(リ)`;
-  return `${timeRange}(${label})`;
+  return formatSpreadsheetSegment({
+    label: labelOf(shift.type),
+    startTime: shift.startTime,
+    endTime: shift.endTime,
+  });
 }
 
 /** 月次シフト表の「1日」から貼れる、日数ぶんの1行を作る。 */
