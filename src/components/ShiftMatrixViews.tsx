@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { toDateKey } from "../utils/date";
 import {
   DOW_LABELS,
@@ -26,6 +26,7 @@ import type { ShiftTheme } from "./shiftTheme";
 import { GroupSwitcher } from "./GroupSwitcher";
 import { listNameWidth, monthCellMinHeight, monthMemberColumns, weekDayWidth } from "./responsiveLayout";
 import { REJECTED_TYPE } from "../types";
+import { formatHours, summarizeWorkHours, type WorkHoursSummary } from "./workHours";
 import type { GroupSettings, Member, Shift, Group } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
@@ -295,6 +296,35 @@ function useStateMap(shifts: Shift[]) {
   }, [shifts]);
 }
 
+/** メンバー名を押している（マウスなら乗せている）間だけ出す、その月の合計時間 */
+interface HoursPeek {
+  memberId: string;
+  top: number;
+  left: number;
+}
+
+function MemberHoursPopover({ peek, name, summary }: { peek: HoursPeek; name: string; summary: WorkHoursSummary }) {
+  const untimed = (days: number) => (days > 0 ? ` ＋時間未設定 ${days}日` : "");
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-50 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] leading-relaxed text-gray-700 shadow-lg"
+      style={{ top: peek.top, left: peek.left }}
+    >
+      <div className="mb-0.5 text-[11px] font-bold text-gray-400">{name} の今月の合計</div>
+      <div>
+        確定 <span className="font-bold text-gray-900">{formatHours(summary.fixedHours)}</span>
+        <span className="text-[11px] text-gray-400">{untimed(summary.fixedUntimedDays)}</span>
+      </div>
+      <div>
+        希望 <span className="font-bold text-gray-900">{formatHours(summary.wantHours)}</span>
+        <span className="text-[11px] text-gray-400">{untimed(summary.wantUntimedDays)}</span>
+      </div>
+      <div className="mt-0.5 text-[10px] text-gray-400">6時間以上の日は休憩1時間を引いています</div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------- 一覧（縦=メンバー × 横=日付） */
 
 export function ShiftListMatrix({
@@ -322,6 +352,13 @@ export function ShiftListMatrix({
   const nameW = listNameWidth(typeof window === "undefined" ? 1280 : window.innerWidth);
   const scrollRef = useRef<HTMLDivElement>(null);
   useCenterToday(scrollRef, anchorDate, nameW, colW);
+  const [peek, setPeek] = useState<HoursPeek | null>(null);
+  const showPeek = (memberId: string, e: ReactPointerEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPeek({ memberId, top: rect.top, left: rect.right + 6 });
+  };
+  const hidePeek = () => setPeek(null);
+  const peekMember = peek ? members.find((m) => m.id === peek.memberId) : undefined;
 
   const dayMeta = days.map((day) => {
     const dateKey = toDateKey(day);
@@ -393,16 +430,24 @@ export function ShiftListMatrix({
             >
               <button
                 type="button"
-                disabled={!bulkHeaders}
+                // disabled だとポインタイベントが届かず合計時間を出せないので、aria-disabled で表す
+                aria-disabled={!bulkHeaders}
                 title={bulkHeaders ? "この人の1ヶ月をまとめて選択" : undefined}
                 onClick={() =>
+                  bulkHeaders &&
                   onToggleMany(
                     dayMeta
                       .filter((_, di) => canTapCell(mode, mem.id, currentMemberId, states[di]))
                       .map((d) => selKey(mem.id, d.dateKey)),
                   )
                 }
-                className="sticky left-0 z-10 flex flex-none items-center gap-2 border-r border-gray-200 px-2.5 text-left"
+                onPointerEnter={(e) => e.pointerType === "mouse" && showPeek(mem.id, e)}
+                onPointerDown={(e) => showPeek(mem.id, e)}
+                onPointerUp={(e) => e.pointerType !== "mouse" && hidePeek()}
+                onPointerLeave={hidePeek}
+                onPointerCancel={hidePeek}
+                onContextMenu={(e) => e.preventDefault()}
+                className="sticky left-0 z-10 flex flex-none select-none items-center gap-2 border-r border-gray-200 px-2.5 text-left [-webkit-touch-callout:none]"
                 style={{
                   width: nameW,
                   boxSizing: "border-box",
@@ -507,6 +552,16 @@ export function ShiftListMatrix({
           ))}
         </div>
       </div>
+      {peekMember && (
+        <MemberHoursPopover
+          peek={peek!}
+          name={peekMember.displayName}
+          summary={summarizeWorkHours(
+            dayMeta.map((d) => cellStatesOf(byKey.get(selKey(peekMember.id, d.dateKey)) ?? [], unavailableKeys)),
+            unavailableKeys,
+          )}
+        />
+      )}
     </div>
   );
 }
