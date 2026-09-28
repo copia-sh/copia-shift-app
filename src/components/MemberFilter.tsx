@@ -19,7 +19,7 @@ export interface MemberFilterProps {
 
 /** 絞り込みの操作は見た目を揃える。スマホでは44px、PCでは34px。 */
 const CHIP =
-  "flex-none whitespace-nowrap rounded-full border px-3 text-[15px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3 md:text-[14px]";
+  "flex-none whitespace-nowrap rounded-full border px-3 text-[12px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3";
 const CHIP_ON = "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]";
 const CHIP_OFF = "border-[#E5E7EB] bg-white text-[#374151] hover:bg-gray-50";
 
@@ -66,7 +66,7 @@ export function MemberFilter({
   return (
     <div className="mx-auto flex max-w-[1400px] flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 md:flex-wrap md:overflow-visible md:px-5 md:pb-3">
       {/* 絞り込みで減ったのか、そもそも対象外なのかを分けて出す。 */}
-      <span className="mr-1 flex-none whitespace-nowrap text-[15px] font-bold text-[#6B7280] md:text-[14px]">
+      <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
         表示対象 {visibleCount}人
         {nonTargetCount > 0 && (
           <span className="ml-1.5 font-normal text-[#9CA3AF]">
@@ -83,7 +83,7 @@ export function MemberFilter({
           onChange={(event) => onChangeNameQuery(event.target.value)}
           placeholder="氏名で絞り込む"
           aria-label="氏名で絞り込む"
-          className="w-[150px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[15px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[180px] md:text-[14px]"
+          className="w-[150px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[180px]"
           style={{ minHeight: 44 }}
         />
       </label>
