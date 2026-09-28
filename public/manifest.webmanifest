@@ -6,7 +6,7 @@
   "scope": "./",
   "display": "standalone",
   "background_color": "#F7F9FB",
-  "theme_color": "#FFFFFF",
+  "theme_color": "#F7F9FB",
   "icons": [
     {
       "src": "app-icon-192.png?v=bolt",
