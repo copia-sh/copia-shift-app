@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { dragOffset, settleSheetDrag } from "./sheetDrag";
+import type { SubmitTaskUpdate } from "../../taskUpdateApi";
+import { TaskProgressForm } from "./TaskProgressForm";
 import type { Member } from "../../types";
 import { parseDeliverables, splitMemo } from "../../taskBoard";
 import { AssigneeList, PriorityText, StatusBadge } from "./TaskBadges";
@@ -12,6 +14,8 @@ interface DetailProps {
   members: readonly Member[];
   sourceUrl: string;
   onClose: () => void;
+  /** 渡されたときだけ「進捗を更新」を出す（Worker の設定が無い環境では閲覧のみ） */
+  onSubmitUpdate?: SubmitTaskUpdate;
 }
 
 const LABEL = "text-[11px] font-bold text-[#6B7280]";
@@ -78,7 +82,7 @@ function Deliverables({ value }: { value: string }) {
   );
 }
 
-function DetailBody({ item, members }: Pick<DetailProps, "item" | "members">) {
+function DetailBody({ item, members, onSubmitUpdate }: Pick<DetailProps, "item" | "members" | "onSubmitUpdate">) {
   return (
     <div className="flex flex-col gap-3 px-4 py-3">
       <div><StatusBadge status={item.status} large /></div>
@@ -106,6 +110,14 @@ function DetailBody({ item, members }: Pick<DetailProps, "item" | "members">) {
         <h3 className={LABEL}>最新の成果物</h3>
         <Deliverables value={item.deliverable} />
       </section>
+      {onSubmitUpdate && (
+        // 別のタスクを開いたら入力を持ち越さない
+        <TaskProgressForm
+          key={item.key}
+          target={{ kind: item.kind, no: item.kind === "task" ? item.no : "", title: item.title, status: item.status }}
+          onSubmit={onSubmitUpdate}
+        />
+      )}
     </div>
   );
 }
@@ -123,7 +135,7 @@ const SECONDARY_BUTTON =
   "inline-flex items-center justify-center rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3]";
 
 /** PC の右パネル。シフト画面の詳細パネルと同じ位置・型。 */
-export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailProps) {
+export function TaskDetailPanel({ item, members, sourceUrl, onClose, onSubmitUpdate }: DetailProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -146,10 +158,10 @@ export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailPro
           ✕
         </button>
       </header>
-      <DetailBody item={item} members={members} />
+      <DetailBody item={item} members={members} onSubmitUpdate={onSubmitUpdate} />
       <footer className="flex items-center gap-3 border-t border-[#F1F3F5] px-4 py-3.5">
         <SheetLink sourceUrl={sourceUrl} className={`${SECONDARY_BUTTON} h-[34px]`} />
-        <span className="text-[11px] text-[#6B7280]">アプリでは閲覧のみです</span>
+        <span className="text-[11px] text-[#6B7280]">{onSubmitUpdate ? "ほかの項目はシートで編集します" : "アプリでは閲覧のみです"}</span>
       </footer>
     </aside>
   );
@@ -197,7 +209,7 @@ function useSheetDrag(onClose: () => void) {
 }
 
 /** スマホの下からのシート。フッターごと幕で覆い、閉じるまで画面は切り替えられない。 */
-export function TaskDetailSheet({ item, members, sourceUrl, onClose }: DetailProps) {
+export function TaskDetailSheet({ item, members, sourceUrl, onClose, onSubmitUpdate }: DetailProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const { expanded, sheetStyle, handleProps } = useSheetDrag(onClose);
 
@@ -240,7 +252,7 @@ export function TaskDetailSheet({ item, members, sourceUrl, onClose }: DetailPro
           </header>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <DetailBody item={item} members={members} />
+          <DetailBody item={item} members={members} onSubmitUpdate={onSubmitUpdate} />
         </div>
         <footer className="flex-none border-t border-[#F1F3F5] px-4 pt-3" style={{ paddingBottom: "var(--screen-footer-pad)" }}>
           <SheetLink sourceUrl={sourceUrl} className={`${SECONDARY_BUTTON} h-11 w-full`} />

@@ -7,6 +7,8 @@ import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShift
 import { handleMcpRequest } from "./mcp";
 import { syncShiftSheet } from "./shiftSync";
 import { syncTaskBoard } from "./taskSync";
+import { handleTaskUpdate, TASK_UPDATE_PATH } from "./taskUpdateRoute";
+import { verifyFirebaseIdToken } from "./firebaseIdToken";
 
 /**
  * 月間表（30日分）も書く分。毎時0分と30分の実行だけ。
@@ -72,6 +74,10 @@ export interface Env {
   TASK_BOARD_SPREADSHEET_ID?: string;
   /** `"true"` のときだけタスク表を Firestore へ取り込む。 */
   TASK_SYNC_ENABLED?: string;
+  /** `"true"` のときだけ、アプリからのタスク進捗の更新（`POST /tasks/update`）を受け付ける。 */
+  TASK_EDIT_ENABLED?: string;
+  /** アプリを配信しているオリジン。タスク更新の CORS で、これ以外からの呼び出しを断る。 */
+  TASK_API_ALLOWED_ORIGIN?: string;
 }
 
 const FEED_PATH = /^\/feed\/([^/]+)\/([^/]+)\.ics$/;
@@ -311,6 +317,19 @@ export default {
     }
 
     if (url.pathname === MCP_PATH) return handleMcp(request, env);
+    if (url.pathname === TASK_UPDATE_PATH) {
+      return handleTaskUpdate(request, env, {
+        verifyToken: (token) => verifyFirebaseIdToken(token, env.FIREBASE_PROJECT_ID),
+        connect: async () => {
+          const account = parseServiceAccountKey(env.FIREBASE_SERVICE_ACCOUNT_KEY);
+          const [firestore, sheetsToken] = await Promise.all([
+            connectFirestore(env),
+            fetchAccessToken(account, { scopes: [SPREADSHEETS_SCOPE] }),
+          ]);
+          return { firestore, sheetsToken };
+        },
+      });
+    }
     if (request.method !== "GET") return notFound();
 
     if (url.pathname === AGENT_SHIFTS_PATH) {

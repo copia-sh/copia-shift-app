@@ -3,8 +3,8 @@ import { isValidPathSegment } from "./pathSegment";
 import { buildTaskBoardPayload, parseRoutineRows, parseTaskRows } from "../../src/taskBoard";
 
 /** タスク表のタブ名。シート側で変えたらここも変える（見つからなければ同期は失敗する）。 */
-const TASK_SHEET_TITLE = "タスク一覧";
-const ROUTINE_SHEET_TITLE = "定例業務（毎週・毎日など）";
+export const TASK_SHEET_TITLE = "タスク一覧";
+export const ROUTINE_SHEET_TITLE = "定例業務（毎週・毎日など）";
 /** 列はヘッダー名で探すので、範囲は広めに取る。 */
 const READ_COLUMNS = "A:Z";
 

@@ -15,6 +15,7 @@ import {
   type TaskBoardState,
 } from "../../taskBoard";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
+import type { SubmitTaskUpdate } from "../../taskUpdateApi";
 import { GroupSwitcher } from "../GroupSwitcher";
 import { HeaderMenu, type HeaderMenuItem } from "../HeaderMenu";
 import { ScreenSwitcher } from "../ScreenSwitcher";
@@ -47,6 +48,8 @@ export interface TaskBoardViewProps {
   /** プレビュー用。最初に開いておく絞り込み・詳細 */
   initialScope?: ScopeChoice;
   initialSelectedKey?: string;
+  /** 進捗の更新。無ければ閲覧のみ */
+  onSubmitUpdate?: SubmitTaskUpdate;
 }
 
 const HEADER_BTN = "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
@@ -254,13 +257,13 @@ export function TaskBoardView(props: TaskBoardViewProps) {
               <TaskSection items={tasks} members={members} unassignedCount={unassigned(tasks)} empty={sectionEmpty("タスク")} selectedKey={selectedKey} onSelect={toggleSelect} />
             </div>
             {selected && isDesktop && (
-              <TaskDetailPanel item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} />
+              <TaskDetailPanel item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={props.onSubmitUpdate} />
             )}
           </div>
         )}
       </main>
       {selected && board && !isDesktop && (
-        <TaskDetailSheet item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} />
+        <TaskDetailSheet item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={props.onSubmitUpdate} />
       )}
     </div>
   );

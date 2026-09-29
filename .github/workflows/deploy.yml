@@ -37,6 +37,8 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           # 任意機能(カレンダー購読)。未設定なら空のままでよい
           VITE_ICS_FEED_BASE_URL: ${{ secrets.VITE_ICS_FEED_BASE_URL }}
+          # 任意機能(タスク画面からの進捗更新)。Worker の URL。未設定ならタスク画面は閲覧のみ
+          VITE_TASK_API_BASE_URL: ${{ secrets.VITE_TASK_API_BASE_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

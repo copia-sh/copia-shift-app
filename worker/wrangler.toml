@@ -27,6 +27,11 @@ SHIFT_SYNC_ENABLED = "true"
 #                    取り込み元の TASK_BOARD_SPREADSHEET_ID は secret で登録し、
 #                    サービスアカウントにそのシートを「閲覧者」で共有してから true にする。
 TASK_SYNC_ENABLED = "true"
+# TASK_EDIT_ENABLED  アプリのタスク画面から進捗（ステータス・状況メモ・成果物）をタスク表へ即時に書き込む
+#                    POST /tasks/update を有効にする。サービスアカウントをタスク表の「編集者」にしてから true にする。
+# TASK_API_ALLOWED_ORIGIN  アプリの配信元。これ以外のオリジンからの呼び出しは断る(CORS)。
+TASK_EDIT_ENABLED = "false"
+TASK_API_ALLOWED_ORIGIN = "https://copia-sh.github.io"
 
 # 5分ごとに実行し、そのうち0分・30分の回だけ `シフト月間表`(30日分)も書く。
 # 30日分を5分ごとに読むとFirestoreの無料枠(1日50,000読み取り)を超えるため、

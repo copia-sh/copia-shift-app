@@ -42,6 +42,10 @@ export interface TaskBoard {
 /** この時間より前の同期は「止まっているかもしれない」と注意を出す。 */
 export const TASK_BOARD_STALE_MS = 60 * 60 * 1000;
 
+/** アプリから選べるステータス。シートで使っている値だけに絞る（任意の文字列は書かせない）。 */
+export const TASK_STATUSES = ["未着手", "検討中", "進行中", "練習中", "運用中", "未整備", "完了"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
 export const UNASSIGNED = "未定";
 const EVERYONE_PREFIX = "全員";
 

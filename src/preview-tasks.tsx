@@ -76,6 +76,7 @@ createRoot(document.getElementById("root")!).render(
       fixedNow={now}
       initialScope={params.get("scope") ?? undefined}
       initialSelectedKey={params.get("open") ?? undefined}
+      onSubmitUpdate={async () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 400))}
     />
     <ScreenFooter screen="tasks" onChange={() => {}} />
   </>,
