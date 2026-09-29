@@ -1,4 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
+import { useScreen } from "./hooks/useScreen";
+import { ScreenFooter, ScreenSwitcher } from "./components/ScreenSwitcher";
+import { TaskBoardScreen } from "./components/taskBoard/TaskBoardScreen";
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { format } from "date-fns";
@@ -201,6 +204,7 @@ function ShiftCalendar({
   onCreateNewGroup: () => void;
 }) {
   const [view, setView] = useState<ViewMode>("list");
+  const [screen, setScreen] = useScreen();
   const [mode, setMode] = useState<ShiftMode>("single");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
@@ -686,6 +690,21 @@ function ShiftCalendar({
   };
 
   return (
+    <>
+    {screen === "tasks" ? (
+      <TaskBoardScreen
+        groupId={groupId}
+        members={activeMembers}
+        currentMember={currentMember}
+        groups={groups}
+        onChangeGroup={onChangeGroup}
+        onCreateNewGroup={onCreateNewGroup}
+        onChangeScreen={setScreen}
+        adminMenuItems={adminMenuItems}
+        accountMenuItems={accountMenuItems}
+        onExport={() => setShowExportDialog(true)}
+      />
+    ) : (
     <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
       {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
           毎日は使わない操作を平置きすると、日々の入力と同じ重さに見えてしまう。 */}
@@ -720,6 +739,7 @@ function ShiftCalendar({
         currentGroupId={currentGroupId}
         onChangeGroup={onChangeGroup}
         onCreateNewGroup={onCreateNewGroup}
+        screenSwitcher={<ScreenSwitcher screen="shifts" onChange={setScreen} />}
       />
       <ShiftLegend mode={mode} theme={theme} />
       <MemberFilter
@@ -748,7 +768,7 @@ function ShiftCalendar({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1400px] px-2 pb-[120px] md:px-5 md:pb-[140px]">
+      <main className="mx-auto max-w-[1400px] px-2 pb-[calc(210px+env(safe-area-inset-bottom))] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : emptyReason ? (
@@ -789,6 +809,11 @@ function ShiftCalendar({
         onOpenSegmentEditor={(k) => setEditingCell(k)}
         theme={theme}
       />
+
+    </div>
+    )}
+
+      <ScreenFooter screen={screen} onChange={setScreen} />
 
       {editingCell && settings && theme && (
         <SegmentEditor
@@ -867,7 +892,7 @@ function ShiftCalendar({
           onClose={() => setShowShareLinkDialog(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 

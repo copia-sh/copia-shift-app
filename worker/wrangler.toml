@@ -22,6 +22,11 @@ ICS_FEED_ENABLED = "false"
 # 同期先の SHIFT_SYNC_SPREADSHEET_ID は、このリポジトリが公開されているため vars に置かず
 # シークレットとして登録する(スプレッドシートIDは実質URLと同じで、漏れると存在が特定される)。
 SHIFT_SYNC_ENABLED = "true"
+# TASK_SYNC_ENABLED  タスク表(スタダチーム_タスク表)を Firestore の taskBoard/current へ取り込む。
+#                    "true" のときだけ、上の5分ごとの Cron のうち0・15・30・45分の回で動く。
+#                    取り込み元の TASK_BOARD_SPREADSHEET_ID は secret で登録し、
+#                    サービスアカウントにそのシートを「閲覧者」で共有してから true にする。
+TASK_SYNC_ENABLED = "false"
 
 # 5分ごとに実行し、そのうち0分・30分の回だけ `シフト月間表`(30日分)も書く。
 # 30日分を5分ごとに読むとFirestoreの無料枠(1日50,000読み取り)を超えるため、

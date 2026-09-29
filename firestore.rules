@@ -115,6 +115,13 @@ service cloud.firestore {
         allow update: if false;
       }
 
+      // タスク表の閲覧用コピー。正本はGoogleスプレッドシートで、Cloudflare Worker が
+      // サービスアカウント(管理者権限)で書き込む。アプリからは誰も書けない。
+      match /taskBoard/{docId} {
+        allow read: if isMember(gid);
+        allow write: if false;
+      }
+
       match /shifts/{shiftId} {
         allow read: if isMember(gid);
 

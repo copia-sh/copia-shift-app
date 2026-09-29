@@ -8,6 +8,7 @@
 | `GET /agent/shifts?date=&name=` | Slackの運用エージェントが勤務予定を読む（読み取り専用） | `AGENT_GROUP_ID` と `AGENT_API_TOKEN` を設定すると有効 |
 | `POST /mcp` | ChatGPT Workspace Agent が `get_shift` ツールで勤務予定を読む（読み取り専用） | `AGENT_GROUP_ID` と `MCP_API_TOKEN` を設定すると有効 |
 | Cron → `シフト同期` / `シフト月間表` | Workspace Agent が既存のGoogle Drive接続で勤務予定を読むため、Google Sheetsへ5分ごとに同期。チーム共有用の月間表も同時に書く | 共有とSheets API有効化後に `SHIFT_SYNC_ENABLED="true"` で有効 |
+| Cron → Firestore `taskBoard/current` | アプリのタスク画面が閲覧するタスク表を、スプレッドシートから15分ごとに取り込む | シート共有後に `TASK_SYNC_ENABLED="true"` で有効 |
 | `GET /feed/{groupId}/{token}.ics` | メンバーが自分のシフトをカレンダーアプリで購読する | **既定で無効**。`ICS_FEED_ENABLED="true"` のときだけ有効 |
 
 いずれも任意機能です。設定しなくてもアプリ本体は今まで通り動きます。
@@ -324,6 +325,34 @@ Firebase無料枠は1日50,000読み取りなので、アプリ本体の利用�
 
 間隔を変えたときは、上の鮮度判定（10分）と `worker/src/index.ts` の
 `shouldIncludeMatrix` も合わせて見直してください。
+
+## タスク表の取り込み（アプリのタスク画面）
+
+アプリのタスク画面は、Googleスプレッドシート「スタダチーム_タスク表」を**閲覧だけ**します。
+正本はシートのままで、Workerが15分ごと（0・15・30・45分）に `タスク一覧` と `定例業務（毎週・毎日など）` の
+2タブを読み、Firestoreの `groups/{AGENT_GROUP_ID}/taskBoard/current` を書き直します。
+アプリからこのドキュメントへは誰も書き込めません（`firestore.rules`）。
+
+### 有効化
+
+1. Google Sheets API の有効化とサービスアカウントの `client_email` の確認は、上のシフト同期と同じです。
+2. タスク表のスプレッドシートを、そのメールアドレスへ**閲覧者**として共有する（書き込みはしないので編集権限は不要）。
+3. スプレッドシートIDをシークレットとして登録する（公開リポジトリに載せないため。理由はシフト同期と同じ）。
+
+```bash
+npx wrangler secret put TASK_BOARD_SPREADSHEET_ID --config worker/wrangler.toml
+```
+
+4. `worker/wrangler.toml` の `TASK_SYNC_ENABLED` を `"true"` に変え、デプロイする。
+   すぐに取り込みたいときは、シフト同期と同じ手動起動（`POST /agent/sync`）でタスク表も読み込まれます。
+
+### 列とタブ
+
+- 列は**ヘッダー名**で探します（No・フェーズ・担当インターン生・タスク内容・背景・目的・期限目安・優先度・
+  ステータス・状況メモ・最新の成果物、定例業務は頻度・目的）。列の追加・並べ替えには追従します。
+- `タスク内容` か `ステータス` の列が見つからない、またはタブ名が変わった場合は**書き込まずに失敗**させます。
+  古い内容がアプリに残り、Cronの実行履歴が失敗になるので、シートの構造変更に気づけます。
+- アプリは最終取り込みから1時間以上たつと「同期が止まっている可能性」を表示します。
 
 ## ChatGPT Workspace Agent 用 MCP (`/mcp`)
 

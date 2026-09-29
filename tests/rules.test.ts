@@ -529,3 +529,29 @@ describe("所属グループの逆引き(users)", () => {
     await assertFails(setDoc(doc(as(MEMBER), "users", MEMBER), { groupIds: [GID], isAdmin: true }));
   });
 });
+
+describe("タスク表(taskBoard)", () => {
+  const board = { syncedAt: 1, sourceUrl: "https://docs.google.com/spreadsheets/d/x/edit", payload: "{}" };
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, "groups", GID, "taskBoard", "current"), board);
+    });
+  });
+
+  it("メンバーは読める", async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), "groups", GID, "taskBoard", "current")));
+  });
+
+  it("非メンバー・退会済み・未ログインは読めない", async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), "groups", GID, "taskBoard", "current")));
+    await assertFails(getDoc(doc(as(INACTIVE), "groups", GID, "taskBoard", "current")));
+    await assertFails(getDoc(doc(anon(), "groups", GID, "taskBoard", "current")));
+  });
+
+  it("管理者でもアプリからは書けない（正本はシートで、書くのは Worker だけ）", async () => {
+    await assertFails(setDoc(doc(as(ADMIN), "groups", GID, "taskBoard", "current"), board));
+    await assertFails(setDoc(doc(as(MEMBER), "groups", GID, "taskBoard", "other"), board));
+    await assertFails(deleteDoc(doc(as(ADMIN), "groups", GID, "taskBoard", "current")));
+  });
+});

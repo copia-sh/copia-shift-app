@@ -1,11 +1,12 @@
 import { parseServiceAccountKey, fetchAccessToken, SPREADSHEETS_SCOPE } from "./googleAuth";
-import { createFirestoreClient, type FirestoreClient } from "./firestoreRest";
+import { createFirestoreClient, type FirestoreWriteClient } from "./firestoreRest";
 import { buildFeed, toJstDateKey } from "./feed";
 import { isValidPathSegment } from "./pathSegment";
 import { isAuthorizedAgentRequest, isTokenStrongEnough, MIN_AGENT_TOKEN_LENGTH } from "./agentAuth";
 import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShifts";
 import { handleMcpRequest } from "./mcp";
 import { syncShiftSheet } from "./shiftSync";
+import { syncTaskBoard } from "./taskSync";
 
 /**
  * 月間表（30日分）も書く分。毎時0分と30分の実行だけ。
@@ -17,6 +18,14 @@ import { syncShiftSheet } from "./shiftSync";
 export function shouldIncludeMatrix(now: Date): boolean {
   const minutes = now.getUTCMinutes();
   return minutes === 0 || minutes === 30;
+}
+
+/**
+ * タスク表の取り込みは15分に1回（0・15・30・45分）。月間表と同じく実行時刻で決め、Cronは1本のまま。
+ * タスクは1日に何度も変わるものではないので、5分ごとに読む必要はない。
+ */
+export function shouldSyncTasks(now: Date): boolean {
+  return now.getUTCMinutes() % 15 === 0;
 }
 
 export interface Env {
@@ -56,6 +65,13 @@ export interface Env {
   SHIFT_MATRIX_SPREADSHEET_ID?: string;
   /** `"true"` のときだけ毎時のスプレッドシート同期を有効にする。 */
   SHIFT_SYNC_ENABLED?: string;
+  /**
+   * タスク表（アプリのタスク画面の正本）のスプレッドシート。サービスアカウントに閲覧共有する。
+   * シフト同期先と同じ理由で vars に置かず secret にする。
+   */
+  TASK_BOARD_SPREADSHEET_ID?: string;
+  /** `"true"` のときだけタスク表を Firestore へ取り込む。 */
+  TASK_SYNC_ENABLED?: string;
 }
 
 const FEED_PATH = /^\/feed\/([^/]+)\/([^/]+)\.ics$/;
@@ -87,7 +103,7 @@ function jsonError(status: number, error: string, headers?: Record<string, strin
  * Firestoreへの接続を用意する。エミュレータ指定時は "owner" トークンで直接繋ぎ、
  * 本番ではサービスアカウント鍵からアクセストークンを取得する。
  */
-async function connectFirestore(env: Env): Promise<FirestoreClient> {
+async function connectFirestore(env: Env): Promise<FirestoreWriteClient> {
   const emulatorHost = env.FIRESTORE_EMULATOR_HOST;
   const accessToken = emulatorHost
     ? "owner" // Firestoreエミュレータ規約: このトークンはセキュリティルールを無視した管理者アクセスになる
@@ -135,6 +151,41 @@ async function handleScheduledSync(env: Env, includeMatrix = false): Promise<voi
     // 同期が何日も止まっていても気づけない。実行を失敗として残す。
     throw error;
   }
+}
+
+/** タスク表を読んで `taskBoard/current` を書き直す。アプリのタスク画面はこれを閲覧する。 */
+async function handleScheduledTaskSync(env: Env): Promise<void> {
+  if (env.TASK_SYNC_ENABLED !== "true") return;
+  const groupId = env.AGENT_GROUP_ID;
+  const spreadsheetId = env.TASK_BOARD_SPREADSHEET_ID;
+  if (!groupId || !spreadsheetId) {
+    console.error("copia-shift-ics-feed: task sync is enabled but not configured");
+    return;
+  }
+  try {
+    const account = parseServiceAccountKey(env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const [firestore, sheetsToken] = await Promise.all([
+      connectFirestore(env),
+      fetchAccessToken(account, { scopes: [SPREADSHEETS_SCOPE] }),
+    ]);
+    const result = await syncTaskBoard({ firestore, groupId, spreadsheetId, accessToken: sheetsToken });
+    console.info(
+      `copia-shift-ics-feed: task sync completed (${result.taskCount} tasks, ${result.routineCount} routines)`,
+    );
+  } catch (error) {
+    console.error("copia-shift-ics-feed: task sync failed", error);
+    throw error;
+  }
+}
+
+/**
+ * シフト同期とタスク同期を互いに巻き込まず実行し、どちらかが失敗していれば Cron を失敗させる。
+ * 片方の障害でもう片方まで止まると、原因と関係ない画面の情報まで古くなるため。
+ */
+async function runScheduledJobs(jobs: Promise<void>[]): Promise<void> {
+  const results = await Promise.allSettled(jobs);
+  const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+  if (failed) throw failed.reason;
 }
 
 /**
@@ -251,8 +302,8 @@ export default {
       if (env.SHIFT_SYNC_ENABLED !== "true" || !token || !isTokenStrongEnough(token)) return notFound();
       if (!(await isAuthorizedAgentRequest(request.headers.get("Authorization"), token))) return jsonError(401, "unauthorized");
       try {
-        // 手動起動は「今すぐ全部更新したい」ときに使うので、月間表も書く。
-        await handleScheduledSync(env, true);
+        // 手動起動は「今すぐ全部更新したい」ときに使うので、月間表とタスク表も書く。
+        await runScheduledJobs([handleScheduledSync(env, true), handleScheduledTaskSync(env)]);
         return jsonResponse(200, { ok: true });
       } catch {
         return jsonError(500, "sync_failed");
@@ -275,6 +326,10 @@ export default {
   // Cron の実行履歴から失敗を読み取れない。
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
     // 0分・30分の実行でだけ月間表（30日分）を書く。ほかは8日分の一覧だけ。
-    await handleScheduledSync(env, shouldIncludeMatrix(new Date()));
+    const now = new Date();
+    await runScheduledJobs([
+      handleScheduledSync(env, shouldIncludeMatrix(now)),
+      ...(shouldSyncTasks(now) ? [handleScheduledTaskSync(env)] : []),
+    ]);
   },
 };

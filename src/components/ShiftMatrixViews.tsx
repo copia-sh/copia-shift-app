@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { toDateKey } from "../utils/date";
 import {
   DOW_LABELS,
@@ -127,6 +127,7 @@ export function CalendarNav({
   currentGroupId,
   onChangeGroup,
   onCreateNewGroup,
+  screenSwitcher,
 }: {
   label: string;
   view: "list" | "month" | "week";
@@ -138,6 +139,8 @@ export function CalendarNav({
   currentGroupId: string;
   onChangeGroup: (id: string) => void;
   onCreateNewGroup: () => void;
+  /** PC だけで出す「シフト｜タスク」。グループ名の右隣に置く */
+  screenSwitcher?: ReactNode;
 }) {
   const square =
     "h-[34px] w-[34px] rounded-md border border-gray-200 bg-white text-[15px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none";
@@ -150,6 +153,7 @@ export function CalendarNav({
           onChange={onChangeGroup}
           onCreateNew={onCreateNewGroup}
         />
+        {screenSwitcher}
         <span className="whitespace-nowrap text-lg font-bold text-gray-900 md:text-xl">{label}</span>
       </div>
       <div className="flex w-full items-center gap-1.5 md:w-auto md:gap-2">
@@ -1276,7 +1280,7 @@ export function BulkEditToolbar({
     mode === "review" ? "確定の操作" : mode === "multi" ? `${selected.size}件をまとめて変更` : "このセルを変更";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-2 pb-2 md:px-3 md:pb-3.5">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-50 flex justify-center px-2 pb-2 md:bottom-0 md:px-3 md:pb-3.5">
       <div className="pointer-events-auto flex max-h-[42svh] w-full max-w-5xl flex-col gap-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)] md:max-h-none md:gap-2.5 md:p-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-bold text-gray-900">{title}</span>

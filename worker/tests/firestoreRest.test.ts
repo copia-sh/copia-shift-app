@@ -190,3 +190,30 @@ describe("createFirestoreClient", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("createFirestoreClient.setDocument", () => {
+  it("PATCHes the whole document with typed fields", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const client = createFirestoreClient({ projectId: "p1", accessToken: "tok", fetchImpl });
+    await client.setDocument("groups/g1/taskBoard/current", { syncedAt: 1000, payload: "{}", ok: true });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      "https://firestore.googleapis.com/v1/projects/p1/databases/(default)/documents/groups/g1/taskBoard/current",
+    );
+    expect(init.method).toBe("PATCH");
+    expect(init.headers.Authorization).toBe("Bearer tok");
+    expect(JSON.parse(init.body)).toEqual({
+      fields: {
+        syncedAt: { integerValue: "1000" },
+        payload: { stringValue: "{}" },
+        ok: { booleanValue: true },
+      },
+    });
+  });
+
+  it("throws when Firestore rejects the write", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 403 }));
+    const client = createFirestoreClient({ projectId: "p1", accessToken: "tok", fetchImpl });
+    await expect(client.setDocument("groups/g1/taskBoard/current", { a: "b" })).rejects.toThrow(/403/);
+  });
+});

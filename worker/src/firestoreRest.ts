@@ -14,6 +14,17 @@ export interface FirestoreClient {
   queryCollection(parentPath: string, collectionId: string, filters: FieldFilter[]): Promise<FirestoreDocument[]>;
 }
 
+export type FirestoreScalar = string | number | boolean;
+
+/**
+ * 書き込みもできるクライアント。読み取りだけの経路（フィード・エージェントAPI）には
+ * `FirestoreClient` のまま渡し、書き込める範囲を型で閉じておく。
+ */
+export interface FirestoreWriteClient extends FirestoreClient {
+  /** ドキュメント全体を置き換える（無ければ作る）。 */
+  setDocument(path: string, fields: Record<string, FirestoreScalar>): Promise<void>;
+}
+
 type FirestoreValue =
   | { stringValue: string }
   | { integerValue: string }
@@ -88,7 +99,7 @@ export function createFirestoreClient({
   accessToken,
   emulatorHost,
   fetchImpl = fetch,
-}: CreateFirestoreClientOptions): FirestoreClient {
+}: CreateFirestoreClientOptions): FirestoreWriteClient {
   const baseUrl = emulatorHost
     ? `http://${emulatorHost}/v1/projects/${projectId}/databases/(default)/documents`
     : `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
@@ -125,5 +136,16 @@ export function createFirestoreClient({
       }));
   }
 
-  return { getDocument, queryCollection };
+  async function setDocument(path: string, fields: Record<string, FirestoreScalar>): Promise<void> {
+    const encoded = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, encodeFirestoreValue(value)]));
+    // updateMask を付けない PATCH は、ドキュメント全体の置き換えになる（古いフィールドを残さない）。
+    const res = await fetchImpl(`${baseUrl}/${path}`, {
+      method: "PATCH",
+      headers: { ...authHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: encoded }),
+    });
+    if (!res.ok) throw new Error(`Firestore setDocument failed: ${res.status}`);
+  }
+
+  return { getDocument, queryCollection, setDocument };
 }
