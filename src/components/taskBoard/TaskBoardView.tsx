@@ -15,13 +15,15 @@ import {
   type TaskBoardState,
 } from "../../taskBoard";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
-import type { SubmitTaskUpdate } from "../../taskUpdateApi";
+import { describeUpdate, taskUpdateErrorMessage, type SubmitTaskUpdate, type TaskUpdatePayload } from "../../taskUpdateApi";
 import { GroupSwitcher } from "../GroupSwitcher";
 import { HeaderMenu, type HeaderMenuItem } from "../HeaderMenu";
 import { ScreenSwitcher } from "../ScreenSwitcher";
 import { StatusFilter } from "./StatusFilter";
 import { RoutineSection, TaskSection, type KeyedRoutine, type KeyedTask } from "./TaskBoardSections";
-import { TaskDetailPanel, TaskDetailSheet, type DetailItem } from "./TaskDetail";
+import { TaskDetailPanel, type DetailItem } from "./TaskDetail";
+import { TaskDetailSheet } from "./TaskDetailSheet";
+import { UpdateToast, type ToastState } from "./UpdateToast";
 import {
   StaleSyncBanner,
   TaskBoardDenied,
@@ -115,6 +117,8 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   const [nameQuery, setNameQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(props.initialSelectedKey ?? null);
   const closeDetail = useCallback(() => setSelectedKey(null), []);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const board = state.kind === "ready" ? state.board : null;
   const all = useMemo(() => (board ? keyed(board) : { tasks: [], routines: [] }), [board]);
@@ -149,6 +153,28 @@ export function TaskBoardView(props: TaskBoardViewProps) {
     : selectedRoutine
       ? { kind: "routine", ...selectedRoutine }
       : null;
+
+  // 反映したら画面下で知らせる。ステータスを変えたときは「元に戻す」で変更前のステータスを書き戻す
+  const submitUpdate = props.onSubmitUpdate;
+  const submitFor = (item: DetailItem): SubmitTaskUpdate | undefined =>
+    submitUpdate &&
+    (async (payload: TaskUpdatePayload) => {
+      const result = await submitUpdate(payload);
+      if (!result.ok) return result;
+      const notice = describeUpdate(payload, item.status);
+      const undo = notice.undo;
+      setToast({
+        message: notice.message,
+        onUndo: undo
+          ? async () => {
+              setToast({ message: notice.message, busy: true });
+              const reverted = await submitUpdate(undo);
+              setToast({ message: reverted.ok ? "元に戻しました" : taskUpdateErrorMessage(reverted.code) });
+            }
+          : undefined,
+      });
+      return result;
+    });
 
   const showAll = () => setChoice("all");
   const resetFilters = () => { setChoice("all"); setStatuses(null); setNameQuery(""); };
@@ -257,14 +283,15 @@ export function TaskBoardView(props: TaskBoardViewProps) {
               <TaskSection items={tasks} members={members} unassignedCount={unassigned(tasks)} empty={sectionEmpty("タスク")} selectedKey={selectedKey} onSelect={toggleSelect} />
             </div>
             {selected && isDesktop && (
-              <TaskDetailPanel item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={props.onSubmitUpdate} />
+              <TaskDetailPanel key={selected.key} item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={submitFor(selected)} />
             )}
           </div>
         )}
       </main>
       {selected && board && !isDesktop && (
-        <TaskDetailSheet item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={props.onSubmitUpdate} />
+        <TaskDetailSheet key={selected.key} item={selected} members={members} sourceUrl={board.sourceUrl} onClose={closeDetail} onSubmitUpdate={submitFor(selected)} />
       )}
+      <UpdateToast toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }

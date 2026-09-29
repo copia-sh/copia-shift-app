@@ -328,7 +328,7 @@ Firebase無料枠は1日50,000読み取りなので、アプリ本体の利用�
 
 ## タスク表の取り込み（アプリのタスク画面）
 
-アプリのタスク画面は、Googleスプレッドシート「スタダチーム_タスク表」を**閲覧だけ**します。
+アプリのタスク画面は、Googleスプレッドシート「スタダチーム_タスク表」を表示します（進捗の更新は次の節）。
 正本はシートのままで、Workerが15分ごと（0・15・30・45分）に `タスク一覧` と `定例業務（毎週・毎日など）` の
 2タブを読み、Firestoreの `groups/{AGENT_GROUP_ID}/taskBoard/current` を書き直します。
 アプリからこのドキュメントへは誰も書き込めません（`firestore.rules`）。
@@ -353,6 +353,23 @@ npx wrangler secret put TASK_BOARD_SPREADSHEET_ID --config worker/wrangler.toml
 - `タスク内容` か `ステータス` の列が見つからない、またはタブ名が変わった場合は**書き込まずに失敗**させます。
   古い内容がアプリに残り、Cronの実行履歴が失敗になるので、シートの構造変更に気づけます。
 - アプリは最終取り込みから1時間以上たつと「同期が止まっている可能性」を表示します。
+
+## タスク進捗の更新 (`POST /tasks/update`)
+
+アプリのタスク詳細の「進捗を更新」から、**ステータス・状況メモ（追記）・最新の成果物**をタスク表へ即時に書き込みます。
+承認は挟まず、アプリ側（Firestore）には申請も履歴も残しません。書き込んだ直後に `taskBoard/current` を取り込み直すので、画面もすぐ変わります。
+
+- 認証: アプリのログイン（Firebase ID トークン）を Worker が検証し、`groups/{AGENT_GROUP_ID}/members/{uid}` が在籍（`active: true`）であることを確かめる
+- CORS: `TASK_API_ALLOWED_ORIGIN`（アプリの配信元）以外からのブラウザ呼び出しは断る。認可はトークンと在籍で行い、CORS には頼らない
+- 行の特定: 「タスク内容」（タスク一覧は「No」も）が一致する1行だけ。見つからない・複数あるときは書かずに 409 を返す
+- 書き込み: `valueInputOption=RAW`（数式として解釈させない）。成果物が `=` `+` `-` `@` で始まるときは `'` を付ける（CSV/Excel へ書き出したときの数式実行を防ぐ）
+- 状況メモは上書きせず「YYYY-MM-DD: 本文（表示名）」を末尾に追記する
+
+### 有効化
+
+1. サービスアカウントをタスク表の**編集者**にする（取り込みだけなら閲覧者で足りるが、書き込みには編集権限が要る）
+2. `worker/wrangler.toml` の `TASK_EDIT_ENABLED` を `"true"` にし、`TASK_API_ALLOWED_ORIGIN` をアプリの配信元に合わせてデプロイ
+3. アプリのビルドに Worker の URL を渡す（GitHub の Secrets に `VITE_TASK_API_BASE_URL`）。未設定ならタスク画面は閲覧のみのまま
 
 ## ChatGPT Workspace Agent 用 MCP (`/mcp`)
 

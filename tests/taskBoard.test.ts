@@ -19,6 +19,7 @@ import {
   parseTaskRows,
   splitAssignees,
   splitMemo,
+  splitMemoAuthor,
   TASK_BOARD_STALE_MS,
 } from "../src/taskBoard";
 
@@ -332,5 +333,18 @@ describe("matchesNameQuery", () => {
   it("全員が担当のものは、名前の合う人がいれば出す", () => {
     expect(matchesNameQuery(["全員（毎月入力）"], "田村", names)).toBe(true);
     expect(matchesNameQuery(["全員（毎月入力）"], "鈴木", names)).toBe(false);
+  });
+});
+
+describe("splitMemoAuthor", () => {
+  const names = ["田村駿貴", "佐藤広幸"];
+
+  it("末尾の（メンバー名）を書き手として分ける", () => {
+    expect(splitMemoAuthor("草案を作成した（田村駿貴）", names)).toEqual({ text: "草案を作成した", author: "田村駿貴" });
+  });
+
+  it("メンバー名でない補足はそのまま残す", () => {
+    expect(splitMemoAuthor("作成済み（架空のメモ）", names)).toEqual({ text: "作成済み（架空のメモ）", author: null });
+    expect(splitMemoAuthor("メモだけ", names)).toEqual({ text: "メモだけ", author: null });
   });
 });

@@ -1,7 +1,8 @@
 /**
  * タスク表（Googleスプレッドシート「スタダチーム_タスク表」）の閲覧用データ。
  *
- * 正本はシートで、アプリは閲覧だけする。Worker がシートを読んでここの関数で正規化し、
+ * 正本はシート。進捗（ステータス・状況メモ・成果物）だけはアプリから Worker 経由でシートへ直接書き込める。
+ * Worker がシートを読んでここの関数で正規化し、
  * Firestore の `groups/{gid}/taskBoard/current` に保存する。アプリは同じ関数で読み戻す。
  * Firebase にも DOM にも依存しない純粋関数だけを置き、Worker とアプリの両方から使う。
  */
@@ -216,6 +217,16 @@ export function splitMemo(memo: string): MemoEntry[] {
     if (text) entries.push({ date: match[1], text });
   });
   return entries;
+}
+
+/**
+ * アプリから追記したメモは末尾に「（表示名）」が付く。メンバーの表示名と一致するときだけ書き手として分ける
+ * （「（架空のメモ）」のような補足まで名前扱いしない）。
+ */
+export function splitMemoAuthor(text: string, memberNames: readonly string[]): { text: string; author: string | null } {
+  const match = /^(.*)（([^（）]+)）$/su.exec(text.trim());
+  if (!match || !memberNames.includes(match[2])) return { text, author: null };
+  return { text: match[1].trim(), author: match[2] };
 }
 
 export interface DeliverableLink {

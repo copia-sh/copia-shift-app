@@ -10,23 +10,26 @@ import {
 interface TaskProgressFormProps {
   target: TaskUpdateTarget;
   onSubmit: SubmitTaskUpdate;
+  onCancel: () => void;
+  /** 反映できたら呼ぶ（詳細の表示に戻す。結果は画面下の知らせで伝える） */
+  onDone: () => void;
 }
 
-const FIELD = "w-full rounded-md border border-[#E5E7EB] bg-white px-2.5 text-[13px] text-[#111827] placeholder:text-[#9CA3AF]";
+// iPhone の Safari は16px未満の入力欄を触ると画面を拡大するので、スマホだけ16pxにする
+const FIELD = "w-full rounded-md border border-[#E5E7EB] bg-white px-2.5 text-[16px] text-[#111827] placeholder:text-[#9CA3AF] md:text-[13px]";
 const LABEL = "text-[11px] font-bold text-[#6B7280]";
 
 /**
  * 進捗の更新。送るとその場でタスク表に書き込まれる（承認なし）。
  * 状況メモは上書きではなく、日付と名前を付けてシートの末尾に追記される。
  */
-export function TaskProgressForm({ target, onSubmit }: TaskProgressFormProps) {
+export function TaskProgressForm({ target, onSubmit, onCancel, onDone }: TaskProgressFormProps) {
   const initialStatus = (TASK_STATUSES as readonly string[]).includes(target.status) ? target.status : "";
   const [status, setStatus] = useState(initialStatus);
   const [memo, setMemo] = useState("");
   const [deliverable, setDeliverable] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
 
   const payload = buildTaskUpdatePayload(target, { status: status || target.status, memo, deliverable });
 
@@ -34,13 +37,10 @@ export function TaskProgressForm({ target, onSubmit }: TaskProgressFormProps) {
     if (!payload || busy) return;
     setBusy(true);
     setError(null);
-    setDone(false);
     const result = await onSubmit(payload);
     setBusy(false);
     if (result.ok) {
-      setMemo("");
-      setDeliverable("");
-      setDone(true);
+      onDone();
     } else {
       // 入力は残したまま、失敗の理由をフォームの中に出す
       setError(taskUpdateErrorMessage(result.code));
@@ -48,11 +48,10 @@ export function TaskProgressForm({ target, onSubmit }: TaskProgressFormProps) {
   };
 
   return (
-    <section className="flex flex-col gap-2 rounded-lg border border-[#E5E7EB] bg-[#FBFCFD] p-3">
-      <h3 className="text-[12px] font-bold text-[#111827]">進捗を更新</h3>
+    <section className="flex flex-col gap-2.5">
       <label className="flex flex-col gap-1">
         <span className={LABEL}>ステータス</span>
-        <select value={status} onChange={(event) => setStatus(event.target.value)} className={`${FIELD} h-9`}>
+        <select value={status} onChange={(event) => setStatus(event.target.value)} className={`${FIELD} h-11 md:h-9`}>
           {!initialStatus && <option value="">{target.status || "未設定"}（変更しない）</option>}
           {TASK_STATUSES.map((option) => (
             <option key={option} value={option}>{option}</option>
@@ -78,7 +77,7 @@ export function TaskProgressForm({ target, onSubmit }: TaskProgressFormProps) {
           onChange={(event) => setDeliverable(event.target.value)}
           maxLength={500}
           placeholder="ファイル名やURL"
-          className={`${FIELD} h-9`}
+          className={`${FIELD} h-11 md:h-9`}
         />
       </label>
       {error && (
@@ -86,19 +85,24 @@ export function TaskProgressForm({ target, onSubmit }: TaskProgressFormProps) {
           {error}
         </p>
       )}
-      {done && !error && (
-        <p role="status" className="text-[12px] font-bold text-[#166A75]">シートに反映しました</p>
-      )}
-      <div className="flex flex-col gap-1">
+      <p className="text-[11px] leading-[1.6] text-[#6B7280]">送るとすぐタスク表に書き込まれます。状況メモは日付と名前を付けて末尾に追記します。</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="inline-flex h-11 flex-1 items-center justify-center whitespace-nowrap rounded-md border border-[#E5E7EB] bg-white text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] md:h-9"
+        >
+          キャンセル
+        </button>
         <button
           type="button"
           onClick={submit}
           disabled={!payload || busy}
-          className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#248DD4] px-3.5 text-[13px] font-bold text-white shadow-[0_2px_0_0_#0863A0] disabled:cursor-not-allowed disabled:bg-[#C8CDD2] disabled:shadow-none"
+          className="inline-flex h-11 flex-[2] items-center justify-center whitespace-nowrap rounded-md bg-[#248DD4] text-[13px] font-bold text-white shadow-[0_2px_0_0_#0863A0] disabled:cursor-not-allowed disabled:bg-[#C8CDD2] disabled:shadow-none md:h-9"
         >
           {busy ? "反映中…" : "シートに反映"}
         </button>
-        <span className="text-[11px] text-[#6B7280]">送るとすぐタスク表に書き込まれます</span>
       </div>
     </section>
   );

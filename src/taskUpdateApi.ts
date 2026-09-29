@@ -1,3 +1,5 @@
+import { TASK_STATUSES } from "./taskBoard";
+
 /**
  * タスク画面から進捗をタスク表へ書き込むときの、送信内容と失敗時の文言。
  * 送信そのもの（ログイン中ユーザーのトークンを付けた fetch）は firebase/taskUpdate.ts にある。
@@ -59,4 +61,22 @@ const MESSAGES: Record<string, string> = {
 
 export function taskUpdateErrorMessage(code: string): string {
   return MESSAGES[code] ?? "反映できませんでした。時間をおいてもう一度お試しください。";
+}
+
+export interface UpdateNotice {
+  message: string;
+  /** 「元に戻す」で送る内容。ステータスを変えたときだけ（メモの追記は取り消せない） */
+  undo: TaskUpdatePayload | null;
+}
+
+/** 反映後に画面下へ出す知らせ。完了にすると一覧から消えるので、何をしたかをここで伝える。 */
+export function describeUpdate(payload: TaskUpdatePayload, previousStatus: string): UpdateNotice {
+  // 「No.4 を」は空白を挟み、「「報告会」を」は括弧の後に続ける
+  const name = payload.kind === "task" && payload.no ? `No.${payload.no} ` : `「${payload.title}」`;
+  if (!payload.status) return { message: `${name}を更新しました`, undo: null };
+  const canUndo = (TASK_STATUSES as readonly string[]).includes(previousStatus) && previousStatus !== payload.status;
+  return {
+    message: `${name}を「${payload.status}」にしました`,
+    undo: canUndo ? { kind: payload.kind, no: payload.no, title: payload.title, status: previousStatus } : null,
+  };
 }

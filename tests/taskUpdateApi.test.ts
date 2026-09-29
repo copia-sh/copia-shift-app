@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTaskUpdatePayload, taskUpdateErrorMessage } from "../src/taskUpdateApi";
+import { buildTaskUpdatePayload, describeUpdate, taskUpdateErrorMessage } from "../src/taskUpdateApi";
 
 describe("buildTaskUpdatePayload", () => {
   const task = { kind: "task" as const, no: "4", title: "集計スプシを作る", status: "未着手" };
@@ -30,5 +30,27 @@ describe("taskUpdateErrorMessage", () => {
 
   it("知らないコードは汎用の文言", () => {
     expect(taskUpdateErrorMessage("whatever")).toBe("反映できませんでした。時間をおいてもう一度お試しください。");
+  });
+});
+
+describe("describeUpdate", () => {
+  const payload = { kind: "task" as const, no: "4", title: "集計スプシを作る" };
+
+  it("ステータスを変えたら、変更前に戻す内容も返す", () => {
+    expect(describeUpdate({ ...payload, status: "完了" }, "未着手")).toEqual({
+      message: "No.4 を「完了」にしました",
+      undo: { ...payload, status: "未着手" },
+    });
+  });
+
+  it("メモ・成果物だけなら戻す操作は出さない（追記は取り消せないため）", () => {
+    expect(describeUpdate({ ...payload, memo: "a" }, "未着手")).toEqual({ message: "No.4 を更新しました", undo: null });
+  });
+
+  it("変更前が選べないステータスなら戻さない。定例業務はタスク名で示す", () => {
+    expect(describeUpdate({ kind: "routine", no: "", title: "報告会", status: "運用中" }, "")).toEqual({
+      message: "「報告会」を「運用中」にしました",
+      undo: null,
+    });
   });
 });
