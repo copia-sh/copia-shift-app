@@ -13,8 +13,8 @@ interface DetailProps {
   onClose: () => void;
 }
 
-const LABEL = "text-[12px] font-bold text-[#6B7280]";
-const NOT_FILLED = <span className="text-[14px] text-[#9CA3AF]">未記入</span>;
+const LABEL = "text-[11px] font-bold text-[#6B7280]";
+const NOT_FILLED = <span className="text-[13px] text-[#9CA3AF]">未記入</span>;
 
 function eyebrow(item: DetailItem): string {
   return item.kind === "task" ? `タスク No.${item.no}` : "定例業務";
@@ -30,7 +30,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
       <dt className={`${LABEL} pt-0.5`}>{label}</dt>
-      <dd className="min-w-0 text-[14px] text-[#111827]">{children}</dd>
+      <dd className="min-w-0 text-[13px] text-[#111827]">{children}</dd>
     </>
   );
 }
@@ -46,10 +46,10 @@ function Memo({ memo }: { memo: string }) {
     <ul className="flex flex-col gap-2.5">
       {entries.map((entry, index) => (
         <li key={index} className="flex flex-col gap-0.5 md:grid md:grid-cols-[44px_1fr] md:gap-2">
-          <span className="text-[12px] font-bold leading-[1.8] text-[#4B5563]">
+          <span className="text-[11px] font-bold leading-[1.7] text-[#4B5563]">
             {entry.date ? shortDate(entry.date) : ""}
           </span>
-          <span className="text-[15px] leading-[1.8] text-[#111827] md:text-[14px]">{entry.text}</span>
+          <span className="text-[13px] leading-[1.7] text-[#111827]">{entry.text}</span>
         </li>
       ))}
     </ul>
@@ -64,13 +64,13 @@ function Deliverables({ value }: { value: string }) {
       {links.map((link, index) => (
         <li key={index} className="rounded-md border border-[#EFF1F3] px-3 py-2">
           {link.url ? (
-            <a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all text-[14px] font-bold text-[#248DD4] underline">
+            <a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all text-[13px] font-bold text-[#248DD4] underline">
               {link.label} ↗
             </a>
           ) : (
-            <span className="text-[14px] font-bold text-[#111827]">{link.label}</span>
+            <span className="text-[13px] font-bold text-[#111827]">{link.label}</span>
           )}
-          {link.host && <span className="mt-0.5 block text-[12px] text-[#6B7280]">{link.host}</span>}
+          {link.host && <span className="mt-0.5 block text-[11px] text-[#6B7280]">{link.host}</span>}
         </li>
       ))}
     </ul>
@@ -79,9 +79,9 @@ function Deliverables({ value }: { value: string }) {
 
 function DetailBody({ item, members }: Pick<DetailProps, "item" | "members">) {
   return (
-    <div className="flex flex-col gap-4 px-4 py-3.5">
+    <div className="flex flex-col gap-3 px-4 py-3">
       <div><StatusBadge status={item.status} large /></div>
-      <dl className="grid grid-cols-[72px_1fr] gap-x-3 gap-y-2.5">
+      <dl className="grid grid-cols-[64px_1fr] gap-x-3 gap-y-2">
         {item.kind === "routine" && <Field label="頻度">{text(item.frequency)}</Field>}
         <Field label="担当"><AssigneeList assignees={item.assignees} members={members} /></Field>
         {item.kind === "task" && (
@@ -95,7 +95,7 @@ function DetailBody({ item, members }: Pick<DetailProps, "item" | "members">) {
       <hr className="border-[#F1F3F5]" />
       <section className="flex flex-col gap-1.5">
         <h3 className={LABEL}>背景・目的</h3>
-        {item.purpose ? <p className="text-[15px] leading-[1.8] md:text-[14px]">{item.purpose}</p> : NOT_FILLED}
+        {item.purpose ? <p className="text-[13px] leading-[1.7]">{item.purpose}</p> : NOT_FILLED}
       </section>
       <section className="flex flex-col gap-1.5">
         <h3 className={LABEL}>状況メモ</h3>
@@ -119,7 +119,7 @@ function SheetLink({ sourceUrl, className }: { sourceUrl: string; className: str
 }
 
 const SECONDARY_BUTTON =
-  "inline-flex items-center justify-center rounded-md border border-[#E5E7EB] bg-white px-3.5 text-[14px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3]";
+  "inline-flex items-center justify-center rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3]";
 
 /** PC の右パネル。シフト画面の詳細パネルと同じ位置・型。 */
 export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailProps) {
@@ -134,12 +134,12 @@ export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailPro
   return (
     <aside
       aria-label={`${eyebrow(item)}の詳細`}
-      className="sticky top-4 w-[360px] flex-none self-start overflow-hidden rounded-xl border border-[#E5E7EB] bg-white"
+      className="sticky top-4 w-[340px] flex-none self-start overflow-hidden rounded-xl border border-[#E5E7EB] bg-white"
     >
       <header className="flex items-start gap-3 border-b border-[#F1F3F5] px-4 py-3.5">
         <div className="min-w-0 flex-1">
           <p className={LABEL}>{eyebrow(item)}</p>
-          <h2 className="mt-0.5 text-[16px] font-bold leading-[1.55] text-[#111827]">{item.title}</h2>
+          <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
         </div>
         <button type="button" aria-label="閉じる" onClick={onClose} className="h-[34px] w-[34px] flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
           ✕
@@ -148,7 +148,7 @@ export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailPro
       <DetailBody item={item} members={members} />
       <footer className="flex items-center gap-3 border-t border-[#F1F3F5] px-4 py-3.5">
         <SheetLink sourceUrl={sourceUrl} className={`${SECONDARY_BUTTON} h-[34px]`} />
-        <span className="text-[12px] text-[#6B7280]">アプリでは閲覧のみです</span>
+        <span className="text-[11px] text-[#6B7280]">アプリでは閲覧のみです</span>
       </footer>
     </aside>
   );
@@ -184,7 +184,7 @@ export function TaskDetailSheet({ item, members, sourceUrl, onClose }: DetailPro
         <header className="flex flex-none items-start gap-3 border-b border-[#F1F3F5] px-4 pb-3 pt-2">
           <div className="min-w-0 flex-1">
             <p className={LABEL}>{eyebrow(item)}</p>
-            <h2 className="mt-0.5 text-[16px] font-bold leading-[1.55] text-[#111827]">{item.title}</h2>
+            <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
           </div>
           <button ref={closeRef} type="button" aria-label="閉じる" onClick={onClose} className="h-11 w-11 flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
             ✕

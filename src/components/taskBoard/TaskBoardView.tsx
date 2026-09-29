@@ -229,7 +229,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
           />
         ) : board && (
           <div className="flex items-start gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-[22px] md:gap-7">
+            <div className="flex min-w-0 flex-1 flex-col gap-5 md:gap-6">
               <RoutineSection items={routines} members={members} unassignedCount={unassigned(routines)} empty={sectionEmpty("定例業務")} selectedKey={selectedKey} onSelect={toggleSelect} />
               <TaskSection items={tasks} members={members} unassignedCount={unassigned(tasks)} empty={sectionEmpty("タスク")} selectedKey={selectedKey} onSelect={toggleSelect} />
             </div>

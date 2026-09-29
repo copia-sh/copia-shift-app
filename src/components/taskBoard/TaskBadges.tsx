@@ -23,8 +23,8 @@ export function StatusBadge({ status, large = false }: { status: string; large?:
   const colors = STATUS_COLORS[status] ?? UNKNOWN_STATUS;
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 font-bold ${
-        large ? "h-7 text-[13px]" : "h-6 text-[12px]"
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 font-bold ${
+        large ? "h-6 text-[12px]" : "h-[22px] text-[11px]"
       }`}
       style={{ background: colors.bg, borderColor: colors.border, color: colors.text }}
     >
@@ -36,7 +36,7 @@ export function StatusBadge({ status, large = false }: { status: string; large?:
 export function UnassignedCountBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span className="inline-flex h-6 items-center rounded-full border border-dashed border-[#D9736F] bg-[#FDF1F1] px-2.5 text-[12px] font-bold text-[#A8433F]">
+    <span className="inline-flex h-[22px] items-center rounded-full border border-dashed border-[#D9736F] bg-[#FDF1F1] px-2 text-[11px] font-bold text-[#A8433F]">
       担当未定 {count}件
     </span>
   );
@@ -45,14 +45,14 @@ export function UnassignedCountBadge({ count }: { count: number }) {
 export function PriorityText({ priority }: { priority: string }) {
   if (priority === "最重要") {
     return (
-      <span className="inline-flex h-6 items-center rounded-full border border-[#F0C7C7] bg-[#FDF1F1] px-2 text-[12px] font-bold text-[#A8433F]">
+      <span className="inline-flex h-[22px] items-center rounded-full border border-[#F0C7C7] bg-[#FDF1F1] px-2 text-[11px] font-bold text-[#A8433F]">
         最重要
       </span>
     );
   }
   const strong = priority === "高";
   return (
-    <span className={`text-[14px] ${strong ? "font-bold text-[#111827]" : "text-[#4B5563]"}`}>
+    <span className={`text-[12px] ${strong ? "font-bold text-[#111827]" : "text-[#4B5563]"}`}>
       {priority || "—"}
     </span>
   );
@@ -73,20 +73,20 @@ interface AssigneeListProps {
 }
 
 /** 担当者の並び。メンバーに当たる名前だけアイコンを付け、「全員（毎月入力）」などは文字のまま出す。 */
-export function AssigneeList({ assignees, members, size = 22 }: AssigneeListProps) {
+export function AssigneeList({ assignees, members, size = 18 }: AssigneeListProps) {
   if (assignees.length === 1 && assignees[0] === UNASSIGNED) {
     return (
-      <span className="inline-flex h-6 w-fit items-center justify-self-start rounded-full border border-dashed border-[#D9736F] bg-[#FDF1F1] px-2.5 text-[12px] font-bold text-[#A8433F]">
+      <span className="inline-flex h-[22px] w-fit items-center justify-self-start rounded-full border border-dashed border-[#D9736F] bg-[#FDF1F1] px-2 text-[11px] font-bold text-[#A8433F]">
         担当未定
       </span>
     );
   }
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
       {assignees.map((name) => {
         const member = findMemberForAssignee(name, members);
         return (
-          <span key={name} className="inline-flex min-w-0 items-center gap-1.5">
+          <span key={name} className="inline-flex min-w-0 items-center gap-1">
             {member && (
               <span
                 aria-hidden
@@ -96,7 +96,7 @@ export function AssigneeList({ assignees, members, size = 22 }: AssigneeListProp
                 {name.slice(0, 1)}
               </span>
             )}
-            <span className="truncate text-[13px] text-[#374151]">{name}</span>
+            <span className="truncate text-[12px] text-[#374151]">{name}</span>
           </span>
         );
       })}
