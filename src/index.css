@@ -49,11 +49,11 @@ body {
   background-color: var(--c-page);
 }
 
-/* スマホの固定フッター（シフト｜タスク）。下の余白は最低20px、ホームバーの領域がそれより広ければそちらに合わせる。
+/* スマホの固定フッター（シフト｜タスク）。土台を下に長く取り、ボタンはその上の方に置く。
    viewport-fit=cover を指定していないので env() は0になることがあり、max() で下限を持たせる。 */
 :root {
-  --screen-footer-pad: max(20px, env(safe-area-inset-bottom));
-  --screen-footer-h: calc(8px + 48px + var(--screen-footer-pad));
+  --screen-footer-pad: max(34px, calc(env(safe-area-inset-bottom) + 12px));
+  --screen-footer-h: calc(10px + 44px + var(--screen-footer-pad));
 }
 
 #root {
