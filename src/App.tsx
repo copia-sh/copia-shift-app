@@ -768,7 +768,7 @@ function ShiftCalendar({
         </div>
       )}
 
-      <main className="mx-auto max-w-[1400px] px-2 pb-[calc(210px+env(safe-area-inset-bottom))] md:px-5 md:pb-[140px]">
+      <main className="mx-auto max-w-[1400px] px-2 pb-[calc(146px+var(--screen-footer-h))] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
         ) : emptyReason ? (

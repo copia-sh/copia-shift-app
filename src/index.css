@@ -49,6 +49,13 @@ body {
   background-color: var(--c-page);
 }
 
+/* スマホの固定フッター（シフト｜タスク）。下の余白は最低20px、ホームバーの領域がそれより広ければそちらに合わせる。
+   viewport-fit=cover を指定していないので env() は0になることがあり、max() で下限を持たせる。 */
+:root {
+  --screen-footer-pad: max(20px, env(safe-area-inset-bottom));
+  --screen-footer-h: calc(8px + 48px + var(--screen-footer-pad));
+}
+
 #root {
   min-height: 100svh;
 }

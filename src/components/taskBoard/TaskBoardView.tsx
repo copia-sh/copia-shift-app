@@ -159,7 +159,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
     .join("と");
 
   return (
-    <div className="min-h-screen pb-[calc(90px+env(safe-area-inset-bottom))] md:pb-10" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
+    <div className="min-h-screen pb-[calc(16px+var(--screen-footer-h))] md:pb-10" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
       {/* 上部はシフト画面（App.tsx）と同じ並び・余白にする。画面を行き来しても位置が動かないように。 */}
       <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
         <button type="button" onClick={props.onExport} className={HEADER_BTN}>書き出し</button>

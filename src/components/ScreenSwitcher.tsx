@@ -43,7 +43,7 @@ export function ScreenFooter({ screen, onChange }: ScreenSwitcherProps) {
     <nav
       aria-label="画面の切り替え"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E5E7EB] bg-white px-3 pt-2 shadow-[0_-2px_4px_rgba(57,57,57,0.06)] md:hidden"
-      style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
+      style={{ paddingBottom: "var(--screen-footer-pad)" }}
     >
       <div className="flex overflow-hidden rounded-lg border border-[#E5E7EB]">
         {SCREENS.map(([id, label], index) => (

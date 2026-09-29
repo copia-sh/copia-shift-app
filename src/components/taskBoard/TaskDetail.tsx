@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { dragOffset, settleSheetDrag } from "./sheetDrag";
 import type { Member } from "../../types";
 import { parseDeliverables, splitMemo } from "../../taskBoard";
 import { AssigneeList, PriorityText, StatusBadge } from "./TaskBadges";
@@ -155,8 +156,50 @@ export function TaskDetailPanel({ item, members, sourceUrl, onClose }: DetailPro
 }
 
 /** スマホの下からのシート。フッターごと幕で覆い、閉じるまで画面は切り替えられない。 */
+/** シートを指で動かす。つまみと見出しを掴んで、下へ引くと閉じ、上へ引くと画面いっぱいに広がる。 */
+function useSheetDrag(onClose: () => void) {
+  const [expanded, setExpanded] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startY = useRef<number | null>(null);
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // 閉じるボタンの操作は奪わない
+    if ((event.target as HTMLElement).closest("button")) return;
+    startY.current = event.clientY;
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (startY.current === null) return;
+    setOffset(dragOffset(event.clientY - startY.current));
+  };
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (startY.current === null) return;
+    const result = settleSheetDrag(event.clientY - startY.current, expanded);
+    startY.current = null;
+    setDragging(false);
+    setOffset(0);
+    if (result === "close") onClose();
+    else if (result === "expand") setExpanded(true);
+    else if (result === "collapse") setExpanded(false);
+  };
+
+  return {
+    expanded,
+    sheetStyle: {
+      maxHeight: expanded ? "calc(100% - 24px)" : "86%",
+      transform: `translateY(${offset}px)`,
+      transition: dragging ? "none" : "transform 180ms ease, max-height 180ms ease",
+    } as React.CSSProperties,
+    handleProps: { onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd },
+  };
+}
+
+/** スマホの下からのシート。フッターごと幕で覆い、閉じるまで画面は切り替えられない。 */
 export function TaskDetailSheet({ item, members, sourceUrl, onClose }: DetailProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const { expanded, sheetStyle, handleProps } = useSheetDrag(onClose);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -178,22 +221,28 @@ export function TaskDetailSheet({ item, members, sourceUrl, onClose }: DetailPro
         aria-modal="true"
         aria-label={`${eyebrow(item)}の詳細`}
         onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[86%] w-full flex-col rounded-t-2xl bg-white shadow-[0_-4px_16px_rgba(57,57,57,0.2)]"
+        className="flex w-full flex-col rounded-t-2xl bg-white shadow-[0_-4px_16px_rgba(57,57,57,0.2)]"
+        style={sheetStyle}
       >
-        <div aria-hidden className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-[#C8CDD2]" />
-        <header className="flex flex-none items-start gap-3 border-b border-[#F1F3F5] px-4 pb-3 pt-2">
-          <div className="min-w-0 flex-1">
-            <p className={LABEL}>{eyebrow(item)}</p>
-            <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
+        <div {...handleProps} className="flex-none cursor-grab touch-none select-none active:cursor-grabbing">
+          <div aria-hidden className="flex justify-center pb-1 pt-2">
+            <span className="h-1 w-10 rounded-full bg-[#C8CDD2]" />
           </div>
-          <button ref={closeRef} type="button" aria-label="閉じる" onClick={onClose} className="h-11 w-11 flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
-            ✕
-          </button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+          <header className="flex items-start gap-3 border-b border-[#F1F3F5] px-4 pb-3 pt-1">
+            <div className="min-w-0 flex-1">
+              <p className={LABEL}>{eyebrow(item)}</p>
+              <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
+              <p className="sr-only">{expanded ? "下へ引くと元の高さに戻ります" : "上へ引くと広がり、下へ引くと閉じます"}</p>
+            </div>
+            <button ref={closeRef} type="button" aria-label="閉じる" onClick={onClose} className="h-11 w-11 flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
+              ✕
+            </button>
+          </header>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <DetailBody item={item} members={members} />
         </div>
-        <footer className="flex-none border-t border-[#F1F3F5] px-4 pt-3" style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+        <footer className="flex-none border-t border-[#F1F3F5] px-4 pt-3" style={{ paddingBottom: "var(--screen-footer-pad)" }}>
           <SheetLink sourceUrl={sourceUrl} className={`${SECONDARY_BUTTON} h-11 w-full`} />
         </footer>
       </div>
