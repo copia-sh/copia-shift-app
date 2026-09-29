@@ -172,6 +172,19 @@ export function findMemberForAssignee<T extends { displayName: string }>(
   return matches.length === 1 ? matches[0] : null;
 }
 
+/**
+ * 氏名での絞り込み。担当者名に含まれるか、名前の合うメンバーの担当かで見る。
+ * シートの担当は姓だけのことが多いので、「広幸」のような名前でもメンバーの表示名経由で当てる。
+ */
+export function matchesNameQuery(assignees: readonly string[], query: string, memberNames: readonly string[]): boolean {
+  const q = normalizeMemberName(query);
+  if (!q) return true;
+  if (assignees.some((assignee) => assigneeKey(assignee).includes(q))) return true;
+  return memberNames
+    .filter((name) => normalizeMemberName(name).includes(q))
+    .some((name) => isAssignedTo(assignees, name));
+}
+
 export function isUnassigned(assignees: readonly string[]): boolean {
   return assignees.every((assignee) => assignee === UNASSIGNED);
 }

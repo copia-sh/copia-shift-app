@@ -12,6 +12,7 @@ import {
   isAssignedTo,
   isStale,
   isUnassigned,
+  matchesNameQuery,
   parseDeliverables,
   parseRoutineRows,
   parseTaskBoardDoc,
@@ -312,5 +313,24 @@ describe("resolveScope", () => {
 
   it("いなくなったメンバーは全員に戻す", () => {
     expect(resolveScope("gone", me, members)).toEqual({ scope: "all", displayName: "田村駿貴", label: "全員" });
+  });
+});
+
+describe("matchesNameQuery", () => {
+  const names = ["田村駿貴", "佐藤広幸"];
+
+  it("空なら全部", () => {
+    expect(matchesNameQuery(["未定"], "  ", names)).toBe(true);
+  });
+
+  it("担当者名の一部で当てる（姓だけの担当も、表示名の名前部分で当たる）", () => {
+    expect(matchesNameQuery(["佐藤"], "佐藤", names)).toBe(true);
+    expect(matchesNameQuery(["佐藤"], "広幸", names)).toBe(true);
+    expect(matchesNameQuery(["田村"], "佐藤", names)).toBe(false);
+  });
+
+  it("全員が担当のものは、名前の合う人がいれば出す", () => {
+    expect(matchesNameQuery(["全員（毎月入力）"], "田村", names)).toBe(true);
+    expect(matchesNameQuery(["全員（毎月入力）"], "鈴木", names)).toBe(false);
   });
 });

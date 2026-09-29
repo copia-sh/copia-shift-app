@@ -8,6 +8,7 @@ import {
   formatSyncTime,
   isStale,
   isUnassigned,
+  matchesNameQuery,
   resolveScope,
   type ScopeChoice,
   type TaskBoard,
@@ -108,6 +109,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   // 既定は自分のボタンを選んだ状態。「自分」という別ボタンは置かず、名前のボタンで示す。
   const [choice, setChoice] = useState<ScopeChoice>(props.initialScope ?? currentMember.id);
   const [statuses, setStatuses] = useState<ReadonlySet<string> | null>(null);
+  const [nameQuery, setNameQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(props.initialSelectedKey ?? null);
   const closeDetail = useCallback(() => setSelectedKey(null), []);
 
@@ -125,12 +127,16 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   const isChosen = (memberId: string) =>
     scope === "mine" && (choice === memberId || (choice === "mine" && memberId === currentMember.id));
   const scopeOnly = { ...filter, statuses: null };
-  const tasks = filterBoardItems(all.tasks, filter);
-  const routines = filterBoardItems(all.routines, filter);
+  const memberNames = members.map((member) => member.displayName);
+  const byName = <T extends { assignees: readonly string[] }>(items: T[]) =>
+    items.filter((item) => matchesNameQuery(item.assignees, nameQuery, memberNames));
+  const tasks = byName(filterBoardItems(all.tasks, filter));
+  const routines = byName(filterBoardItems(all.routines, filter));
   const statusOptions = countStatuses([
-    ...filterBoardItems(all.routines, scopeOnly),
-    ...filterBoardItems(all.tasks, scopeOnly),
+    ...byName(filterBoardItems(all.routines, scopeOnly)),
+    ...byName(filterBoardItems(all.tasks, scopeOnly)),
   ]);
+  const hasNameQuery = nameQuery.trim() !== "";
 
   // 絞り込みで一覧から消えたものは、詳細も閉じた扱いにする。
   const selectedTask = tasks.find((task) => task.key === selectedKey);
@@ -142,19 +148,24 @@ export function TaskBoardView(props: TaskBoardViewProps) {
       : null;
 
   const showAll = () => setChoice("all");
-  const resetFilters = () => { setChoice("all"); setStatuses(null); };
+  const resetFilters = () => { setChoice("all"); setStatuses(null); setNameQuery(""); };
+  // シフト画面と同じく、氏名を入れたら「全員」の中から探す
+  const changeNameQuery = (value: string) => {
+    setNameQuery(value);
+    if (value.trim()) setChoice("all");
+  };
   const isMe = choice === "mine" || choice === currentMember.id;
   const whose = isMe ? "自分" : `${resolved.label}さん`;
   const toggleSelect = (key: string) => setSelectedKey((current) => (current === key ? null : key));
   const unassigned = (items: readonly { assignees: readonly string[] }[]) =>
     scope === "all" ? items.filter((item) => isUnassigned(item.assignees)).length : 0;
   const sectionEmpty = (noun: string) =>
-    statuses !== null
+    statuses !== null || hasNameQuery
       ? { text: `条件に合う${noun}はありません` }
       : scope === "mine"
         ? { text: `${whose}が担当の${noun}はありません`, actionLabel: `全員の${noun}を見る`, onAction: showAll }
         : { text: `${noun}はありません` };
-  const filterDescription = [scope === "mine" && `「${resolved.label}」`, statuses && `「ステータス：${[...statuses].join("・") || "なし"}」`]
+  const filterDescription = [scope === "mine" && `「${resolved.label}」`, hasNameQuery && `「氏名：${nameQuery.trim()}」`, statuses && `「ステータス：${[...statuses].join("・") || "なし"}」`]
     .filter(Boolean)
     .join("と");
 
@@ -183,6 +194,18 @@ export function TaskBoardView(props: TaskBoardViewProps) {
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 pb-2 md:px-5 md:pb-3">
         <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">表示する担当</span>
+        {/* シフト画面の「氏名で絞り込む」（MemberFilter）と同じ箱・幅 */}
+        <label className="flex-none">
+          <input
+            type="search"
+            value={nameQuery}
+            onChange={(event) => changeNameQuery(event.target.value)}
+            placeholder="氏名で絞り込む"
+            aria-label="氏名で絞り込む"
+            className="w-[112px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[135px]"
+            style={{ minHeight: 44 }}
+          />
+        </label>
         <button
           type="button"
           aria-pressed={scope === "all"}
@@ -218,7 +241,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
         {state.kind === "missing" && <TaskBoardMissing />}
         {state.kind === "denied" && <TaskBoardDenied onBack={() => onChangeScreen("shifts")} />}
         {state.kind === "error" && <TaskBoardError />}
-        {board && tasks.length === 0 && routines.length === 0 && (scope === "mine" || statuses !== null) ? (
+        {board && tasks.length === 0 && routines.length === 0 && (scope === "mine" || statuses !== null || hasNameQuery) ? (
           <TaskBoardNoMatch
             description={`${filterDescription}で絞り込んでいます。条件をひとつ外すと表示される場合があります。`}
             onReset={resetFilters}
