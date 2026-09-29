@@ -6,6 +6,7 @@ import {
   countStatuses,
   filterBoardItems,
   findMemberForAssignee,
+  resolveScope,
   formatElapsed,
   formatSyncTime,
   isAssignedTo,
@@ -293,5 +294,23 @@ describe("findMemberForAssignee", () => {
 
   it("複数人に当たるときは決めない（別人の色で出さない）", () => {
     expect(findMemberForAssignee("佐藤", [...members, { id: "c", displayName: "佐藤花子" }])).toBeNull();
+  });
+});
+
+describe("resolveScope", () => {
+  const me = { id: "me", displayName: "田村駿貴" };
+  const members = [me, { id: "b", displayName: "佐藤広幸" }];
+
+  it("自分・全員はそのまま", () => {
+    expect(resolveScope("mine", me, members)).toEqual({ scope: "mine", displayName: "田村駿貴", label: "自分" });
+    expect(resolveScope("all", me, members)).toEqual({ scope: "all", displayName: "田村駿貴", label: "全員" });
+  });
+
+  it("メンバーを選ぶとその人の担当で絞る", () => {
+    expect(resolveScope("b", me, members)).toEqual({ scope: "mine", displayName: "佐藤広幸", label: "佐藤広幸" });
+  });
+
+  it("いなくなったメンバーは全員に戻す", () => {
+    expect(resolveScope("gone", me, members)).toEqual({ scope: "all", displayName: "田村駿貴", label: "全員" });
   });
 });

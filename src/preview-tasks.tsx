@@ -74,7 +74,7 @@ createRoot(document.getElementById("root")!).render(
       accountMenuItems={[{ key: "signout", label: "ログアウト", onSelect: () => {} }]}
       onExport={() => {}}
       fixedNow={now}
-      initialScope={params.get("scope") === "all" ? "all" : "mine"}
+      initialScope={params.get("scope") ?? "mine"}
       initialSelectedKey={params.get("open") ?? undefined}
     />
     <ScreenFooter screen="tasks" onChange={() => {}} />

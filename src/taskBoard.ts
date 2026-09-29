@@ -338,6 +338,32 @@ export const DONE_STATUS = "完了";
 
 export type TaskScope = "mine" | "all";
 
+/** 画面で選ぶ「表示する担当」。自分・全員のほか、メンバーのIDで特定の人を選べる。 */
+export type ScopeChoice = "mine" | "all" | (string & {});
+
+export interface ResolvedScope {
+  scope: TaskScope;
+  /** 担当の判定に使う表示名。特定の人を選んだときはその人 */
+  displayName: string;
+  label: string;
+}
+
+/**
+ * 選んだ担当を絞り込み条件にする。特定の人は「自分」と同じ判定をその人の表示名で行う。
+ * 退会などで選んでいた人がいなくなったら、何も出ない状態にせず全員に戻す。
+ */
+export function resolveScope<T extends { id: string; displayName: string }>(
+  choice: ScopeChoice,
+  currentMember: T,
+  members: readonly T[],
+): ResolvedScope {
+  if (choice === "mine") return { scope: "mine", displayName: currentMember.displayName, label: "自分" };
+  const person = choice === "all" ? undefined : members.find((member) => member.id === choice);
+  return person
+    ? { scope: "mine", displayName: person.displayName, label: person.displayName }
+    : { scope: "all", displayName: currentMember.displayName, label: "全員" };
+}
+
 export interface BoardFilter {
   scope: TaskScope;
   displayName: string;

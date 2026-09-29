@@ -8,6 +8,8 @@ import {
   formatSyncTime,
   isStale,
   isUnassigned,
+  resolveScope,
+  type ScopeChoice,
   type TaskBoard,
   type TaskBoardState,
   type TaskScope,
@@ -43,7 +45,7 @@ export interface TaskBoardViewProps {
   /** プレビュー用。指定すると現在時刻を固定する */
   fixedNow?: number;
   /** プレビュー用。最初に開いておく絞り込み・詳細 */
-  initialScope?: TaskScope;
+  initialScope?: ScopeChoice;
   initialSelectedKey?: string;
 }
 
@@ -105,14 +107,24 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   const { state, groupId, members, currentMember, onChangeScreen } = props;
   const now = useNow(props.fixedNow);
   const isDesktop = useIsDesktop();
-  const [scope, setScope] = useState<TaskScope>(props.initialScope ?? "mine");
+  const [choice, setChoice] = useState<ScopeChoice>(props.initialScope ?? "mine");
   const [statuses, setStatuses] = useState<ReadonlySet<string> | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(props.initialSelectedKey ?? null);
   const closeDetail = useCallback(() => setSelectedKey(null), []);
 
   const board = state.kind === "ready" ? state.board : null;
   const all = useMemo(() => (board ? keyed(board) : { tasks: [], routines: [] }), [board]);
-  const filter = { scope, displayName: currentMember.displayName, statuses };
+  const resolved = resolveScope(choice, currentMember, members);
+  const scope = resolved.scope;
+  const filter = { scope, displayName: resolved.displayName, statuses };
+  // 自分以外のメンバーを、担当している件数付きで並べる（シフト画面の属性の絞り込みと同じ見せ方）
+  const others = members
+    .filter((member) => member.id !== currentMember.id)
+    .map((member) => {
+      const personFilter = { scope: "mine" as const, displayName: member.displayName, statuses: null };
+      const count = filterBoardItems(all.routines, personFilter).length + filterBoardItems(all.tasks, personFilter).length;
+      return { member, count };
+    });
   const scopeOnly = { ...filter, statuses: null };
   const tasks = filterBoardItems(all.tasks, filter);
   const routines = filterBoardItems(all.routines, filter);
@@ -130,8 +142,9 @@ export function TaskBoardView(props: TaskBoardViewProps) {
       ? { kind: "routine", ...selectedRoutine }
       : null;
 
-  const showAll = () => setScope("all");
-  const resetFilters = () => { setScope("all"); setStatuses(null); };
+  const showAll = () => setChoice("all");
+  const resetFilters = () => { setChoice("all"); setStatuses(null); };
+  const whose = choice === "mine" ? "自分" : `${resolved.label}さん`;
   const toggleSelect = (key: string) => setSelectedKey((current) => (current === key ? null : key));
   const unassigned = (items: readonly { assignees: readonly string[] }[]) =>
     scope === "all" ? items.filter((item) => isUnassigned(item.assignees)).length : 0;
@@ -139,9 +152,9 @@ export function TaskBoardView(props: TaskBoardViewProps) {
     statuses !== null
       ? { text: `条件に合う${noun}はありません` }
       : scope === "mine"
-        ? { text: `自分が担当の${noun}はありません`, actionLabel: `全員の${noun}を見る`, onAction: showAll }
+        ? { text: `${whose}が担当の${noun}はありません`, actionLabel: `全員の${noun}を見る`, onAction: showAll }
         : { text: `${noun}はありません` };
-  const filterDescription = [scope === "mine" && "「自分」", statuses && `「ステータス：${[...statuses].join("・") || "なし"}」`]
+  const filterDescription = [scope === "mine" && `「${resolved.label}」`, statuses && `「ステータス：${[...statuses].join("・") || "なし"}」`]
     .filter(Boolean)
     .join("と");
 
@@ -174,11 +187,23 @@ export function TaskBoardView(props: TaskBoardViewProps) {
           <button
             key={id}
             type="button"
-            aria-pressed={scope === id}
-            onClick={() => setScope(id)}
-            className={`${CHIP} ${scope === id ? CHIP_ON : CHIP_OFF}`}
+            aria-pressed={choice === id}
+            onClick={() => setChoice(id)}
+            className={`${CHIP} ${choice === id ? CHIP_ON : CHIP_OFF}`}
           >
             {label}
+          </button>
+        ))}
+        {others.map(({ member, count }) => (
+          <button
+            key={member.id}
+            type="button"
+            aria-pressed={choice === member.id}
+            onClick={() => setChoice(member.id)}
+            className={`${CHIP} ${choice === member.id ? CHIP_ON : CHIP_OFF}`}
+          >
+            {member.displayName}
+            <span className="ml-1.5 font-normal opacity-70">{count}件</span>
           </button>
         ))}
         <StatusFilter options={statusOptions} selected={statuses} onChange={setStatuses} />
