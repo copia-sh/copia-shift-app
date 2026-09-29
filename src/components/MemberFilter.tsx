@@ -83,7 +83,7 @@ export function MemberFilter({
           onChange={(event) => onChangeNameQuery(event.target.value)}
           placeholder="氏名で絞り込む"
           aria-label="氏名で絞り込む"
-          className="w-[150px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[180px]"
+          className="w-[112px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[135px]"
           style={{ minHeight: 44 }}
         />
       </label>
