@@ -49,6 +49,26 @@ export interface TaskBoardViewProps {
 
 const HEADER_BTN = "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
 const SCOPES: readonly [TaskScope, string][] = [["mine", "自分"], ["all", "全員"]];
+// シフト画面の絞り込み（MemberFilter）と同じ型のボタン
+const CHIP =
+  "flex-none whitespace-nowrap rounded-full border px-3 text-[12px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3";
+const CHIP_ON = "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]";
+const CHIP_OFF = "border-[#E5E7EB] bg-white text-[#374151] hover:bg-gray-50";
+
+/** シフト画面の「今月」ボタンと同じ型。 */
+function SheetButton({ url }: { url: string }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex h-[34px] items-center rounded-md border border-gray-200 bg-white px-3 text-[12px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] md:px-3.5 md:text-[13px]"
+    >
+      シートで編集 ↗
+    </a>
+  );
+}
 
 /** 同期が古いかの判定を、画面を開いたままでも進めるための現在時刻（1分ごと）。 */
 function useNow(fixedNow?: number): number {
@@ -71,9 +91,9 @@ function keyed(board: TaskBoard): { tasks: KeyedTask[]; routines: KeyedRoutine[]
 function SyncInfo({ board, now }: { board: TaskBoard; now: number }) {
   const stale = isStale(board.syncedAt, now);
   const time = formatSyncTime(board.syncedAt);
-  if (!stale) return <span className="text-[12px] text-[#6B7280] md:text-[13px]">最終同期 {time}</span>;
+  if (!stale) return <span className="whitespace-nowrap text-[12px] text-gray-400">最終同期 {time}</span>;
   return (
-    <span className="flex items-center gap-1.5 text-[12px] font-bold text-[#8A5310] md:text-[13px]">
+    <span className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold text-[#8A5310]">
       <span aria-hidden className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#F9E428] text-[11px] text-[#111827]">!</span>
       最終同期 {time}（{formatElapsed(board.syncedAt, now)}）
     </span>
@@ -127,59 +147,51 @@ export function TaskBoardView(props: TaskBoardViewProps) {
 
   return (
     <div className="min-h-screen pb-[calc(90px+env(safe-area-inset-bottom))] md:pb-10" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
-      <header className="standalone-mobile-header flex items-center gap-2.5 border-b border-[#E5E7EB] bg-white px-3 pb-2.5 pt-1.5 md:px-4 md:py-2.5">
+      {/* 上部はシフト画面（App.tsx）と同じ並び・余白にする。画面を行き来しても位置が動かないように。 */}
+      <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
+        <button type="button" onClick={props.onExport} className={HEADER_BTN}>書き出し</button>
+        {props.adminMenuItems.length > 0 && <HeaderMenu label="管理" items={props.adminMenuItems} />}
+        <HeaderMenu label={currentMember.displayName} items={props.accountMenuItems} />
+      </div>
+      <div className="standalone-mobile-header flex items-center justify-end gap-2 px-3 pt-2 md:hidden">
+        <HeaderMenu label="メニュー" items={[...props.adminMenuItems, ...props.accountMenuItems]} />
+      </div>
+
+      <div className="flex min-h-[46px] flex-wrap items-center gap-2 px-3 pb-1.5 pt-2 md:gap-2.5 md:px-5 md:pt-2.5">
         <GroupSwitcher groups={props.groups} currentGroupId={groupId} onChange={props.onChangeGroup} onCreateNew={props.onCreateNewGroup} />
         <ScreenSwitcher screen="tasks" onChange={onChangeScreen} />
-        <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={props.onExport} className={`${HEADER_BTN} hidden md:inline-flex`}>書き出し</button>
-          <span className="hidden md:inline-flex">
-            {props.adminMenuItems.length > 0 && <HeaderMenu label="管理" items={props.adminMenuItems} />}
-            <HeaderMenu label={currentMember.displayName} items={props.accountMenuItems} />
-          </span>
-          <span className="md:hidden">
-            <HeaderMenu label="メニュー" items={[...props.adminMenuItems, ...props.accountMenuItems]} />
-          </span>
-        </div>
-      </header>
-
-      <div className="flex flex-col gap-2 border-b border-[#E5E7EB] bg-[#FBFCFD] px-3 py-2.5 md:flex-row md:items-center md:px-4">
-        <div className="flex items-center gap-2">
-          <div role="group" aria-label="表示する担当" className="flex flex-1 overflow-hidden rounded-md border border-[#E5E7EB] md:flex-none">
-            {SCOPES.map(([id, label], index) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={scope === id}
-                onClick={() => setScope(id)}
-                className={`h-11 flex-1 px-4 text-[14px] md:h-[34px] ${index > 0 ? "border-l border-[#E5E7EB]" : ""} ${
-                  scope === id ? "bg-[#D1E9F9] font-bold text-[#0863A0]" : "bg-white text-[#374151]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <StatusFilter options={statusOptions} selected={statuses} onChange={setStatuses} />
-        </div>
         {board && (
-          <div className="flex items-center justify-between gap-3 md:ml-auto">
+          <div className="ml-auto hidden items-center gap-3 md:flex">
             <SyncInfo board={board} now={now} />
-            {board.sourceUrl && (
-              <a
-                href={board.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center text-[14px] font-bold text-[#248DD4] md:h-[34px] md:rounded-md md:border md:border-[#E5E7EB] md:bg-white md:px-3.5 md:text-[#374151] md:shadow-[0_2px_0_0_#E3E3E3]"
-              >
-                シートで編集 ↗
-              </a>
-            )}
+            <SheetButton url={board.sourceUrl} />
+          </div>
+        )}
+      </div>
+
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 pb-2 md:px-5 md:pb-3">
+        <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">表示する担当</span>
+        {SCOPES.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={scope === id}
+            onClick={() => setScope(id)}
+            className={`${CHIP} ${scope === id ? CHIP_ON : CHIP_OFF}`}
+          >
+            {label}
+          </button>
+        ))}
+        <StatusFilter options={statusOptions} selected={statuses} onChange={setStatuses} />
+        {board && (
+          <div className="flex w-full items-center justify-between gap-3 md:hidden">
+            <SyncInfo board={board} now={now} />
+            <SheetButton url={board.sourceUrl} />
           </div>
         )}
       </div>
       {board && isStale(board.syncedAt, now) && <StaleSyncBanner />}
 
-      <main className="mx-auto max-w-[1400px] px-3 py-4 md:px-5 md:pb-7 md:pt-5">
+      <main className="mx-auto max-w-[1400px] px-2 pt-1 md:px-5">
         {state.kind === "loading" && <TaskBoardLoading />}
         {state.kind === "missing" && <TaskBoardMissing />}
         {state.kind === "denied" && <TaskBoardDenied onBack={() => onChangeScreen("shifts")} />}

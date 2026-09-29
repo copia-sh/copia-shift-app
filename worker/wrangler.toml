@@ -26,7 +26,7 @@ SHIFT_SYNC_ENABLED = "true"
 #                    "true" のときだけ、上の5分ごとの Cron のうち0・15・30・45分の回で動く。
 #                    取り込み元の TASK_BOARD_SPREADSHEET_ID は secret で登録し、
 #                    サービスアカウントにそのシートを「閲覧者」で共有してから true にする。
-TASK_SYNC_ENABLED = "false"
+TASK_SYNC_ENABLED = "true"
 
 # 5分ごとに実行し、そのうち0分・30分の回だけ `シフト月間表`(30日分)も書く。
 # 30日分を5分ごとに読むとFirestoreの無料枠(1日50,000読み取り)を超えるため、

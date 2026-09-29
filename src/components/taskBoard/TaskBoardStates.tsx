@@ -82,9 +82,11 @@ export function TaskBoardNoMatch({ description, onReset, onShowAll }: {
 
 export function StaleSyncBanner() {
   return (
-    <div role="status" className="border-b border-[#F9E428] bg-[#FFFBEA] px-3 py-2.5 md:px-4">
-      <p className="text-[14px] font-bold text-[#111827]">1時間以上、シートからの取り込みがありません</p>
-      <p className="text-[13px] text-[#4B5563]">同期が止まっている可能性があります。最新の内容はシートで確認してください。</p>
+    <div className="mx-auto max-w-[1400px] px-3 pb-2 md:px-5">
+      <div role="status" className="rounded-md border border-[#F9E428] bg-[#FFFBEA] px-3 py-2">
+        <p className="text-[13px] font-bold text-[#111827]">1時間以上、シートからの取り込みがありません</p>
+        <p className="text-[12px] text-[#4B5563]">同期が止まっている可能性があります。最新の内容はシートで確認してください。</p>
+      </div>
     </div>
   );
 }

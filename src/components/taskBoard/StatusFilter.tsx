@@ -51,8 +51,8 @@ export function StatusFilter({ options, selected, onChange }: StatusFilterProps)
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => setOpen((value) => !value)}
-        className={`flex h-11 items-center gap-1.5 rounded-md border px-3 text-[14px] md:h-[34px] ${
-          active ? "border-[#248DD4] bg-[#D1E9F9] font-bold text-[#0863A0]" : "border-[#E5E7EB] bg-white text-[#374151]"
+        className={`flex min-h-[44px] flex-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12px] font-bold md:h-[34px] md:min-h-0 md:rounded-md ${
+          active ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]" : "border-[#E5E7EB] bg-white text-[#374151] hover:bg-gray-50"
         }`}
       >
         <span className="max-w-[160px] truncate">{label(selected)}</span>
