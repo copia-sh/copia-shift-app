@@ -12,7 +12,6 @@ import {
   type ScopeChoice,
   type TaskBoard,
   type TaskBoardState,
-  type TaskScope,
 } from "../../taskBoard";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
 import { GroupSwitcher } from "../GroupSwitcher";
@@ -50,7 +49,6 @@ export interface TaskBoardViewProps {
 }
 
 const HEADER_BTN = "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
-const SCOPES: readonly [TaskScope, string][] = [["mine", "自分"], ["all", "全員"]];
 // シフト画面の絞り込み（MemberFilter）と同じ型のボタン
 const CHIP =
   "flex-none whitespace-nowrap rounded-full border px-3 text-[12px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3";
@@ -107,7 +105,8 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   const { state, groupId, members, currentMember, onChangeScreen } = props;
   const now = useNow(props.fixedNow);
   const isDesktop = useIsDesktop();
-  const [choice, setChoice] = useState<ScopeChoice>(props.initialScope ?? "mine");
+  // 既定は自分のボタンを選んだ状態。「自分」という別ボタンは置かず、名前のボタンで示す。
+  const [choice, setChoice] = useState<ScopeChoice>(props.initialScope ?? currentMember.id);
   const [statuses, setStatuses] = useState<ReadonlySet<string> | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(props.initialSelectedKey ?? null);
   const closeDetail = useCallback(() => setSelectedKey(null), []);
@@ -117,14 +116,14 @@ export function TaskBoardView(props: TaskBoardViewProps) {
   const resolved = resolveScope(choice, currentMember, members);
   const scope = resolved.scope;
   const filter = { scope, displayName: resolved.displayName, statuses };
-  // 自分以外のメンバーを、担当している件数付きで並べる（シフト画面の属性の絞り込みと同じ見せ方）
-  const others = members
-    .filter((member) => member.id !== currentMember.id)
-    .map((member) => {
-      const personFilter = { scope: "mine" as const, displayName: member.displayName, statuses: null };
-      const count = filterBoardItems(all.routines, personFilter).length + filterBoardItems(all.tasks, personFilter).length;
-      return { member, count };
-    });
+  // 自分を含むメンバーを、担当している件数付きで並べる（シフト画面の属性の絞り込みと同じ見せ方）
+  const people = members.map((member) => {
+    const personFilter = { scope: "mine" as const, displayName: member.displayName, statuses: null };
+    const count = filterBoardItems(all.routines, personFilter).length + filterBoardItems(all.tasks, personFilter).length;
+    return { member, count };
+  });
+  const isChosen = (memberId: string) =>
+    scope === "mine" && (choice === memberId || (choice === "mine" && memberId === currentMember.id));
   const scopeOnly = { ...filter, statuses: null };
   const tasks = filterBoardItems(all.tasks, filter);
   const routines = filterBoardItems(all.routines, filter);
@@ -144,7 +143,8 @@ export function TaskBoardView(props: TaskBoardViewProps) {
 
   const showAll = () => setChoice("all");
   const resetFilters = () => { setChoice("all"); setStatuses(null); };
-  const whose = choice === "mine" ? "自分" : `${resolved.label}さん`;
+  const isMe = choice === "mine" || choice === currentMember.id;
+  const whose = isMe ? "自分" : `${resolved.label}さん`;
   const toggleSelect = (key: string) => setSelectedKey((current) => (current === key ? null : key));
   const unassigned = (items: readonly { assignees: readonly string[] }[]) =>
     scope === "all" ? items.filter((item) => isUnassigned(item.assignees)).length : 0;
@@ -183,24 +183,21 @@ export function TaskBoardView(props: TaskBoardViewProps) {
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 pb-2 md:px-5 md:pb-3">
         <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">表示する担当</span>
-        {SCOPES.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={choice === id}
-            onClick={() => setChoice(id)}
-            className={`${CHIP} ${choice === id ? CHIP_ON : CHIP_OFF}`}
-          >
-            {label}
-          </button>
-        ))}
-        {others.map(({ member, count }) => (
+        <button
+          type="button"
+          aria-pressed={scope === "all"}
+          onClick={() => setChoice("all")}
+          className={`${CHIP} ${scope === "all" ? CHIP_ON : CHIP_OFF}`}
+        >
+          全員
+        </button>
+        {people.map(({ member, count }) => (
           <button
             key={member.id}
             type="button"
-            aria-pressed={choice === member.id}
+            aria-pressed={isChosen(member.id)}
             onClick={() => setChoice(member.id)}
-            className={`${CHIP} ${choice === member.id ? CHIP_ON : CHIP_OFF}`}
+            className={`${CHIP} ${isChosen(member.id) ? CHIP_ON : CHIP_OFF}`}
           >
             {member.displayName}
             <span className="ml-1.5 font-normal opacity-70">{count}件</span>
