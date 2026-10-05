@@ -761,6 +761,8 @@ export function ShiftWeekView({
                       type="button"
                       disabled={!tappable}
                       onClick={() => onCellTap(k, st)}
+                      // 人数が多いと枠が細くなり、時刻が途中で切れる。全体はここで読める。
+                      title={`${mem.displayName} ${st.startTime}〜${st.endTime}`}
                       className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
                         tappable ? "" : "cursor-default opacity-60"
                       }`}
@@ -775,7 +777,7 @@ export function ShiftWeekView({
                       {isSel && sk && <SelectedBadge fg={sk.fg} />}
                       <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
                       <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
-                        {Number(st.startTime.slice(0, 2))}-{Number(st.endTime.slice(0, 2))}
+                        {shortRange(st)}
                       </span>
                     </button>
                   );
@@ -911,6 +913,7 @@ function MobileWeekView({
                       type="button"
                       disabled={!tappable}
                       onClick={() => onCellTap(key, state)}
+                      title={`${member.displayName} ${state.startTime}〜${state.endTime}`}
                       className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
                       style={{
                         top: (hourValue(state.startTime) - settings.displayStartHour) * HOUR_H,

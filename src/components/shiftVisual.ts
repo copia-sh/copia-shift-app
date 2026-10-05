@@ -92,8 +92,26 @@ export function hourValue(t: string): number {
   return h + m / 60;
 }
 
+/** "10:00" → "10"、"10:30" → "10:30"。ちょうどの時刻だけ分を省く。 */
+export function trimMinutes(time: string): string {
+  const [hour, minute] = time.split(":");
+  return minute === "00" ? String(Number(hour)) : `${Number(hour)}:${minute}`;
+}
+
+/**
+ * セルに収める短い表記。「10–17」「10:30–17」。
+ *
+ * 分を切り捨てると、9:30からの申請が9:00からに見える。ちょうどの時刻では
+ * これまでどおり分を出さないので、横幅を使うのは分に意味があるときだけ。
+ */
+export function compactRange(start: string | null, end: string | null): string {
+  if (!start || !end) return "終日";
+  return `${trimMinutes(start)}–${trimMinutes(end)}`;
+}
+
+/** 時刻のある枠の短い表記。終日（時刻なし）は範囲を書けないので null。 */
 export const shortRange = (st: CellState): string | null =>
-  st.startTime && st.endTime ? `${Number(st.startTime.slice(0, 2))}-${Number(st.endTime.slice(0, 2))}` : null;
+  st.startTime && st.endTime ? compactRange(st.startTime, st.endTime) : null;
 
 /** 選択キー: "${memberId}__${dateKey}" */
 export type SelKey = string;

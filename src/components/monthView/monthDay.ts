@@ -43,16 +43,9 @@ export function dayEntries<T extends { id: string }>(
   });
 }
 
-function trimMinutes(time: string): string {
-  const [h, m] = time.split(":");
-  return m === "00" ? String(Number(h)) : `${Number(h)}:${m}`;
-}
-
-/** セル内の短い表記。「10–17」「10:30–17」。 */
-export function compactRange(start: string | null, end: string | null): string {
-  if (!start || !end) return "終日";
-  return `${trimMinutes(start)}–${trimMinutes(end)}`;
-}
+// 表記の規則は shiftVisual に1つだけ置く。画面ごとに別々に書くと、
+// 同じ枠が一覧では「9-13」、月では「9:30–13:30」のように食い違う。
+export { compactRange } from "../shiftVisual";
 
 /** 内訳の表記。「10:00〜17:00」。 */
 export function fullRange(start: string | null, end: string | null): string {

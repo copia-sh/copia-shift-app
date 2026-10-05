@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { compactRange } from "../src/components/monthView/monthDay";
 import {
+  shortRange,
   segmentLayout,
   cellBoxes,
   validateSegments,
@@ -201,5 +203,32 @@ describe("cellBoxes: 1件のときは従来どおりセル全体を埋める", (
 
   it("空なら空を返す", () => {
     expect(cellBoxes([], 9, 20)).toEqual([]);
+  });
+});
+
+describe("shortRange（30分刻みの表示）", () => {
+  const timed = (startTime: string, endTime: string): CellState => ({
+    kind: "want",
+    type: "出勤",
+    startTime,
+    endTime,
+  });
+
+  it("ちょうどの時刻は分を出さない（10–17）", () => {
+    expect(shortRange(timed("10:00", "17:00"))).toBe("10–17");
+  });
+
+  it("30分の申請は分まで出す。切り捨てると別の予定に見える", () => {
+    expect(shortRange(timed("09:30", "13:30"))).toBe("9:30–13:30");
+    expect(shortRange(timed("09:30", "17:00"))).toBe("9:30–17");
+    expect(shortRange(timed("10:00", "17:30"))).toBe("10–17:30");
+  });
+
+  it("月ビューの表記と同じ形にする（画面ごとに違う書き方をしない）", () => {
+    expect(shortRange(timed("09:30", "13:30"))).toBe(compactRange("09:30", "13:30"));
+  });
+
+  it("終日は null（時刻が無いので範囲を書けない）", () => {
+    expect(shortRange({ kind: "want", type: "出勤", startTime: null, endTime: null })).toBeNull();
   });
 });
