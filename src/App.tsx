@@ -216,6 +216,9 @@ function ShiftCalendar({
 
   const accountMenuItems = [
     { key: "profile", label: "表示名の変更", onSelect: () => openDialog({ profile: true }) },
+    // 自分のシフトを個人のカレンダーに流すためのもの。管理者の操作ではないので
+    // 「管理」ではなく自分のメニューに置く。
+    { key: "share", label: "カレンダー購読", onSelect: () => openDialog({ shareLink: true }) },
     { key: "signout", label: "ログアウト", onSelect: () => signOut() },
   ];
 

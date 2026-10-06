@@ -22,6 +22,9 @@ const GroupSettingsDialog = lazy(() =>
 const ExportDialog = lazy(() =>
   import("../components/ExportDialog").then((m) => ({ default: m.ExportDialog })),
 );
+const ShareLinkDialog = lazy(() =>
+  import("../components/ShareLinkDialog").then((m) => ({ default: m.ShareLinkDialog })),
+);
 
 interface AppDialogsProps {
   dialog: DialogState;
@@ -127,6 +130,16 @@ export function AppDialogs(props: AppDialogsProps) {
           theme={theme}
           busy={busy}
           onClose={() => onClose({ export: false })}
+        />
+      )}
+
+      {dialog.shareLink && theme && (
+        <ShareLinkDialog
+          groupId={props.groupId}
+          currentMemberId={props.currentMember.id}
+          theme={theme}
+          busy={busy}
+          onClose={() => onClose({ shareLink: false })}
         />
       )}
     </Suspense>
