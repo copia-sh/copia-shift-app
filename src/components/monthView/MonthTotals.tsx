@@ -25,7 +25,7 @@ export function MonthTotals({ anchorDate, members, byKey, theme }: MonthTotalsPr
         const totals = monthTypeTotals(days, unavailable);
         const ink = memberInk(member);
         return (
-          <span key={member.id} className="inline-flex h-[34px] items-center gap-2 rounded-full border border-[#E5E7EB] bg-white pl-1 pr-3">
+          <span key={member.id} className="inline-flex h-[34px] items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3">
             <span
               aria-hidden
               className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold"
@@ -34,9 +34,9 @@ export function MonthTotals({ anchorDate, members, byKey, theme }: MonthTotalsPr
               {member.displayName.slice(0, 1)}
             </span>
             <span className="text-[12px] font-bold" style={{ color: ink }}>{member.displayName}</span>
-            <span className="text-[12px] font-bold text-[#111827]">{formatHours(totals.total)}</span>
+            <span className="text-[12px] font-bold text-ink">{formatHours(totals.total)}</span>
             {totals.byType.length > 0 && (
-              <span className="text-[11px] text-[#6B7280]">
+              <span className="text-[11px] text-ink-4">
                 {totals.byType.map((item) => `${typeLabel(theme, [item.key])} ${formatHours(item.hours)}`).join("・")}
               </span>
             )}

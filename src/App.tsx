@@ -86,7 +86,7 @@ import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSe
 type ViewMode = "list" | "month" | "week";
 
 const HEADER_BTN =
-  "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
+  "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-ink-4 hover:bg-white/70";
 
 function App() {
   const user = useAuthUser();
@@ -157,7 +157,7 @@ function GroupGate({ user }: { user: User }) {
           <button
             type="button"
             onClick={() => signOut()}
-            className="rounded-md px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100"
+            className="rounded-md px-4 py-2 text-sm font-bold text-ink-4 hover:bg-line-3"
           >
             ログアウト
           </button>
@@ -767,7 +767,7 @@ function ShiftCalendar({
         <div className="mx-auto max-w-[1400px] px-5">
           <p
             role="alert"
-            className="rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-3 py-2 text-[12px] font-bold text-[#D9736F]"
+            className="rounded-md border border-coral-line bg-coral-wash px-3 py-2 text-[12px] font-bold text-coral"
           >
             {opError}
           </p>
@@ -776,31 +776,31 @@ function ShiftCalendar({
 
       <main className="mx-auto max-w-[1400px] px-2 pb-[calc(146px+var(--screen-footer-h))] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
-          <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
+          <p className="py-8 text-center text-sm text-ink-5">読み込み中...</p>
         ) : shiftsError ? (
           /* 読み込み失敗を「0件」と同じ見た目にすると、予定が無いのか取れていないのか
              区別できない。原因と、やり直す手段をその場に出す。 */
-          <div className="mx-auto max-w-[520px] rounded-xl border border-[#F0C7C7] bg-[#FDF1F1] px-5 py-8 text-center">
-            <p role="alert" className="text-[14px] font-bold leading-relaxed text-[#D9736F]">
+          <div className="mx-auto max-w-[520px] rounded-xl border border-coral-line bg-coral-wash px-5 py-8 text-center">
+            <p role="alert" className="text-[14px] font-bold leading-relaxed text-coral">
               {shiftsError}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-4 h-[38px] rounded-md border border-gray-200 bg-white px-4 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] active:translate-y-0.5 active:shadow-none"
+              className="mt-4 h-[38px] rounded-md border border-line bg-white px-4 text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] active:translate-y-0.5 active:shadow-none"
             >
               再読み込み
             </button>
           </div>
         ) : emptyReason ? (
           /* 0件のときは空の表を見せない。条件で隠れているのかが分からなくなる。 */
-          <div className="mx-auto max-w-[560px] rounded-xl border border-gray-200 bg-white px-5 py-8 text-center">
-            <p className="text-[15px] font-bold leading-relaxed text-[#374151]">{emptyReason}</p>
+          <div className="mx-auto max-w-[560px] rounded-xl border border-line bg-white px-5 py-8 text-center">
+            <p className="text-[15px] font-bold leading-relaxed text-ink-2">{emptyReason}</p>
             {hasActiveFilter(effectiveFilter) && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="mt-4 h-[38px] rounded-md border border-gray-200 bg-white px-4 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] active:translate-y-0.5 active:shadow-none"
+                className="mt-4 h-[38px] rounded-md border border-line bg-white px-4 text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] active:translate-y-0.5 active:shadow-none"
               >
                 条件を解除
               </button>

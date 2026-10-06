@@ -16,15 +16,15 @@ const SCREENS: readonly [Screen, string][] = [
  */
 export function ScreenSwitcher({ screen, onChange }: ScreenSwitcherProps) {
   return (
-    <nav aria-label="画面の切り替え" className="hidden overflow-hidden rounded-md border border-gray-200 shadow-[0_2px_0_0_#E3E3E3] md:flex">
+    <nav aria-label="画面の切り替え" className="hidden overflow-hidden rounded-md border border-line shadow-[0_2px_0_0_var(--color-edge)] md:flex">
       {SCREENS.map(([id, label], index) => (
         <button
           key={id}
           type="button"
           aria-current={screen === id ? "page" : undefined}
           onClick={() => onChange(id)}
-          className={`h-[34px] px-3.5 text-[13px] font-bold ${index > 0 ? "border-l border-gray-200" : ""} ${
-            screen === id ? "bg-[#248DD4] text-white" : "bg-white text-gray-700"
+          className={`h-[34px] px-3.5 text-[13px] font-bold ${index > 0 ? "border-l border-line" : ""} ${
+            screen === id ? "bg-brand text-white" : "bg-white text-ink-2"
           }`}
         >
           {label}
@@ -44,18 +44,18 @@ export function ScreenFooter({ screen, onChange }: ScreenSwitcherProps) {
   return (
     <nav
       aria-label="画面の切り替え"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-3 pt-2.5 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-3 pt-2.5 backdrop-blur md:hidden"
       style={{ paddingBottom: "var(--screen-footer-pad)" }}
     >
-      <div className="flex overflow-hidden rounded-md border border-gray-200 shadow-[0_2px_0_0_#E3E3E3]">
+      <div className="flex overflow-hidden rounded-md border border-line shadow-[0_2px_0_0_var(--color-edge)]">
         {SCREENS.map(([id, label], index) => (
           <button
             key={id}
             type="button"
             aria-current={screen === id ? "page" : undefined}
             onClick={() => onChange(id)}
-            className={`h-11 flex-1 text-[13px] font-bold ${index > 0 ? "border-l border-gray-200" : ""} ${
-              screen === id ? "bg-[#248DD4] text-white" : "bg-white text-gray-700"
+            className={`h-11 flex-1 text-[13px] font-bold ${index > 0 ? "border-l border-line" : ""} ${
+              screen === id ? "bg-brand text-white" : "bg-white text-ink-2"
             }`}
           >
             {label}

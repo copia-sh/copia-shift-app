@@ -29,6 +29,7 @@ import { listNameWidth } from "./responsiveLayout";
 import { REJECTED_TYPE } from "../types";
 import { formatHours, summarizeWorkHours, type WorkHoursSummary } from "./workHours";
 import type { Shift, Group } from "../types";
+import { COLOR, WHITE } from "../theme/palette";
 
 /* ------------------------------------------------------------------ 共通 */
 
@@ -59,8 +60,8 @@ export function ShiftModeToggle({
             aria-pressed={on}
             className={`h-[34px] rounded-md px-3 text-[12px] font-bold active:translate-y-0.5 active:shadow-none ${
               on
-                ? "border border-[#248DD4] bg-[#248DD4] text-white shadow-[0_2px_0_0_#0863A0]"
-                : "border border-gray-200 bg-white text-gray-700 shadow-[0_2px_0_0_#E3E3E3]"
+                ? "border border-brand bg-brand text-white shadow-[0_2px_0_0_var(--color-brand-deep)]"
+                : "border border-line bg-white text-ink-2 shadow-[0_2px_0_0_var(--color-edge)]"
             }`}
           >
             {text}
@@ -99,7 +100,7 @@ export function CalendarNav({
   screenSwitcher?: ReactNode;
 }) {
   const square =
-    "h-[34px] w-[34px] rounded-md border border-gray-200 bg-white text-[15px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none";
+    "h-[34px] w-[34px] rounded-md border border-line bg-white text-[15px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] hover:bg-edge-hover active:translate-y-0.5 active:shadow-none";
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-1.5 pt-2 md:gap-3 md:px-5 md:pt-2.5">
       <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
@@ -110,7 +111,7 @@ export function CalendarNav({
           onCreateNew={onCreateNewGroup}
         />
         {screenSwitcher}
-        <span className="whitespace-nowrap text-lg font-bold text-gray-900 md:text-xl">{label}</span>
+        <span className="whitespace-nowrap text-lg font-bold text-ink md:text-xl">{label}</span>
       </div>
       <div className="flex w-full items-center gap-1.5 md:w-auto md:gap-2">
         <button type="button" onClick={onPrev} className={square}>
@@ -119,14 +120,14 @@ export function CalendarNav({
         <button
           type="button"
           onClick={onToday}
-          className="h-[34px] rounded-md border border-gray-200 bg-white px-2.5 text-[12px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] active:translate-y-0.5 active:shadow-none md:px-3.5 md:text-[13px]"
+          className="h-[34px] rounded-md border border-line bg-white px-2.5 text-[12px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] hover:bg-edge-hover active:translate-y-0.5 active:shadow-none md:px-3.5 md:text-[13px]"
         >
           今月
         </button>
         <button type="button" onClick={onNext} className={square}>
           ›
         </button>
-        <div className="ml-auto flex overflow-hidden rounded-md border border-gray-200 shadow-[0_2px_0_0_#E3E3E3] md:ml-0">
+        <div className="ml-auto flex overflow-hidden rounded-md border border-line shadow-[0_2px_0_0_var(--color-edge)] md:ml-0">
           {([
             ["list", "一覧"],
             ["month", "月"],
@@ -137,7 +138,7 @@ export function CalendarNav({
               type="button"
               onClick={() => onChangeView(id)}
               className={`h-[34px] px-2.5 text-[12px] font-bold md:px-3.5 md:text-[13px] ${
-                view === id ? "bg-[#248DD4] text-white" : "bg-white text-gray-700"
+                view === id ? "bg-brand text-white" : "bg-white text-ink-2"
               }`}
             >
               {text}
@@ -185,11 +186,11 @@ export function ShiftLegend({
   const none = theme
     ? theme.skinFor({ kind: "none", type: "", startTime: null, endTime: null }, false)
     : {
-        bg: "#ffffff",
-        border: "#E3E3E3",
+        bg: WHITE,
+        border: COLOR.edge,
         borderStyle: "dashed" as const,
         borderWidth: "1px",
-        fg: "#C8CDD2",
+        fg: COLOR.inkNone,
         shadow: "",
         mark: "·",
         label: "未回答",
@@ -204,20 +205,20 @@ export function ShiftLegend({
             className="inline-block h-3.5 w-3.5 rounded-[3px] border"
             style={skinStyle(skin)}
           />
-          <span className="text-[11px] font-bold text-gray-600">{label}</span>
+          <span className="text-[11px] font-bold text-ink-3">{label}</span>
         </div>
       ))}
-      <span className="ml-auto text-[11px] text-gray-400">{MODE_HINT[mode]}</span>
+      <span className="ml-auto text-[11px] text-ink-5">{MODE_HINT[mode]}</span>
     </>
   );
 
   return (
     <>
-      <details className="mx-3 mb-2 rounded-md border border-gray-200 bg-white md:hidden">
-        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-bold text-gray-600">
+      <details className="mx-3 mb-2 rounded-md border border-line bg-white md:hidden">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-bold text-ink-3">
           凡例・操作方法（{items.length}項目）
         </summary>
-        <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-3 border-t border-line-3 px-3 py-2.5">
           {contents}
         </div>
       </details>
@@ -240,19 +241,19 @@ function MemberHoursPopover({ peek, name, summary }: { peek: HoursPeek; name: st
   return (
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-50 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] leading-relaxed text-gray-700 shadow-lg"
+      className="pointer-events-none fixed z-50 rounded-lg border border-line bg-white px-3 py-2 text-[12px] leading-relaxed text-ink-2 shadow-lg"
       style={{ top: peek.top, left: peek.left }}
     >
-      <div className="mb-0.5 text-[11px] font-bold text-gray-400">{name} の今月の合計</div>
+      <div className="mb-0.5 text-[11px] font-bold text-ink-5">{name} の今月の合計</div>
       <div>
-        確定 <span className="font-bold text-gray-900">{formatHours(summary.fixedHours)}</span>
-        <span className="text-[11px] text-gray-400">{untimed(summary.fixedUntimedDays)}</span>
+        確定 <span className="font-bold text-ink">{formatHours(summary.fixedHours)}</span>
+        <span className="text-[11px] text-ink-5">{untimed(summary.fixedUntimedDays)}</span>
       </div>
       <div>
-        希望 <span className="font-bold text-gray-900">{formatHours(summary.wantHours)}</span>
-        <span className="text-[11px] text-gray-400">{untimed(summary.wantUntimedDays)}</span>
+        希望 <span className="font-bold text-ink">{formatHours(summary.wantHours)}</span>
+        <span className="text-[11px] text-ink-5">{untimed(summary.wantUntimedDays)}</span>
       </div>
-      <div className="mt-0.5 text-[10px] text-gray-400">6時間以上の日は休憩1時間を引いています</div>
+      <div className="mt-0.5 text-[10px] text-ink-5">6時間以上の日は休憩1時間を引いています</div>
     </div>
   );
 }
@@ -305,8 +306,8 @@ export function ShiftListMatrix({
       dow,
       isToday,
       fixed,
-      bg: isToday ? "#FFF6D6" : dow === 0 || dow === 6 ? "#F7F9FA" : "transparent",
-      color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E",
+      bg: isToday ? COLOR.todayWash : dow === 0 || dow === 6 ? COLOR.surface3 : "transparent",
+      color: dow === 0 ? COLOR.coral : dow === 6 ? COLOR.brand : COLOR.ink4,
     };
   });
 
@@ -317,11 +318,11 @@ export function ShiftListMatrix({
       .map((m) => selKey(m.id, dateKey));
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto border-t border-gray-200">
+    <div ref={scrollRef} className="overflow-x-auto border-t border-line">
       <div style={{ minWidth: nameW + colW * days.length }}>
-        <div className="flex border-b border-gray-200 bg-[#FBFCFD]">
+        <div className="flex border-b border-line bg-surface-2">
           <div
-            className="sticky left-0 z-20 flex flex-none items-end border-r border-gray-200 bg-[#FBFCFD] px-2.5 py-1.5 text-[10px] font-bold text-gray-400"
+            className="sticky left-0 z-20 flex flex-none items-end border-r border-line bg-surface-2 px-2.5 py-1.5 text-[10px] font-bold text-ink-5"
             style={{ width: nameW }}
           >
             メンバー
@@ -333,14 +334,14 @@ export function ShiftListMatrix({
               disabled={!bulkHeaders}
               title={bulkHeaders ? "この日をまとめて選択" : undefined}
               onClick={() => onToggleMany(bulkKeys(d.dateKey))}
-              className="flex flex-none flex-col items-center gap-0.5 border-l border-[#EFF1F3] pb-1.5 pt-1"
+              className="flex flex-none flex-col items-center gap-0.5 border-l border-line-2 pb-1.5 pt-1"
               style={{
                 width: colW,
                 boxSizing: "border-box",
                 padding: "4px 0",
                 background: d.bg,
                 color: d.color,
-                boxShadow: d.isToday ? "inset 0 2px 0 0 #F9E428" : undefined,
+                boxShadow: d.isToday ? `inset 0 2px 0 0 ${COLOR.today}` : undefined,
               }}
             >
               <span className="text-[9px] font-bold leading-none">{DOW_LABELS[d.dow]}</span>
@@ -357,8 +358,8 @@ export function ShiftListMatrix({
           return (
             <div
               key={mem.id}
-              className="flex items-stretch border-b border-[#EFF1F3]"
-              style={{ height: rowH, background: isOwn ? "#F7FBFE" : "#fff" }}
+              className="flex items-stretch border-b border-line-2"
+              style={{ height: rowH, background: isOwn ? COLOR.brandWash3 : WHITE }}
             >
               <button
                 type="button"
@@ -379,21 +380,21 @@ export function ShiftListMatrix({
                 onPointerLeave={hidePeek}
                 onPointerCancel={hidePeek}
                 onContextMenu={(e) => e.preventDefault()}
-                className="sticky left-0 z-10 flex flex-none select-none items-center gap-1.5 border-r border-gray-200 px-2 text-left md:gap-2 md:px-2.5 [-webkit-touch-callout:none]"
+                className="sticky left-0 z-10 flex flex-none select-none items-center gap-1.5 border-r border-line px-2 text-left md:gap-2 md:px-2.5 [-webkit-touch-callout:none]"
                 style={{
                   width: nameW,
                   boxSizing: "border-box",
-                  background: isOwn ? "#F1F8FE" : "#fff",
-                  boxShadow: isOwn ? "inset 3px 0 0 0 #248DD4" : undefined,
+                  background: isOwn ? COLOR.brandWash2 : WHITE,
+                  boxShadow: isOwn ? `inset 3px 0 0 0 ${COLOR.brand}` : undefined,
                 }}
               >
                 <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: mem.color }} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-bold text-gray-900">
+                  <span className="block truncate text-[13px] font-bold text-ink">
                     {mem.displayName}
                   </span>
                   <span
-                    className="block truncate text-[10px] text-gray-400"
+                    className="block truncate text-[10px] text-ink-5"
                     title={`確定 ${fixedCount}・希望 ${wantCount}`}
                   >
                     <span className="md:hidden">登録{fixedCount + wantCount}</span>
@@ -419,7 +420,7 @@ export function ShiftListMatrix({
                     type="button"
                     disabled={!tappable}
                     onClick={() => onCellTap(k, st)}
-                    className={`relative flex flex-none items-center justify-center border-l border-[#EFF1F3] ${
+                    className={`relative flex flex-none items-center justify-center border-l border-line-2 ${
                       tappable ? "" : "cursor-default opacity-60"
                     }`}
                     style={{ width: colW, boxSizing: "border-box", padding: "4px 0", background: d.bg }}
@@ -467,9 +468,9 @@ export function ShiftListMatrix({
           );
         })}
 
-        <div className="flex border-t border-gray-200 bg-[#FBFCFD]">
+        <div className="flex border-t border-line bg-surface-2">
           <div
-            className="sticky left-0 z-10 flex flex-none items-center border-r border-gray-200 bg-[#FBFCFD] px-2.5 py-1 text-[10px] font-bold text-gray-400"
+            className="sticky left-0 z-10 flex flex-none items-center border-r border-line bg-surface-2 px-2.5 py-1 text-[10px] font-bold text-ink-5"
             style={{ width: nameW }}
           >
             確定人数
@@ -477,12 +478,12 @@ export function ShiftListMatrix({
           {dayMeta.map((d) => (
             <div
               key={d.dateKey}
-              className="flex-none border-l border-[#EFF1F3] py-1 text-center text-[11px] font-bold"
+              className="flex-none border-l border-line-2 py-1 text-center text-[11px] font-bold"
               style={{
                 width: colW,
                 boxSizing: "border-box",
                 background: d.bg,
-                color: d.fixed >= 2 ? "#0863A0" : d.fixed === 0 ? "#C8CDD2" : "#333",
+                color: d.fixed >= 2 ? COLOR.brandDeep : d.fixed === 0 ? COLOR.inkNone : COLOR.ink2,
               }}
             >
               {d.fixed}
@@ -589,17 +590,17 @@ export function BulkEditToolbar({
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[var(--screen-footer-h)] z-50 flex justify-center px-2 pb-2 md:bottom-0 md:px-3 md:pb-3.5">
-      <div className="pointer-events-auto flex max-h-[42svh] w-full max-w-5xl flex-col gap-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)] md:max-h-none md:gap-2.5 md:p-3.5">
+      <div className="pointer-events-auto flex max-h-[42svh] w-full max-w-5xl flex-col gap-2 overflow-y-auto rounded-xl border border-line bg-white p-2.5 shadow-[2px_2px_4px_0_rgba(57,57,57,0.3)] md:max-h-none md:gap-2.5 md:p-3.5">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-bold text-gray-900">{title}</span>
-          <span className="text-[11px] text-gray-400">
+          <span className="text-sm font-bold text-ink">{title}</span>
+          <span className="text-[11px] text-ink-5">
             {dates.size}日 / {people.size}人 ・ 確定 {states.filter((s) => s.kind === "fixed").length} ・ 希望{" "}
             {states.filter((s) => s.kind === "want").length} ・ 不可 {states.filter((s) => s.kind === "no").length}
           </span>
           <button
             type="button"
             onClick={onClear}
-            className="ml-auto h-9 rounded-md border border-gray-200 bg-white px-3 text-[12px] font-bold text-gray-400"
+            className="ml-auto h-9 rounded-md border border-line bg-white px-3 text-[12px] font-bold text-ink-5"
           >
             選択解除
           </button>
@@ -611,7 +612,7 @@ export function BulkEditToolbar({
               type="button"
               disabled={busy}
               onClick={() => onApply({ kind: "confirm" })}
-              className={`${btn} bg-[#248DD4] text-white`}
+              className={`${btn} bg-brand text-white`}
             >
               確定にする
             </button>
@@ -619,7 +620,7 @@ export function BulkEditToolbar({
               type="button"
               disabled={busy}
               onClick={() => onApply({ kind: "revert" })}
-              className={`${btn} border border-gray-200 bg-white text-gray-700`}
+              className={`${btn} border border-line bg-white text-ink-2`}
             >
               確定を取消
             </button>
@@ -627,7 +628,7 @@ export function BulkEditToolbar({
               type="button"
               disabled={busy}
               onClick={() => onApply({ kind: "reject" })}
-              className={`${btn} border border-[#F0C7C7] bg-[#FDF1F1] text-[#D9736F]`}
+              className={`${btn} border border-coral-line bg-coral-wash text-coral`}
             >
               却下
             </button>
@@ -668,13 +669,13 @@ export function BulkEditToolbar({
                 type="button"
                 disabled={busy}
                 onClick={() => onApply({ kind: "clear" })}
-                className={`${btn} border border-gray-200 bg-white text-gray-400`}
+                className={`${btn} border border-line bg-white text-ink-5`}
               >
                 未回答に戻す
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-gray-200 pt-2">
+            <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-line pt-2">
               {/* 自分のセルを1つだけ選んでいるときにだけ出す。押しても何も起きない
                   ボタンを見せないよう、所有者の判定を描画時に済ませておく。 */}
               {editableSelfCellKey && onOpenSegmentEditor && (
@@ -683,18 +684,18 @@ export function BulkEditToolbar({
                     type="button"
                     disabled={busy}
                     onClick={() => onOpenSegmentEditor(editableSelfCellKey)}
-                    className={`${btn} border border-[#248DD4] bg-white text-[#248DD4]`}
+                    className={`${btn} border border-brand bg-white text-brand`}
                   >
                     時間で分ける
                   </button>
-                  <div className="border-l border-gray-300" style={{ height: "20px" }} />
+                  <div className="border-l border-line-strong" style={{ height: "20px" }} />
                 </>
               )}
-              <span className="text-[11px] font-bold text-gray-400">時間帯</span>
+              <span className="text-[11px] font-bold text-ink-5">時間帯</span>
               <select
                 value={startTime}
                 onChange={(e) => onChangeStart(e.target.value)}
-                className="h-[38px] rounded-md border border-gray-200 px-2 text-[13px] font-bold"
+                className="h-[38px] rounded-md border border-line px-2 text-[13px] font-bold"
               >
                 {TIME_CHOICES.map((t) => (
                   <option key={t} value={t}>
@@ -702,11 +703,11 @@ export function BulkEditToolbar({
                   </option>
                 ))}
               </select>
-              <span className="text-[12px] text-gray-400">〜</span>
+              <span className="text-[12px] text-ink-5">〜</span>
               <select
                 value={endTime}
                 onChange={(e) => onChangeEnd(e.target.value)}
-                className="h-[38px] rounded-md border border-gray-200 px-2 text-[13px] font-bold"
+                className="h-[38px] rounded-md border border-line px-2 text-[13px] font-bold"
               >
                 {TIME_CHOICES.map((t) => (
                   <option key={t} value={t}>
@@ -718,7 +719,7 @@ export function BulkEditToolbar({
                 type="button"
                 disabled={busy}
                 onClick={() => onApply({ kind: "time", startTime, endTime })}
-                className={`${btn} border border-[#248DD4] bg-white text-[#248DD4]`}
+                className={`${btn} border border-brand bg-white text-brand`}
               >
                 時間を適用
               </button>
@@ -726,7 +727,7 @@ export function BulkEditToolbar({
                 type="button"
                 disabled={busy}
                 onClick={() => onApply({ kind: "time", startTime: null, endTime: null })}
-                className={`${btn} border border-gray-200 bg-white text-gray-400`}
+                className={`${btn} border border-line bg-white text-ink-5`}
               >
                 終日
               </button>

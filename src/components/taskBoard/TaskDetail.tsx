@@ -22,27 +22,27 @@ export function TaskDetailPanel({ item, members, sourceUrl, onClose, onSubmitUpd
   return (
     <aside
       aria-label={`${eyebrow(item)}の詳細`}
-      className="sticky top-4 w-[340px] flex-none self-start overflow-hidden rounded-xl border border-[#E5E7EB] bg-white"
+      className="sticky top-4 w-[340px] flex-none self-start overflow-hidden rounded-xl border border-line bg-white"
     >
-      <header className="flex items-start gap-3 border-b border-[#F1F3F5] px-4 py-3.5">
+      <header className="flex items-start gap-3 border-b border-line-3 px-4 py-3.5">
         <div className="min-w-0 flex-1">
           <p className={LABEL}>{editing ? `${eyebrow(item)}の進捗を更新` : eyebrow(item)}</p>
-          <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
+          <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-ink">{item.title}</h2>
         </div>
-        <button type="button" aria-label="閉じる" onClick={onClose} className="h-[34px] w-[34px] flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
+        <button type="button" aria-label="閉じる" onClick={onClose} className="h-[34px] w-[34px] flex-none rounded-md border border-line text-ink-2">
           ✕
         </button>
       </header>
       <DetailContent item={item} members={members} onSubmitUpdate={onSubmitUpdate} editing={editing} onEndEdit={() => setEditing(false)} />
       {!editing && (
-        <footer className="flex items-center gap-2 border-t border-[#F1F3F5] px-4 py-3.5">
+        <footer className="flex items-center gap-2 border-t border-line-3 px-4 py-3.5">
           {onSubmitUpdate && (
             <button type="button" onClick={() => setEditing(true)} className={`${PRIMARY_BUTTON} h-[34px]`}>
               進捗を更新
             </button>
           )}
           <SheetLink sourceUrl={sourceUrl} className={`${SECONDARY_BUTTON} h-[34px]`} />
-          {!onSubmitUpdate && <span className="text-[11px] text-[#6B7280]">アプリでは閲覧のみです</span>}
+          {!onSubmitUpdate && <span className="text-[11px] text-ink-4">アプリでは閲覧のみです</span>}
         </footer>
       )}
     </aside>

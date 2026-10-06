@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Member } from "../types";
+import { CHIP_ON, CHIP_OFF } from "./ui/controls";
 
 export interface MemberFilterProps {
   members: Member[];
@@ -20,8 +21,6 @@ export interface MemberFilterProps {
 /** 絞り込みの操作は見た目を揃える。スマホでは44px、PCでは34px。 */
 const CHIP =
   "flex-none whitespace-nowrap rounded-full border px-3 text-[12px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3";
-const CHIP_ON = "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]";
-const CHIP_OFF = "border-[#E5E7EB] bg-white text-[#374151] hover:bg-gray-50";
 
 export function MemberFilter({
   members,
@@ -66,10 +65,10 @@ export function MemberFilter({
   return (
     <div className="mx-auto flex max-w-[1400px] flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 md:flex-wrap md:overflow-visible md:px-5 md:pb-3">
       {/* 絞り込みで減ったのか、そもそも対象外なのかを分けて出す。 */}
-      <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">
+      <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-ink-4">
         表示対象 {visibleCount}人
         {nonTargetCount > 0 && (
-          <span className="ml-1.5 hidden font-normal text-[#9CA3AF] md:inline">
+          <span className="ml-1.5 hidden font-normal text-ink-5 md:inline">
             （シフト表対象外 {nonTargetCount}人）
           </span>
         )}
@@ -83,7 +82,7 @@ export function MemberFilter({
           onChange={(event) => onChangeNameQuery(event.target.value)}
           placeholder="氏名で絞り込む"
           aria-label="氏名で絞り込む"
-          className="w-[112px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[135px]"
+          className="w-[112px] rounded-md border border-line bg-white px-3 text-[12px] font-bold text-ink placeholder:font-normal placeholder:text-ink-5 md:h-[34px] md:w-[135px]"
           style={{ minHeight: 44 }}
         />
       </label>
@@ -129,14 +128,14 @@ export function MemberFilter({
         <button
           type="button"
           onClick={onResetFilters}
-          className={`${CHIP} border-dashed border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-gray-50`}
+          className={`${CHIP} border-dashed border-line bg-white text-ink-4 hover:bg-surface-4`}
         >
           条件を解除
         </button>
       )}
 
       {selectedAttributes.size > 1 && !showCurrentMemberOnly && (
-        <span className="ml-auto flex-none whitespace-nowrap text-[12px] text-gray-400">
+        <span className="ml-auto flex-none whitespace-nowrap text-[12px] text-ink-5">
           複数選択はいずれかに該当
         </span>
       )}

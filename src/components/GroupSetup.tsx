@@ -3,6 +3,7 @@ import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { createGroup, joinGroup } from "../firebase/groups";
 import { signOut } from "../firebase/auth";
+import { FIELD, PRIMARY_BUTTON } from "./ui/controls";
 
 interface GroupSetupProps {
   user: User;
@@ -18,24 +19,24 @@ export function GroupSetup({ user, onDone }: GroupSetupProps) {
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-6 text-center">
-      <h1 className="text-2xl font-semibold text-gray-900">グループの管理</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-4 p-6 text-center">
+      <h1 className="text-2xl font-semibold text-ink">グループの管理</h1>
       <div className="w-full max-w-xs">
-        <div className="mb-4 rounded-lg border border-[#B9DCF3] bg-[#EAF5FC] px-3 py-2.5 text-left">
-          <p className="text-[11px] font-bold text-[#0863A0]">ログイン中のアカウント</p>
-          <p className="mt-0.5 truncate text-sm text-gray-800" title={user.email ?? ""}>
+        <div className="mb-4 rounded-lg border border-brand-line bg-brand-wash px-3 py-2.5 text-left">
+          <p className="text-[11px] font-bold text-brand-deep">ログイン中のアカウント</p>
+          <p className="mt-0.5 truncate text-sm text-ink" title={user.email ?? ""}>
             {user.email}
           </p>
           <button
             type="button"
             onClick={() => signOut()}
             disabled={busy}
-            className="mt-2 text-[12px] font-bold text-[#0863A0] hover:underline disabled:opacity-50"
+            className="mt-2 text-[12px] font-bold text-brand-deep hover:underline disabled:opacity-50"
           >
             別のアカウントでログイン
           </button>
         </div>
-        <div className="mb-4 flex overflow-hidden rounded-md border border-gray-300">
+        <div className="mb-4 flex overflow-hidden rounded-md border border-line-strong">
           <button
             type="button"
             onClick={() => {
@@ -43,7 +44,7 @@ export function GroupSetup({ user, onDone }: GroupSetupProps) {
               setError(null);
             }}
             className={`flex-1 py-1.5 text-sm ${
-              mode === "create" ? "bg-blue-600 text-white" : "text-gray-600"
+              mode === "create" ? "bg-brand text-white" : "text-ink-3"
             }`}
           >
             グループを作る
@@ -55,7 +56,7 @@ export function GroupSetup({ user, onDone }: GroupSetupProps) {
               setError(null);
             }}
             className={`flex-1 py-1.5 text-sm ${
-              mode === "join" ? "bg-blue-600 text-white" : "text-gray-600"
+              mode === "join" ? "bg-brand text-white" : "text-ink-3"
             }`}
           >
             招待リンクで参加
@@ -117,7 +118,7 @@ function CreateGroupForm({
         placeholder="グループ名"
         value={groupName}
         onChange={(e) => setGroupName(e.target.value)}
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className={FIELD}
         disabled={busy}
       />
       <input
@@ -127,14 +128,14 @@ function CreateGroupForm({
         placeholder="招待コード(6文字以上)"
         value={inviteCode}
         onChange={(e) => setInviteCode(e.target.value)}
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className={FIELD}
         disabled={busy}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger-text">{error}</p>}
       <button
         type="submit"
         disabled={busy}
-        className="mt-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className={PRIMARY_BUTTON}
       >
         グループを作成
       </button>
@@ -184,7 +185,7 @@ function JoinGroupForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 text-left">
       {groupIdFromUrl ? (
-        <div className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-700">
+        <div className="rounded-md border border-line-strong px-3 py-2 text-sm bg-line-3 text-ink-2">
           {groupId}
         </div>
       ) : (
@@ -194,7 +195,7 @@ function JoinGroupForm({
           placeholder="グループID"
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className={FIELD}
           disabled={busy}
         />
       )}
@@ -205,14 +206,14 @@ function JoinGroupForm({
         placeholder="招待コード(6文字以上)"
         value={inviteCode}
         onChange={(e) => setInviteCode(e.target.value)}
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className={FIELD}
         disabled={busy}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger-text">{error}</p>}
       <button
         type="submit"
         disabled={busy}
-        className="mt-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className={PRIMARY_BUTTON}
       >
         参加する
       </button>

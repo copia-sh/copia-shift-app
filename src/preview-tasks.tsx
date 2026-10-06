@@ -4,6 +4,7 @@ import { ScreenFooter } from "./components/ScreenSwitcher";
 import { TaskBoardView } from "./components/taskBoard/TaskBoardView";
 import type { BoardRoutine, BoardTask, TaskBoardState } from "./taskBoard";
 import type { Member } from "./types";
+import { COLOR } from "./theme/palette";
 
 // Firebase を使わずにタスク画面の見た目を確認するためのページ（`/preview-tasks.html?state=ready&me=田村駿貴`）。
 // 公開リポジトリなので、状況メモやURLは架空のもの。
@@ -12,7 +13,7 @@ const members: Member[] = ["田村駿貴", "佐藤広幸", "曽根大智", "赤�
   id: `m${index + 1}`,
   email: `m${index + 1}@example.com`,
   displayName,
-  color: ["#248DD4", "#1F8A98", "#E08A2E", "#D9736F"][index],
+  color: [COLOR.brand, COLOR.teal, COLOR.orange, COLOR.coral][index],
   role: index === 0 ? "admin" : "member",
   active: true,
   shiftTarget: true,

@@ -20,6 +20,7 @@ import { GroupSwitcher } from "../GroupSwitcher";
 import { HeaderMenu, type HeaderMenuItem } from "../HeaderMenu";
 import { ScreenSwitcher } from "../ScreenSwitcher";
 import { StatusFilter } from "./StatusFilter";
+import { CHIP_ON, CHIP_OFF } from "./controls";
 import { RoutineSection, TaskSection, type KeyedRoutine, type KeyedTask } from "./TaskBoardSections";
 import { TaskDetailPanel, type DetailItem } from "./TaskDetail";
 import { TaskDetailSheet } from "./TaskDetailSheet";
@@ -54,12 +55,10 @@ export interface TaskBoardViewProps {
   onSubmitUpdate?: SubmitTaskUpdate;
 }
 
-const HEADER_BTN = "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70";
+const HEADER_BTN = "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-ink-4 hover:bg-white/70";
 // シフト画面の絞り込み（MemberFilter）と同じ型のボタン
 const CHIP =
   "flex-none whitespace-nowrap rounded-full border px-3 text-[12px] font-bold min-h-[44px] flex items-center md:h-[34px] md:min-h-0 md:rounded-md md:px-3";
-const CHIP_ON = "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]";
-const CHIP_OFF = "border-[#E5E7EB] bg-white text-[#374151] hover:bg-gray-50";
 
 /** シフト画面の「今月」ボタンと同じ型。 */
 function SheetButton({ url }: { url: string }) {
@@ -69,7 +68,7 @@ function SheetButton({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex h-[34px] items-center rounded-md border border-gray-200 bg-white px-3 text-[12px] font-bold text-gray-700 shadow-[0_2px_0_0_#E3E3E3] hover:bg-[#F0F0F0] md:px-3.5 md:text-[13px]"
+      className="inline-flex h-[34px] items-center rounded-md border border-line bg-white px-3 text-[12px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] hover:bg-edge-hover md:px-3.5 md:text-[13px]"
     >
       シートで編集 ↗
     </a>
@@ -97,10 +96,10 @@ function keyed(board: TaskBoard): { tasks: KeyedTask[]; routines: KeyedRoutine[]
 function SyncInfo({ board, now }: { board: TaskBoard; now: number }) {
   const stale = isStale(board.syncedAt, now);
   const time = formatSyncTime(board.syncedAt);
-  if (!stale) return <span className="whitespace-nowrap text-[12px] text-gray-400">最終同期 {time}</span>;
+  if (!stale) return <span className="whitespace-nowrap text-[12px] text-ink-5">最終同期 {time}</span>;
   return (
-    <span className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold text-[#8A5310]">
-      <span aria-hidden className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#F9E428] text-[11px] text-[#111827]">!</span>
+    <span className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold text-orange-deep">
+      <span aria-hidden className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-today text-[11px] text-ink">!</span>
       最終同期 {time}（{formatElapsed(board.syncedAt, now)}）
     </span>
   );
@@ -199,7 +198,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
     .join("と");
 
   return (
-    <div className="min-h-screen pb-[calc(16px+var(--screen-footer-h))] md:pb-10" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
+    <div className="min-h-screen bg-page pb-[calc(16px+var(--screen-footer-h))] text-ink md:pb-10">
       {/* 上部はシフト画面（App.tsx）と同じ並び・余白にする。画面を行き来しても位置が動かないように。 */}
       <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
         <button type="button" onClick={props.onExport} className={HEADER_BTN}>書き出し</button>
@@ -222,7 +221,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
       </div>
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 pb-2 md:px-5 md:pb-3">
-        <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-[#6B7280]">表示する担当</span>
+        <span className="mr-1 flex-none whitespace-nowrap text-[12px] font-bold text-ink-4">表示する担当</span>
         {/* シフト画面の「氏名で絞り込む」（MemberFilter）と同じ箱・幅 */}
         <label className="flex-none">
           <input
@@ -231,7 +230,7 @@ export function TaskBoardView(props: TaskBoardViewProps) {
             onChange={(event) => changeNameQuery(event.target.value)}
             placeholder="氏名で絞り込む"
             aria-label="氏名で絞り込む"
-            className="w-[112px] rounded-md border border-[#E5E7EB] bg-white px-3 text-[12px] font-bold text-[#111827] placeholder:font-normal placeholder:text-[#9CA3AF] md:h-[34px] md:w-[135px]"
+            className="w-[112px] rounded-md border border-line bg-white px-3 text-[12px] font-bold text-ink placeholder:font-normal placeholder:text-ink-5 md:h-[34px] md:w-[135px]"
             style={{ minHeight: 44 }}
           />
         </label>

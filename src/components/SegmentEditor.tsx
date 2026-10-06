@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Shift, ShiftType } from "../types";
 import { TIME_CHOICES, validateSegments, skinStyle } from "./shiftVisual";
 import type { ShiftTheme } from "./shiftTheme";
+import { DIALOG_PRIMARY, MODAL_BACKDROP } from "./ui/controls";
 
 export interface SegmentEditorProps {
   dateKey: string;
@@ -102,10 +103,10 @@ export function SegmentEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className={MODAL_BACKDROP}>
       <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">
+          <h2 className="text-lg font-bold text-ink">
             {dateKey} / {memberName}
           </h2>
         </div>
@@ -113,7 +114,7 @@ export function SegmentEditor({
         <div className="mb-4 max-h-96 overflow-y-auto space-y-3">
           {edits.map((seg, idx) => {
             return (
-              <div key={idx} className="flex items-center gap-2 rounded border border-gray-200 p-2">
+              <div key={idx} className="flex items-center gap-2 rounded border border-line p-2">
                 <div className="flex gap-1">
                   {theme.types.map((typeDef) => {
                     const sk = theme.skinFor({ kind: "want", type: typeDef.key, startTime: null, endTime: null }, seg.type === typeDef.key);
@@ -125,7 +126,7 @@ export function SegmentEditor({
                         className={`px-2 py-1 text-[11px] font-bold rounded border ${
                           seg.type === typeDef.key
                             ? ""
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
+                            : "bg-line-3 text-ink-3 hover:bg-line border-line-strong"
                         }`}
                         style={
                           seg.type === typeDef.key
@@ -146,7 +147,7 @@ export function SegmentEditor({
                     onChange={(e) => handleChangeAllDay(idx, e.target.checked)}
                     className="h-4 w-4"
                   />
-                  <span className="text-[11px] font-bold text-gray-700">終日</span>
+                  <span className="text-[11px] font-bold text-ink-2">終日</span>
                 </label>
 
                 {!seg.isAllDay && (
@@ -155,7 +156,7 @@ export function SegmentEditor({
                       value={seg.startTime || "09:00"}
                       onChange={(e) => handleChangeStartTime(idx, e.target.value)}
                       disabled={seg.isAllDay}
-                      className="px-1.5 py-1 text-[11px] border border-gray-300 rounded bg-white"
+                      className="px-1.5 py-1 text-[11px] border border-line-strong rounded bg-white"
                     >
                       {TIME_CHOICES.map((t) => (
                         <option key={t} value={t}>
@@ -163,12 +164,12 @@ export function SegmentEditor({
                         </option>
                       ))}
                     </select>
-                    <span className="text-gray-400">〜</span>
+                    <span className="text-ink-5">〜</span>
                     <select
                       value={seg.endTime || "17:00"}
                       onChange={(e) => handleChangeEndTime(idx, e.target.value)}
                       disabled={seg.isAllDay}
-                      className="px-1.5 py-1 text-[11px] border border-gray-300 rounded bg-white"
+                      className="px-1.5 py-1 text-[11px] border border-line-strong rounded bg-white"
                     >
                       {TIME_CHOICES.map((t) => (
                         <option key={t} value={t}>
@@ -182,7 +183,7 @@ export function SegmentEditor({
                 <button
                   type="button"
                   onClick={() => handleRemoveSegment(idx)}
-                  className="ml-auto px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50 rounded"
+                  className="ml-auto px-2 py-1 text-[11px] font-bold text-danger-text hover:bg-danger-wash rounded"
                 >
                   ×
                 </button>
@@ -192,7 +193,7 @@ export function SegmentEditor({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-[12px] font-bold text-red-700">
+          <div className="mb-4 p-3 bg-danger-wash border border-danger-line rounded text-[12px] font-bold text-danger-deep">
             {error}
           </div>
         )}
@@ -203,8 +204,8 @@ export function SegmentEditor({
           disabled={!canAdd}
           className={`w-full mb-4 px-3 py-2 text-[12px] font-bold rounded ${
             canAdd
-              ? "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              ? "bg-brand-wash text-brand-press border border-brand-line hover:bg-brand-tint"
+              : "bg-line-3 text-ink-5 cursor-not-allowed"
           }`}
         >
           ＋枠を追加
@@ -214,7 +215,7 @@ export function SegmentEditor({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50"
+            className="flex-1 px-4 py-2 text-[12px] font-bold border border-line-strong rounded bg-white text-ink-2 hover:bg-surface-4"
           >
             キャンセル
           </button>
@@ -222,7 +223,7 @@ export function SegmentEditor({
             type="button"
             onClick={handleSave}
             disabled={busy}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-[#248DD4] rounded bg-[#248DD4] text-white hover:bg-[#1B6FA8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className={DIALOG_PRIMARY}
           >
             保存
           </button>

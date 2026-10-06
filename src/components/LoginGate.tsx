@@ -3,6 +3,7 @@ import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { signInWithEmail, signUpWithEmail } from "../firebase/auth";
 import { FullScreenMessage, LoadingScreen } from "./FullScreenMessage";
+import { FIELD, PRIMARY_BUTTON } from "./ui/controls";
 
 /**
  * 認証だけを担当する。ログイン済みのユーザーが「どのグループのどのメンバーか」の
@@ -74,15 +75,15 @@ function AuthForm() {
   return (
     <FullScreenMessage title="Copia シフト管理" tone="heading">
       <div className="w-full max-w-xs">
-        <p className="mb-4 text-sm leading-6 text-gray-600">
+        <p className="mb-4 text-sm leading-6 text-ink-3">
           すでにグループに所属している方は、登録済みのメールアドレスとパスワードでログインしてください。
         </p>
-        <div className="mb-4 flex overflow-hidden rounded-md border border-gray-300">
+        <div className="mb-4 flex overflow-hidden rounded-md border border-line-strong">
           <button
             type="button"
             onClick={() => setMode("signin")}
             className={`flex-1 py-1.5 text-sm ${
-              mode === "signin" ? "bg-blue-600 text-white" : "text-gray-600"
+              mode === "signin" ? "bg-brand text-white" : "text-ink-3"
             }`}
           >
             ログイン
@@ -91,7 +92,7 @@ function AuthForm() {
             type="button"
             onClick={() => setMode("signup")}
             className={`flex-1 py-1.5 text-sm ${
-              mode === "signup" ? "bg-blue-600 text-white" : "text-gray-600"
+              mode === "signup" ? "bg-brand text-white" : "text-ink-3"
             }`}
           >
             初めての方
@@ -105,7 +106,7 @@ function AuthForm() {
             placeholder="メールアドレス"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={FIELD}
           />
           <input
             type="password"
@@ -114,13 +115,13 @@ function AuthForm() {
             placeholder="パスワード(6文字以上)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={FIELD}
           />
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-danger-text">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="mt-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className={PRIMARY_BUTTON}
           >
             {mode === "signup" ? "アカウントを登録" : "ログイン"}
           </button>

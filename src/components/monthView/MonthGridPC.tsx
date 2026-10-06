@@ -15,6 +15,7 @@ import {
 } from "../shiftVisual";
 import { compactRange, dayEntries } from "./monthDay";
 import { dateInk, dowColor, entryStyle, memberInk, skinOf, typeLabel, workingCount, SELECTED_RING } from "./monthShared";
+import { COLOR } from "../../theme/palette";
 
 export interface MonthGridProps {
   anchorDate: Date;
@@ -46,8 +47,8 @@ export function MonthGridPC({
   const bulk = mode !== "single";
 
   return (
-    <div className="hidden overflow-hidden rounded-xl border border-[#E5E7EB] bg-white md:block">
-      <div className="grid grid-cols-7 border-b border-[#E5E7EB] bg-[#FBFCFD]">
+    <div className="hidden overflow-hidden rounded-xl border border-line bg-white md:block">
+      <div className="grid grid-cols-7 border-b border-line bg-surface-2">
         {dowLabelsFrom(settings.weekStartsOn).map((label, i) => (
           <div key={label} className="flex h-[30px] items-center justify-center text-[12px] font-bold" style={{ color: dowColor((i + settings.weekStartsOn) % 7) }}>
             {label}
@@ -74,22 +75,22 @@ export function MonthGridPC({
             return (
               <div
                 key={dateKey}
-                className="group flex min-h-[120px] flex-col gap-1 border-b border-r border-[#F1F3F5] p-1.5 last:border-r-0"
-                style={{ background: isToday ? "#FFFBEA" : inMonth ? "#fff" : "#FAFBFC" }}
+                className="group flex min-h-[120px] flex-col gap-1 border-b border-r border-line-3 p-1.5 last:border-r-0"
+                style={{ background: isToday ? COLOR.todayWash2 : inMonth ? COLOR.surface : COLOR.surface3 }}
               >
                 <div className="flex items-center justify-between px-0.5">
                   <span
-                    className={`inline-flex h-[22px] min-w-[22px] items-center justify-center text-[13px] font-bold ${isToday ? "rounded-full bg-[#F9E428] px-1.5" : ""}`}
+                    className={`inline-flex h-[22px] min-w-[22px] items-center justify-center text-[13px] font-bold ${isToday ? "rounded-full bg-today px-1.5" : ""}`}
                     style={{ color: dateInk(day, inMonth) }}
                   >
                     {day.getDate()}
                   </span>
                   {bulk && inMonth ? (
-                    <button type="button" onClick={selectAll} title="この日をまとめて選択" className="rounded px-1 text-[11px] font-bold text-[#248DD4] hover:bg-[#EDF6FD]">
+                    <button type="button" onClick={selectAll} title="この日をまとめて選択" className="rounded px-1 text-[11px] font-bold text-brand hover:bg-brand-wash">
                       {working}人 ▸選択
                     </button>
                   ) : (
-                    working > 0 && <span className="text-[11px] text-[#6B7280]">{working}人</span>
+                    working > 0 && <span className="text-[11px] text-ink-4">{working}人</span>
                   )}
                 </div>
                 {entries.map((entry) => {
@@ -112,7 +113,7 @@ export function MonthGridPC({
                       <span className="truncate text-[12px] font-bold" style={{ color: memberInk(member) }}>{member.displayName}</span>
                       <span className="flex-none text-[11px] font-bold" style={{ color: skin.fg }}>{typeLabel(theme, entry.typeKeys)}</span>
                       {!unavailableOnly && (
-                        <span className="ml-auto flex-none text-[11px] text-[#374151]">{compactRange(entry.start, entry.end)}</span>
+                        <span className="ml-auto flex-none text-[11px] text-ink-2">{compactRange(entry.start, entry.end)}</span>
                       )}
                     </button>
                   );
@@ -122,10 +123,10 @@ export function MonthGridPC({
                     type="button"
                     onClick={() => onCellTap(myKey, NONE)}
                     // 空いている日すべてに出すとうるさいので、セルに乗せたとき・フォーカス時・選択中だけ見せる
-                    className={`flex h-[26px] w-full items-center rounded-md border border-dashed border-[#E5E7EB] px-1.5 text-[11px] text-[#9CA3AF] hover:border-[#A7D1EE] hover:text-[#248DD4] focus:opacity-100 group-hover:opacity-100 ${
+                    className={`flex h-[26px] w-full items-center rounded-md border border-dashed border-line px-1.5 text-[11px] text-ink-5 hover:border-brand-line hover:text-brand focus:opacity-100 group-hover:opacity-100 ${
                       selected.has(myKey) ? "opacity-100" : "opacity-0"
                     }`}
-                    style={selected.has(myKey) ? { boxShadow: SELECTED_RING, color: "#248DD4" } : undefined}
+                    style={selected.has(myKey) ? { boxShadow: SELECTED_RING, color: COLOR.brand } : undefined}
                   >
                     ＋ 自分
                   </button>

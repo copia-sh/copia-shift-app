@@ -42,14 +42,14 @@ export function HeaderMenu({ label, items, align = "right" }: HeaderMenuProps) {
 
   return (
     <details ref={ref} className="relative">
-      <summary className="flex h-[34px] cursor-pointer list-none items-center gap-1 rounded-md px-2.5 text-[13px] font-bold text-[#6B7280] hover:bg-white/70">
+      <summary className="flex h-[34px] cursor-pointer list-none items-center gap-1 rounded-md px-2.5 text-[13px] font-bold text-ink-4 hover:bg-white/70">
         <span className="max-w-[140px] truncate">{label}</span>
         <span aria-hidden className="text-[10px]">
           ▾
         </span>
       </summary>
       <div
-        className={`absolute top-10 z-40 flex min-w-[170px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg ${
+        className={`absolute top-10 z-40 flex min-w-[170px] flex-col rounded-lg border border-line bg-white p-1.5 shadow-lg ${
           align === "right" ? "right-0" : "left-0"
         }`}
       >
@@ -61,7 +61,7 @@ export function HeaderMenu({ label, items, align = "right" }: HeaderMenuProps) {
               item.onSelect();
               if (ref.current) ref.current.open = false;
             }}
-            className="rounded-md px-2.5 py-2 text-left text-[13px] font-bold text-[#374151] hover:bg-[#F4F6F8]"
+            className="rounded-md px-2.5 py-2 text-left text-[13px] font-bold text-ink-2 hover:bg-line-4"
           >
             {item.label}
           </button>

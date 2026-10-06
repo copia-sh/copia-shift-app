@@ -13,6 +13,7 @@ import { nonTargetCount, shiftTargetMembers } from "./components/memberRoster";
 import { buildShiftTheme } from "./components/shiftTheme";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import type { Member, Shift } from "./types";
+import { COLOR, MEMBER_COLORS } from "./theme/palette";
 
 type PreviewView = "list" | "month" | "week";
 
@@ -21,7 +22,7 @@ const members: Member[] = ["田村駿貴", "赤間", "曽根", "佐藤", "鈴木
     id: `m${index + 1}`,
     email: `m${index + 1}@example.com`,
     displayName,
-    color: ["#248DD4", "#1F8A98", "#D9736F", "#8B5CF6", "#16A34A", "#E08A2E"][index],
+    color: [COLOR.brand, COLOR.teal, COLOR.coral, ...MEMBER_COLORS][index],
     role: index === 0 ? "admin" : "member",
     active: true,
     // 5人目以降（社員）はシフト表対象外。対象外の扱いを確認するため。
@@ -82,16 +83,16 @@ export function Preview() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F9FB] text-gray-900">
+    <div className="min-h-screen bg-page text-ink">
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-2 md:px-5 md:pt-3">
-        <p className="text-[12px] font-bold text-[#248DD4]">レスポンシブプレビュー</p>
-        <div className="flex items-center gap-1 rounded-md border border-gray-200 bg-white p-1">
+        <p className="text-[12px] font-bold text-brand">レスポンシブプレビュー</p>
+        <div className="flex items-center gap-1 rounded-md border border-line bg-white p-1">
           {[1, 2, 4, 6].map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setCount(value)}
-              className={`rounded px-2.5 py-1 text-[12px] font-bold ${count === value ? "bg-[#248DD4] text-white" : "text-gray-500"}`}
+              className={`rounded px-2.5 py-1 text-[12px] font-bold ${count === value ? "bg-brand text-white" : "text-ink-4"}`}
             >
               {value}人
             </button>

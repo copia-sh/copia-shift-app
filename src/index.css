@@ -1,52 +1,89 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
 @import "tailwindcss";
 
+/* 置き換え表には旧いクラス名（border-gray-200 など）が並んでいる。
+   走査対象に入れると、使っていないユーティリティがCSSに焼き込まれてしまう。 */
+@source not "../docs";
+
+/* 配色の唯一の定義場所。
+   ここに書いた --color-* は Tailwind v4 のユーティリティ（bg-brand / text-ink-4 / border-line …）
+   になり、同時に var(--color-brand) としても使える。コンポーネント側で #248DD4 のような
+   生の色を書かないこと。JS から色の計算（濃淡の合成など）に使う値は src/theme/palette.ts
+   にあり、tests/palette.test.ts がこのファイルと一致していることを検証している。 */
+@theme {
+  /* ブランド（青）。アプリの主役の色。 */
+  --color-brand: #248DD4;
+  --color-brand-deep: #0863A0;
+  --color-brand-press: #1B6FA8;
+  --color-brand-line: #A7D1EE;
+  --color-brand-tint: #D1E9F9;
+  --color-brand-wash: #EDF6FD;
+  /* 濃い面（トースト）の上に置く青。白背景用の brand では暗すぎる。 */
+  --color-brand-on-dark: #8CC8F0;
+  --color-brand-wash-2: #F1F8FE;
+  --color-brand-wash-3: #F7FBFE;
+
+  /* 勤務区分などで使う差し色。 */
+  --color-teal: #1F8A98;
+  --color-teal-deep: #166A75;
+  --color-teal-line: #A5D0D6;
+  --color-teal-wash: #E0F0F2;
+  --color-coral: #D9736F;
+  --color-coral-deep: #A8433F;
+  --color-coral-line: #F0C7C7;
+  --color-coral-wash: #FDF1F1;
+  --color-orange: #E08A2E;
+  --color-orange-deep: #8A5310;
+  --color-orange-line: #F3D0AB;
+  --color-orange-wash: #FBEEDF;
+
+  /* 今日を示す黄色。濃さ違いを3段持つ。 */
+  --color-today: #F9E428;
+  --color-today-wash: #FFF6D6;
+  --color-today-wash-2: #FFFBEA;
+  --color-today-wash-3: #FFFDF4;
+
+  /* 文字。ink が最も濃く、数字が大きいほど薄い。ink-none は「未回答」の文字色。 */
+  --color-ink: #111827;
+  --color-ink-2: #374151;
+  --color-ink-3: #4B5563;
+  --color-ink-4: #6B7280;
+  --color-ink-5: #9CA3AF;
+  --color-ink-none: #C8CDD2;
+
+  /* 罫線。line が最も濃く、数字が大きいほど薄い。
+     edge はボタンの押し込み影に使う一段濃いグレー。 */
+  --color-line-strong: #D1D5DB;
+  --color-line: #E5E7EB;
+  --color-line-2: #EFF1F3;
+  --color-line-3: #F1F3F5;
+  --color-line-4: #F4F6F8;
+  --color-edge: #E3E3E3;
+  --color-edge-hover: #F0F0F0;
+
+  /* 面。page が最背面、surface が最前面（白）。 */
+  --color-page: #F7F9FB;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #FBFCFD;
+  --color-surface-3: #FAFBFC;
+  --color-surface-4: #F9FAFB;
+
+  /* 危険操作（削除・エラー）。 */
+  --color-danger: #EF4444;
+  --color-danger-deep: #B91C1C;
+  --color-danger-text: #DC2626;
+  --color-danger-line: #FECACA;
+  --color-danger-wash: #FEF2F2;
+}
+
 :root {
   color-scheme: light;
   font-family: "Noto Sans JP", system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic", Roboto, sans-serif;
-
-  /* Design Tokens - Colors */
-  --c-blue: #248DD4;
-  --c-blue-deep: #0863A0;
-  --c-blue-tint: #D1E9F9;
-  --c-teal: #1F8A98;
-  --c-coral: #D9736F;
-  --c-coral-line: #F0C7C7;
-  --c-coral-bg: #FDF1F1;
-  --c-orange: #E08A2E;
-  --c-today: #F9E428;
-  --c-today-bg: #FFF6D6;
-  --c-today-bg-2: #FFFBEA;
-  --c-today-bg-3: #FFFDF4;
-  --c-line: #E5E7EB;
-  --c-line-2: #EFF1F3;
-  --c-line-3: #F1F3F5;
-  --c-line-4: #F4F6F8;
-  --c-surface: #fff;
-  --c-surface-2: #FBFCFD;
-  --c-surface-3: #FAFBFC;
-  --c-surface-4: #F9FAFB;
-  --c-page: #F7F9FB;
-  --c-ink: #111827;
-  --c-ink-2: #374151;
-  --c-ink-3: #4B5563;
-  --c-ink-4: #6B7280;
-  --c-ink-5: #9CA3AF;
-  --c-ink-none: #C8CDD2;
-
-  /* Design Tokens - Dimensions */
-  --w-name-col: 148px;
-  --w-day-col: 48px;
-  --h-row: 50px;
-  --h-week-hour: 32px;
-  --w-week-time-col: 44px;
-  --h-month-chip: 52px;
-  --h-month-cell: 158px;
 }
 
 body {
   margin: 0;
-  background-color: var(--c-page);
+  background-color: var(--color-page);
 }
 
 /* スマホの固定フッター（シフト｜タスク）。土台を下に長く取り、ボタンはその上の方に置く。

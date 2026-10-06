@@ -1,24 +1,15 @@
 import { collection, onSnapshot, orderBy, query, updateDoc, doc } from "firebase/firestore";
 import { db } from "./config";
 import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
+import { MEMBER_COLORS } from "../theme/palette";
 
-const COLOR_PALETTE = [
-  "#ef4444",
-  "#3b82f6",
-  "#22c55e",
-  "#a855f7",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
-  "#84cc16",
-];
 
 export function colorForEmail(email: string): string {
   let hash = 0;
   for (let i = 0; i < email.length; i++) {
     hash = (hash * 31 + email.charCodeAt(i)) >>> 0;
   }
-  return COLOR_PALETTE[hash % COLOR_PALETTE.length];
+  return MEMBER_COLORS[hash % MEMBER_COLORS.length];
 }
 
 export function nameFromEmail(email: string): string {

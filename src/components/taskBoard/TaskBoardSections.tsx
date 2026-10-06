@@ -24,28 +24,28 @@ interface SectionProps<T> {
 const ROUTINE_COLUMNS = "grid-cols-[160px_minmax(0,1fr)_220px_80px]";
 const TASK_COLUMNS = "grid-cols-[32px_minmax(0,1fr)_160px_104px_52px_80px]";
 const ROW =
-  "grid w-full items-center gap-3 border-b border-[#F1F3F5] px-3.5 py-2 text-left min-h-[44px] last:border-b-0 hover:bg-[#FBFCFD]";
-const TITLE = "line-clamp-2 text-[13px] font-bold leading-[1.5] text-[#111827]";
+  "grid w-full items-center gap-3 border-b border-line-3 px-3.5 py-2 text-left min-h-[44px] last:border-b-0 hover:bg-surface-2";
+const TITLE = "line-clamp-2 text-[13px] font-bold leading-[1.5] text-ink";
 
 function SectionHeading({ title, count, unassignedCount, aside }: {
   title: string; count: number; unassignedCount: number; aside?: ReactNode;
 }) {
   return (
     <div className="mb-2 flex items-center gap-2 px-1">
-      <h2 className="text-[14px] font-bold text-[#111827]">{title}</h2>
-      <span className="text-[12px] text-[#6B7280]">{count}件</span>
+      <h2 className="text-[14px] font-bold text-ink">{title}</h2>
+      <span className="text-[12px] text-ink-4">{count}件</span>
       <UnassignedCountBadge count={unassignedCount} />
-      {aside && <span className="ml-auto hidden text-[12px] text-[#6B7280] md:inline">{aside}</span>}
+      {aside && <span className="ml-auto hidden text-[12px] text-ink-4 md:inline">{aside}</span>}
     </div>
   );
 }
 
 function EmptyRow({ empty }: { empty: EmptyNotice }) {
   return (
-    <p className="px-3.5 py-4 text-[13px] text-[#4B5563]">
+    <p className="px-3.5 py-4 text-[13px] text-ink-3">
       {empty.text}
       {empty.actionLabel && empty.onAction && (
-        <button type="button" onClick={empty.onAction} className="ml-3 text-[#248DD4] underline">
+        <button type="button" onClick={empty.onAction} className="ml-3 text-brand underline">
           {empty.actionLabel}
         </button>
       )}
@@ -55,7 +55,7 @@ function EmptyRow({ empty }: { empty: EmptyNotice }) {
 
 function TableCard({ header, children }: { header: ReactNode; children: ReactNode }) {
   return (
-    <div className="hidden overflow-hidden rounded-xl border border-[#E5E7EB] bg-white md:block">
+    <div className="hidden overflow-hidden rounded-xl border border-line bg-white md:block">
       {header}
       {children}
     </div>
@@ -66,7 +66,7 @@ function HeaderRow({ columns, labels }: { columns: string; labels: string[] }) {
   return (
     <div
       aria-hidden
-      className={`grid ${columns} gap-3 border-b border-[#E5E7EB] bg-[#FBFCFD] px-3.5 py-1.5 text-[11px] font-bold text-[#6B7280]`}
+      className={`grid ${columns} gap-3 border-b border-line bg-surface-2 px-3.5 py-1.5 text-[11px] font-bold text-ink-4`}
     >
       {labels.map((label) => (
         <span key={label}>{label}</span>
@@ -84,10 +84,10 @@ function MobileCard({ selected, onClick, meta, title, footer }: {
       aria-expanded={selected}
       onClick={onClick}
       className={`flex w-full flex-col gap-1 rounded-xl border bg-white px-3 py-2.5 text-left ${
-        selected ? "border-[#248DD4] shadow-[0_2px_4px_rgba(36,141,212,0.2)]" : "border-[#E5E7EB]"
+        selected ? "border-brand shadow-[0_2px_4px_rgba(36,141,212,0.2)]" : "border-line"
       }`}
     >
-      <span className="text-[11px] text-[#4B5563]">{meta}</span>
+      <span className="text-[11px] text-ink-3">{meta}</span>
       <span className={TITLE}>{title}</span>
       <span className="flex items-center justify-between gap-2">{footer}</span>
     </button>
@@ -96,7 +96,7 @@ function MobileCard({ selected, onClick, meta, title, footer }: {
 
 function MobileEmpty({ empty }: { empty: EmptyNotice }) {
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-white md:hidden">
+    <div className="rounded-xl border border-line bg-white md:hidden">
       <EmptyRow empty={empty} />
     </div>
   );
@@ -114,9 +114,9 @@ export function RoutineSection({ items, members, unassignedCount, empty, selecte
             type="button"
             aria-expanded={selectedKey === item.key}
             onClick={() => onSelect(item.key)}
-            className={`${ROW} ${ROUTINE_COLUMNS} ${selectedKey === item.key ? "bg-[#EDF6FD] hover:bg-[#EDF6FD]" : ""}`}
+            className={`${ROW} ${ROUTINE_COLUMNS} ${selectedKey === item.key ? "bg-brand-wash hover:bg-brand-wash" : ""}`}
           >
-            <span className="text-[12px] text-[#374151]">{item.frequency}</span>
+            <span className="text-[12px] text-ink-2">{item.frequency}</span>
             <span className={TITLE}>{item.title}</span>
             <AssigneeList assignees={item.assignees} members={members} />
             <span><StatusBadge status={item.status} /></span>
@@ -157,12 +157,12 @@ export function TaskSection({ items, members, unassignedCount, empty, selectedKe
             type="button"
             aria-expanded={selectedKey === item.key}
             onClick={() => onSelect(item.key)}
-            className={`${ROW} ${TASK_COLUMNS} ${selectedKey === item.key ? "bg-[#EDF6FD] hover:bg-[#EDF6FD]" : ""}`}
+            className={`${ROW} ${TASK_COLUMNS} ${selectedKey === item.key ? "bg-brand-wash hover:bg-brand-wash" : ""}`}
           >
-            <span className="text-[12px] font-bold text-[#6B7280]">{item.no}</span>
+            <span className="text-[12px] font-bold text-ink-4">{item.no}</span>
             <span className={TITLE}>{item.title}</span>
             <AssigneeList assignees={item.assignees} members={members} />
-            <span className="text-[12px] text-[#374151]">{item.due || "—"}</span>
+            <span className="text-[12px] text-ink-2">{item.due || "—"}</span>
             <PriorityText priority={item.priority} />
             <span><StatusBadge status={item.status} /></span>
           </button>

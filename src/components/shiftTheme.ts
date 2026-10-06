@@ -1,6 +1,7 @@
 import type { CellState } from "./shiftVisual";
 import type { ShiftTypeDef } from "../types";
 import { REJECTED_TYPE } from "../types";
+import { COLOR, BLACK, WHITE, UNKNOWN_TYPE_COLOR } from "../theme/palette";
 
 /** "#RRGGBB" を 0..1 の比率で混ぜる。t=0 で a、t=1 で b。 */
 export function mixHex(a: string, b: string, t: number): string {
@@ -21,11 +22,11 @@ export function mixHex(a: string, b: string, t: number): string {
 }
 
 export function lighten(hex: string, t: number): string {
-  return mixHex(hex, "#ffffff", t);
+  return mixHex(hex, WHITE, t);
 }
 
 export function darken(hex: string, t: number): string {
-  return mixHex(hex, "#000000", t);
+  return mixHex(hex, BLACK, t);
 }
 
 export interface Skin {
@@ -80,7 +81,7 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
       return {
         key,
         label: "却下",
-        color: "#E08A2E",
+        color: COLOR.orange,
         attendance: "unavailable",
         mark: "×",
       };
@@ -93,7 +94,7 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
     return {
       key,
       label: key,
-      color: "#999999",
+      color: UNKNOWN_TYPE_COLOR,
       attendance: "available",
       mark: "?",
     };
@@ -115,13 +116,13 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
 
   const skinFor = (state: CellState, selected: boolean): Skin => {
     if (state.kind === "none") {
-      const bg = selected ? lighten("#248DD4", 0.88) : "#ffffff";
+      const bg = selected ? lighten(COLOR.brand, 0.88) : WHITE;
       return {
         bg,
-        border: "#E3E3E3",
+        border: COLOR.edge,
         borderStyle: "dashed",
         borderWidth: "1px",
-        fg: "#C8CDD2",
+        fg: COLOR.inkNone,
         shadow: "",
         mark: "·",
         label: "未回答",
@@ -140,7 +141,7 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
         border: bg,
         borderStyle: "solid",
         borderWidth: "1px",
-        fg: "#ffffff",
+        fg: WHITE,
         shadow: "",
         mark: "✓",
         label: def.label,
@@ -179,11 +180,11 @@ export function buildShiftTheme(types: ShiftTypeDef[]): ShiftTheme {
     }
 
     return {
-      bg: "#ffffff",
-      border: "#E3E3E3",
+      bg: WHITE,
+      border: COLOR.edge,
       borderStyle: "dashed",
       borderWidth: "1px",
-      fg: "#C8CDD2",
+      fg: COLOR.inkNone,
       shadow: "",
       mark: "·",
       label: "未回答",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { normalizeMemberAttributes, type Member, type MemberRole } from "../types";
+import { MODAL_BACKDROP } from "./ui/controls";
 
 export interface MemberAdminProps {
   members: Member[];
@@ -85,7 +86,7 @@ export function MemberAdmin({
     return (
       <div
         key={member.id}
-        className={`flex flex-col gap-2 border-b border-gray-200 px-1 py-3 ${
+        className={`flex flex-col gap-2 border-b border-line px-1 py-3 ${
           !member.active ? "opacity-50" : ""
         }`}
       >
@@ -102,9 +103,9 @@ export function MemberAdmin({
             onChange={(e) => setEditedNames({ ...editedNames, [member.id]: e.target.value })}
             onBlur={() => handleDisplayNameBlur(member.id, member.displayName)}
             disabled={busy || !canManage}
-            className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
+            className="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm text-ink disabled:opacity-50"
           />
-          <span className="max-w-[45%] truncate text-[11px] text-gray-400">{member.email}</span>
+          <span className="max-w-[45%] truncate text-[11px] text-ink-5">{member.email}</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 pl-5">
@@ -112,7 +113,7 @@ export function MemberAdmin({
             value={member.role}
             onChange={(e) => onChangeRole(member.id, e.target.value as MemberRole)}
             disabled={busy || !canManage || isCurrentUser}
-            className="rounded border border-gray-200 bg-white px-2 py-1 text-[13px] text-gray-900 disabled:opacity-50"
+            className="rounded border border-line bg-white px-2 py-1 text-[13px] text-ink disabled:opacity-50"
           >
             <option value="admin">管理者</option>
             <option value="leader">リーダー</option>
@@ -127,7 +128,7 @@ export function MemberAdmin({
               disabled={busy || !canManage || cannotDeactivate}
               className="h-4 w-4 disabled:opacity-50"
             />
-            <span className="text-[13px] text-gray-700">在籍</span>
+            <span className="text-[13px] text-ink-2">在籍</span>
           </label>
 
           {/* 在籍（退会したか）とシフト表の対象（希望を出す人か）は別の設定。
@@ -145,30 +146,30 @@ export function MemberAdmin({
             aria-pressed={member.shiftTarget}
             className={`h-[30px] rounded-full border px-3 text-[12px] font-bold disabled:opacity-50 ${
               member.shiftTarget
-                ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
-                : "border-gray-200 bg-white text-gray-500"
+                ? "border-brand bg-brand-tint text-brand-deep"
+                : "border-line bg-white text-ink-4"
             }`}
           >
             {member.shiftTarget ? "シフト表に載せる" : "シフト表対象外"}
           </button>
 
           {isCurrentUser && (
-            <span className="text-[11px] text-gray-400">自分のロールは変更できません</span>
+            <span className="text-[11px] text-ink-5">自分のロールは変更できません</span>
           )}
           {cannotDeactivate && (
-            <span className="text-[11px] text-gray-400">最後の管理者は外せません</span>
+            <span className="text-[11px] text-ink-5">最後の管理者は外せません</span>
           )}
         </div>
 
         {!member.shiftTarget && (
-          <p className="pl-5 text-[11px] text-gray-400">
+          <p className="pl-5 text-[11px] text-ink-5">
             一覧・月・週に行が出ず、人数にも数えません。登録済みの予定は残ります。
           </p>
         )}
 
         {isCurrentUser && confirmingSelfOff && member.shiftTarget && (
-          <div className="ml-5 rounded-md border border-[#F0C7C7] bg-[#FDF1F1] p-2.5">
-            <p className="text-[12px] font-bold text-[#D9736F]">
+          <div className="ml-5 rounded-md border border-coral-line bg-coral-wash p-2.5">
+            <p className="text-[12px] font-bold text-coral">
               自分をシフト表対象外にすると、自分の行と入力欄が出なくなります。よろしいですか？
             </p>
             <div className="mt-2 flex gap-2">
@@ -179,14 +180,14 @@ export function MemberAdmin({
                   setConfirmingSelfOff(false);
                 }}
                 disabled={busy}
-                className="h-9 flex-1 rounded-md border border-[#D9736F] bg-[#D9736F] px-3 text-[12px] font-bold text-white disabled:opacity-50"
+                className="h-9 flex-1 rounded-md border border-coral bg-coral px-3 text-[12px] font-bold text-white disabled:opacity-50"
               >
                 対象外にする
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingSelfOff(false)}
-                className="h-9 flex-1 rounded-md border border-gray-300 bg-white px-3 text-[12px] font-bold text-gray-700"
+                className="h-9 flex-1 rounded-md border border-line-strong bg-white px-3 text-[12px] font-bold text-ink-2"
               >
                 やめる
               </button>
@@ -195,10 +196,10 @@ export function MemberAdmin({
         )}
 
         <div className="pl-5">
-          <span className="mb-1.5 block text-[11px] font-bold text-gray-500">属性タグ</span>
+          <span className="mb-1.5 block text-[11px] font-bold text-ink-4">属性タグ</span>
           <div className="flex flex-wrap gap-1.5">
             {availableAttributes.length === 0 && (
-              <span className="text-[11px] text-gray-400">まだ属性がありません</span>
+              <span className="text-[11px] text-ink-5">まだ属性がありません</span>
             )}
             {availableAttributes.map((attribute) => {
               const selected = member.attributes.includes(attribute);
@@ -211,8 +212,8 @@ export function MemberAdmin({
                   aria-pressed={selected}
                   className={`rounded-full border px-2.5 py-1 text-[11px] font-bold disabled:opacity-50 ${
                     selected
-                      ? "border-[#248DD4] bg-[#D1E9F9] text-[#0863A0]"
-                      : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                      ? "border-brand bg-brand-tint text-brand-deep"
+                      : "border-line bg-white text-ink-4 hover:bg-surface-4"
                   }`}
                 >
                   {selected ? "✓ " : ""}{attribute}
@@ -236,13 +237,13 @@ export function MemberAdmin({
                 }}
                 disabled={busy}
                 placeholder="新しい属性"
-                className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-900 disabled:opacity-50"
+                className="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-[12px] text-ink disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => addAttribute(member)}
                 disabled={busy || !(newAttributes[member.id] ?? "").trim()}
-                className="rounded border border-[#248DD4] bg-white px-2.5 py-1 text-[11px] font-bold text-[#248DD4] disabled:opacity-40"
+                className="rounded border border-brand bg-white px-2.5 py-1 text-[11px] font-bold text-brand disabled:opacity-40"
               >
                 追加
               </button>
@@ -254,14 +255,14 @@ export function MemberAdmin({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className={MODAL_BACKDROP}>
       <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl flex flex-col max-h-[80vh]">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">メンバー管理</h2>
+          <h2 className="text-lg font-bold text-ink">メンバー管理</h2>
         </div>
 
         {!canManage && (
-          <p className="mb-3 rounded-md bg-[#D1E9F9] px-3 py-2 text-[11px] font-bold text-[#0863A0]">
+          <p className="mb-3 rounded-md bg-brand-tint px-3 py-2 text-[11px] font-bold text-brand-deep">
             表示名・役職・在籍・シフト表の対象・属性タグの変更は管理者のみ行えます
           </p>
         )}
@@ -270,7 +271,7 @@ export function MemberAdmin({
           {activeMembers.map(renderMemberRow)}
           {inactiveMembers.length > 0 && (
             <>
-              <div className="text-xs font-bold text-gray-500 px-3 py-2 mt-2">
+              <div className="text-xs font-bold text-ink-4 px-3 py-2 mt-2">
                 退会済みメンバー
               </div>
               {inactiveMembers.map(renderMemberRow)}
@@ -283,7 +284,7 @@ export function MemberAdmin({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="w-full px-4 py-2 text-[12px] font-bold border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 text-[12px] font-bold border border-line-strong rounded bg-white text-ink-2 hover:bg-surface-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             閉じる
           </button>

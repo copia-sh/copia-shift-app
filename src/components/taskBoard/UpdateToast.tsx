@@ -24,15 +24,15 @@ export function UpdateToast({ toast, onDismiss }: { toast: ToastState | null; on
   return (
     <div
       role="status"
-      className="fixed inset-x-3 bottom-[calc(var(--screen-footer-h)+8px)] z-[45] flex items-center gap-3 rounded-lg bg-[#111827] px-3.5 py-2.5 text-white shadow-[0_4px_12px_rgba(17,24,39,0.25)] md:inset-x-auto md:bottom-6 md:right-6 md:max-w-[420px]"
+      className="fixed inset-x-3 bottom-[calc(var(--screen-footer-h)+8px)] z-[45] flex items-center gap-3 rounded-lg bg-ink px-3.5 py-2.5 text-white shadow-[0_4px_12px_rgba(17,24,39,0.25)] md:inset-x-auto md:bottom-6 md:right-6 md:max-w-[420px]"
     >
       <span className="min-w-0 flex-1 text-[13px] font-bold leading-[1.5]">{toast.message}</span>
       {toast.onUndo && (
-        <button type="button" onClick={toast.onUndo} disabled={toast.busy} className="flex-none text-[13px] font-bold text-[#8CC8F0] underline disabled:opacity-60">
+        <button type="button" onClick={toast.onUndo} disabled={toast.busy} className="flex-none text-[13px] font-bold text-brand-on-dark underline disabled:opacity-60">
           {toast.busy ? "戻しています…" : "元に戻す"}
         </button>
       )}
-      <button type="button" aria-label="閉じる" onClick={onDismiss} className="flex-none text-[14px] text-[#C8CDD2]">✕</button>
+      <button type="button" aria-label="閉じる" onClick={onDismiss} className="flex-none text-[14px] text-ink-none">✕</button>
     </div>
   );
 }

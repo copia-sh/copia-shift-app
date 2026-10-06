@@ -83,15 +83,15 @@ export function TaskDetailSheet({ item, members, sourceUrl, onClose, onSubmitUpd
       >
         <div {...handleProps} className="flex-none cursor-grab touch-none select-none active:cursor-grabbing">
           <div aria-hidden className="flex justify-center pb-1 pt-2">
-            <span className="h-1 w-10 rounded-full bg-[#C8CDD2]" />
+            <span className="h-1 w-10 rounded-full bg-ink-none" />
           </div>
-          <header className="flex items-start gap-3 border-b border-[#F1F3F5] px-4 pb-3 pt-1">
+          <header className="flex items-start gap-3 border-b border-line-3 px-4 pb-3 pt-1">
             <div className="min-w-0 flex-1">
               <p className={LABEL}>{editing ? `${eyebrow(item)}の進捗を更新` : eyebrow(item)}</p>
-              <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-[#111827]">{item.title}</h2>
+              <h2 className="mt-0.5 text-[14px] font-bold leading-[1.5] text-ink">{item.title}</h2>
               <p className="sr-only">{expanded ? "下へ引くと元の高さに戻ります" : "上へ引くと広がり、下へ引くと閉じます"}</p>
             </div>
-            <button ref={closeRef} type="button" aria-label="閉じる" onClick={onClose} className="h-11 w-11 flex-none rounded-md border border-[#E5E7EB] text-[#374151]">
+            <button ref={closeRef} type="button" aria-label="閉じる" onClick={onClose} className="h-11 w-11 flex-none rounded-md border border-line text-ink-2">
               ✕
             </button>
           </header>
@@ -100,7 +100,7 @@ export function TaskDetailSheet({ item, members, sourceUrl, onClose, onSubmitUpd
           <DetailContent item={item} members={members} onSubmitUpdate={onSubmitUpdate} editing={editing} onEndEdit={() => setEditing(false)} />
         </div>
         {!editing && (
-          <footer className="flex flex-none flex-col gap-2 border-t border-[#F1F3F5] px-4 pt-3" style={{ paddingBottom: "var(--screen-footer-pad)" }}>
+          <footer className="flex flex-none flex-col gap-2 border-t border-line-3 px-4 pt-3" style={{ paddingBottom: "var(--screen-footer-pad)" }}>
             {onSubmitUpdate && (
               <button type="button" onClick={() => setEditing(true)} className={`${PRIMARY_BUTTON} h-11 w-full`}>
                 進捗を更新

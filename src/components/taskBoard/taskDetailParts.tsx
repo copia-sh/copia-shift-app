@@ -6,6 +6,7 @@ import { AssigneeList, PriorityText, StatusBadge } from "./TaskBadges";
 import type { KeyedRoutine, KeyedTask } from "./TaskBoardSections";
 import { TaskProgressForm } from "./TaskProgressForm";
 import { LABEL } from "./taskDetailStyles";
+import { DETAIL_SECTION } from "./controls";
 
 export type DetailItem = ({ kind: "task" } & KeyedTask) | ({ kind: "routine" } & KeyedRoutine);
 
@@ -18,7 +19,7 @@ export interface DetailProps {
   onSubmitUpdate?: SubmitTaskUpdate;
 }
 
-const NOT_FILLED = <span className="text-[13px] text-[#9CA3AF]">未記入</span>;
+const NOT_FILLED = <span className="text-[13px] text-ink-5">未記入</span>;
 
 /** 「2026-09-20」→「9/20」 */
 function shortDate(date: string): string {
@@ -30,7 +31,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
       <dt className={`${LABEL} pt-0.5`}>{label}</dt>
-      <dd className="min-w-0 text-[13px] text-[#111827]">{children}</dd>
+      <dd className="min-w-0 text-[13px] text-ink">{children}</dd>
     </>
   );
 }
@@ -49,11 +50,11 @@ function Memo({ memo, memberNames }: { memo: string; memberNames: readonly strin
         const { text: body, author } = splitMemoAuthor(entry.text, memberNames);
         return (
           <li key={index} className="flex flex-col gap-0.5 md:grid md:grid-cols-[44px_1fr] md:gap-2">
-            <span className="text-[11px] font-bold leading-[1.7] text-[#4B5563]">{entry.date ? shortDate(entry.date) : ""}</span>
-            <span className="text-[13px] leading-[1.7] text-[#111827]">
+            <span className="text-[11px] font-bold leading-[1.7] text-ink-3">{entry.date ? shortDate(entry.date) : ""}</span>
+            <span className="text-[13px] leading-[1.7] text-ink">
               {body}
               {author && (
-                <span className="ml-1.5 inline-flex h-[18px] items-center rounded-full bg-[#F4F6F8] px-1.5 align-middle text-[10px] font-bold text-[#4B5563]">
+                <span className="ml-1.5 inline-flex h-[18px] items-center rounded-full bg-line-4 px-1.5 align-middle text-[10px] font-bold text-ink-3">
                   {author}
                 </span>
               )}
@@ -71,15 +72,15 @@ function Deliverables({ value }: { value: string }) {
   return (
     <ul className="flex flex-col gap-2">
       {links.map((link, index) => (
-        <li key={index} className="rounded-md border border-[#EFF1F3] px-3 py-2">
+        <li key={index} className="rounded-md border border-line-2 px-3 py-2">
           {link.url ? (
-            <a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all text-[13px] font-bold text-[#248DD4] underline">
+            <a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all text-[13px] font-bold text-brand underline">
               {link.label} ↗
             </a>
           ) : (
-            <span className="text-[13px] font-bold text-[#111827]">{link.label}</span>
+            <span className="text-[13px] font-bold text-ink">{link.label}</span>
           )}
-          {link.host && <span className="mt-0.5 block text-[11px] text-[#6B7280]">{link.host}</span>}
+          {link.host && <span className="mt-0.5 block text-[11px] text-ink-4">{link.host}</span>}
         </li>
       ))}
     </ul>
@@ -101,16 +102,16 @@ function DetailRead({ item, members }: Pick<DetailProps, "item" | "members">) {
           </>
         )}
       </dl>
-      <hr className="border-[#F1F3F5]" />
-      <section className="flex flex-col gap-1.5">
+      <hr className="border-line-3" />
+      <section className={DETAIL_SECTION}>
         <h3 className={LABEL}>背景・目的</h3>
         {item.purpose ? <p className="text-[13px] leading-[1.7]">{item.purpose}</p> : NOT_FILLED}
       </section>
-      <section className="flex flex-col gap-1.5">
+      <section className={DETAIL_SECTION}>
         <h3 className={LABEL}>状況メモ</h3>
         <Memo memo={item.memo} memberNames={members.map((member) => member.displayName)} />
       </section>
-      <section className="flex flex-col gap-1.5">
+      <section className={DETAIL_SECTION}>
         <h3 className={LABEL}>最新の成果物</h3>
         <Deliverables value={item.deliverable} />
       </section>

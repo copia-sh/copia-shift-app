@@ -3,8 +3,9 @@ import type { ShiftTheme, Skin } from "../shiftTheme";
 import { darken, lighten } from "../shiftTheme";
 import type { CellState } from "../shiftVisual";
 import type { DayEntry } from "./monthDay";
+import { COLOR } from "../../theme/palette";
 
-export const SELECTED_RING = "0 0 0 2px #248DD4";
+export const SELECTED_RING = `0 0 0 2px ${COLOR.brand}`;
 
 /** メンバー色を、淡い背景の上でも読める文字色にする。 */
 export function memberInk(member: Pick<Member, "color">): string {
@@ -12,7 +13,7 @@ export function memberInk(member: Pick<Member, "color">): string {
 }
 
 const FALLBACK_SKIN: Skin = {
-  bg: "#F4F6F8", border: "#E5E7EB", borderStyle: "solid", borderWidth: "1px", fg: "#4B5563", shadow: "", mark: "", label: "",
+  bg: COLOR.line4, border: COLOR.line, borderStyle: "solid", borderWidth: "1px", fg: COLOR.ink3, shadow: "", mark: "", label: "",
 };
 
 /**
@@ -51,14 +52,14 @@ export function typeLabel(theme: ShiftTheme | null, keys: readonly string[]): st
 }
 
 export function dowColor(dow: number): string {
-  return dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#6B7280";
+  return dow === 0 ? COLOR.coral : dow === 6 ? COLOR.brand : COLOR.ink4;
 }
 
 /** 日付の文字色。月の外は薄く、平日は黒、土日は曜日の色。 */
 export function dateInk(day: Date, inMonth: boolean): string {
-  if (!inMonth) return "#C8CDD2";
+  if (!inMonth) return COLOR.inkNone;
   const dow = day.getDay();
-  return dow === 0 || dow === 6 ? dowColor(dow) : "#111827";
+  return dow === 0 || dow === 6 ? dowColor(dow) : COLOR.ink;
 }
 
 /** その日に働く人数（不可だけの人は数えない）。 */

@@ -14,6 +14,7 @@ import { formatHours } from "../workHours";
 import { compactRange, countByType, dayEntries, entryHours, fullRange, type DayEntry } from "./monthDay";
 import { dateInk, dowColor, entryStyle, memberInk, skinOf, typeLabel, workingCount } from "./monthShared";
 import type { MonthGridProps } from "./MonthGridPC";
+import { COLOR } from "../../theme/palette";
 
 const NONE: CellState = { kind: "none", type: "", startTime: null, endTime: null };
 
@@ -46,8 +47,8 @@ function MonthGridMobileInner(props: MonthGridProps) {
 
   return (
     <div className="md:hidden">
-      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-        <div className="grid grid-cols-7 border-b border-[#E5E7EB] bg-[#FBFCFD]">
+      <div className="overflow-hidden rounded-xl border border-line bg-white">
+        <div className="grid grid-cols-7 border-b border-line bg-surface-2">
           {dowLabelsFrom(settings.weekStartsOn).map((label, i) => (
             <div key={label} className="py-1 text-center text-[11px] font-bold" style={{ color: dowColor((i + settings.weekStartsOn) % 7) }}>
               {label}
@@ -69,15 +70,15 @@ function MonthGridMobileInner(props: MonthGridProps) {
                   aria-pressed={isSelected}
                   aria-label={`${day.getMonth() + 1}月${day.getDate()}日 ${entries.length}人`}
                   onClick={() => setSelectedDay(day)}
-                  className="flex min-h-16 min-w-0 flex-col gap-0.5 border-b border-r border-[#F1F3F5] p-[3px] text-left last:border-r-0"
+                  className="flex min-h-16 min-w-0 flex-col gap-0.5 border-b border-r border-line-3 p-[3px] text-left last:border-r-0"
                   style={{
-                    background: isSelected ? "#EDF6FD" : isToday ? "#FFFBEA" : inMonth ? "#fff" : "#FAFBFC",
-                    outline: isSelected ? "2px solid #248DD4" : undefined,
+                    background: isSelected ? COLOR.brandWash : isToday ? COLOR.todayWash2 : inMonth ? COLOR.surface : COLOR.surface3,
+                    outline: isSelected ? `2px solid ${COLOR.brand}` : undefined,
                     outlineOffset: -2,
                   }}
                 >
                   <span
-                    className={`inline-flex h-4 min-w-4 items-center justify-center self-start text-[11px] font-bold ${isToday && !isSelected ? "rounded-full bg-[#F9E428] px-1" : ""}`}
+                    className={`inline-flex h-4 min-w-4 items-center justify-center self-start text-[11px] font-bold ${isToday && !isSelected ? "rounded-full bg-today px-1" : ""}`}
                     style={{ color: dateInk(day, inMonth) }}
                   >
                     {day.getDate()}
@@ -122,22 +123,22 @@ function DayBreakdown({
   return (
     <section className="px-1 pt-3.5">
       <div className="mb-2 flex items-baseline gap-2">
-        <h3 className="text-[15px] font-bold text-[#111827]">
+        <h3 className="text-[15px] font-bold text-ink">
           {day.getMonth() + 1}月{day.getDate()}日（{DOW_LABELS[day.getDay()]}）
         </h3>
-        <span className="text-[12px] text-[#6B7280]">{summary || `${workingCount(entries, unavailable)}人`}</span>
+        <span className="text-[12px] text-ink-4">{summary || `${workingCount(entries, unavailable)}人`}</span>
         {bulk && (
           <button
             type="button"
             onClick={() => onToggleMany(rows.filter((row) => canTapCell(mode, row.memberId, currentMemberId, row.primary)).map((row) => selKey(row.memberId, dateKey)))}
-            className="ml-auto text-[12px] font-bold text-[#248DD4]"
+            className="ml-auto text-[12px] font-bold text-brand"
           >
             この日をまとめて選択
           </button>
         )}
       </div>
-      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-        {rows.length === 0 && <p className="px-3.5 py-4 text-[13px] text-[#4B5563]">この日のシフトはありません</p>}
+      <div className="overflow-hidden rounded-xl border border-line bg-white">
+        {rows.length === 0 && <p className="px-3.5 py-4 text-[13px] text-ink-3">この日のシフトはありません</p>}
         {rows.map((row) => {
           const member = memberById.get(row.memberId);
           if (!member) return null;
@@ -153,7 +154,7 @@ function DayBreakdown({
               type="button"
               disabled={!tappable}
               onClick={() => onCellTap(key, row.primary)}
-              className={`flex min-h-[52px] w-full items-center gap-2.5 border-b border-[#F1F3F5] px-3.5 text-left last:border-b-0 ${isSel ? "bg-[#EDF6FD]" : ""}`}
+              className={`flex min-h-[52px] w-full items-center gap-2.5 border-b border-line-3 px-3.5 text-left last:border-b-0 ${isSel ? "bg-brand-wash" : ""}`}
             >
               <span
                 aria-hidden
@@ -162,16 +163,16 @@ function DayBreakdown({
               >
                 {member.displayName.slice(0, 1)}
               </span>
-              <span className="min-w-0 truncate text-[14px] font-bold text-[#111827]">{member.displayName}</span>
+              <span className="min-w-0 truncate text-[14px] font-bold text-ink">{member.displayName}</span>
               {empty ? (
-                <span className="text-[12px] text-[#9CA3AF]">未回答（押して入力）</span>
+                <span className="text-[12px] text-ink-5">未回答（押して入力）</span>
               ) : (
                 <>
                   <span className="inline-flex h-[22px] flex-none items-center rounded-full px-2 text-[11px] font-bold" style={entryStyle(skin, false)}>
                     {typeLabel(theme, row.typeKeys)}
                   </span>
-                  <span className="truncate text-[13px] text-[#374151]">{fullRange(row.start, row.end)}</span>
-                  {hours > 0 && <span className="ml-auto flex-none text-[14px] font-bold text-[#111827]">{formatHours(hours)}</span>}
+                  <span className="truncate text-[13px] text-ink-2">{fullRange(row.start, row.end)}</span>
+                  {hours > 0 && <span className="ml-auto flex-none text-[14px] font-bold text-ink">{formatHours(hours)}</span>}
                 </>
               )}
             </button>

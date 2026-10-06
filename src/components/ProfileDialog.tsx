@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Member } from "../types";
+import { DIALOG_PRIMARY, DIALOG_SECONDARY, FIELD_LABEL, MODAL_BACKDROP } from "./ui/controls";
 
 export interface ProfileDialogProps {
   member: Member;
@@ -24,23 +25,23 @@ export function ProfileDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className={MODAL_BACKDROP}>
       <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">表示名の変更</h2>
+          <h2 className="text-lg font-bold text-ink">表示名の変更</h2>
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-bold text-gray-700 mb-1">
+          <label className={FIELD_LABEL}>
             メールアドレス
           </label>
-          <div className="px-3 py-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
+          <div className="px-3 py-2 rounded border border-line-strong bg-surface-4 text-sm text-ink-4">
             {member.email}
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-bold text-gray-700 mb-1">
+          <label className={FIELD_LABEL}>
             表示名
           </label>
           <input
@@ -49,7 +50,7 @@ export function ProfileDialog({
             onChange={(e) => setDisplayName(e.target.value)}
             disabled={busy}
             placeholder="表示名を入力してください"
-            className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-sm text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 rounded border border-line-strong bg-white text-sm text-ink disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -58,7 +59,7 @@ export function ProfileDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={DIALOG_SECONDARY}
           >
             キャンセル
           </button>
@@ -66,7 +67,7 @@ export function ProfileDialog({
             type="button"
             onClick={handleSave}
             disabled={busy || displayName.trim().length === 0}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-[#248DD4] rounded bg-[#248DD4] text-white hover:bg-[#1B6FA8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className={DIALOG_PRIMARY}
           >
             保存
           </button>

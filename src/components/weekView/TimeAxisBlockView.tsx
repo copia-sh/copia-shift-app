@@ -3,6 +3,7 @@ import { SelectedBadge } from "../SelectedBadge";
 import { hourValue, shortRange, skinStyle } from "../shiftVisual";
 import type { ShiftTheme } from "../shiftTheme";
 import type { TimeAxisBlock } from "./timeAxis";
+import { COLOR } from "../../theme/palette";
 
 export interface TimeAxisBlockViewProps {
   block: TimeAxisBlock;
@@ -65,11 +66,11 @@ export function TimeAxisBlockView({
       {selected && skin && <SelectedBadge fg={skin.fg} />}
       <span
         className="block truncate text-[9px] font-bold leading-tight"
-        style={{ color: skin?.fg ?? "#333" }}
+        style={{ color: skin?.fg ?? COLOR.ink2 }}
       >
         {name}
       </span>
-      <span className="block text-[8px] font-bold leading-tight" style={{ color: skin?.fg ?? "#333" }}>
+      <span className="block text-[8px] font-bold leading-tight" style={{ color: skin?.fg ?? COLOR.ink2 }}>
         {shortRange(state)}
       </span>
     </button>

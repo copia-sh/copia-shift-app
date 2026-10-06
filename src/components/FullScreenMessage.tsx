@@ -22,11 +22,11 @@ export function FullScreenMessage({
   tone = "quiet",
 }: FullScreenMessageProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-4 p-6 text-center">
       {tone === "heading" ? (
-        <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+        <h1 className="text-2xl font-semibold text-ink">{title}</h1>
       ) : (
-        <p className="text-[15px] font-bold text-gray-600">{title}</p>
+        <p className="text-[15px] font-bold text-ink-3">{title}</p>
       )}
       {children}
       {action}

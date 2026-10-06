@@ -12,6 +12,7 @@ import {
   type ExportShiftStatus,
 } from "../utils/ical";
 import { toDateKey } from "../utils/date";
+import { CHECKBOX, DIALOG_PRIMARY, DIALOG_SECONDARY, FIELD_ERROR, MODAL_BACKDROP } from "./ui/controls";
 
 type PeriodPreset = "month" | "twoMonths" | "threeMonths" | "custom";
 type StatusPreset = "all" | "confirmed" | "desired";
@@ -170,14 +171,14 @@ export function ExportDialog({
     !busy && !isLoading && !invalidRange && selectedTypeKeys.size > 0 && targetShifts.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className={MODAL_BACKDROP}>
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">シフトを書き出す</h2>
+          <h2 className="text-lg font-bold text-ink">シフトを書き出す</h2>
         </div>
 
         <fieldset className="mb-5">
-          <legend className="mb-1.5 text-sm font-bold text-gray-800">出力方法</legend>
+          <legend className="mb-1.5 text-sm font-bold text-ink">出力方法</legend>
           <div className="grid grid-cols-2 gap-2">
             {([
               ["calendar", "カレンダー", ".icsファイル"],
@@ -186,10 +187,10 @@ export function ExportDialog({
               <label
                 key={value}
                 className={`cursor-pointer rounded-lg border px-3 py-2.5 ${
-                  method === value ? "border-[#248DD4] bg-blue-50" : "border-gray-200 bg-white"
+                  method === value ? "border-brand bg-brand-wash" : "border-line bg-white"
                 }`}
               >
-                <span className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                <span className="flex items-center gap-2 text-sm font-bold text-ink">
                   <input
                     type="radio"
                     name="export-method"
@@ -202,18 +203,18 @@ export function ExportDialog({
                       setCopyError(false);
                     }}
                     disabled={busy}
-                    className="h-4 w-4 border-gray-300 text-[#248DD4] focus:ring-[#248DD4]"
+                    className={CHECKBOX}
                   />
                   {label}
                 </span>
-                <span className="mt-1 block pl-6 text-xs text-gray-500">{note}</span>
+                <span className="mt-1 block pl-6 text-xs text-ink-4">{note}</span>
               </label>
             ))}
           </div>
         </fieldset>
 
         <div className="mb-5">
-          <label htmlFor="export-period" className="mb-1.5 block text-sm font-bold text-gray-800">
+          <label htmlFor="export-period" className="mb-1.5 block text-sm font-bold text-ink">
             期間
           </label>
           {method === "calendar" ? (
@@ -222,7 +223,7 @@ export function ExportDialog({
               value={period}
               onChange={(event) => setPeriod(event.target.value as PeriodPreset)}
               disabled={busy}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#248DD4] focus:outline-none"
+              className="w-full rounded-md border border-line-strong bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
             >
               <option value="month">表示中の月（{format(anchorDate, "yyyy年M月", { locale: ja })}）</option>
               <option value="twoMonths">表示中の月から2か月</option>
@@ -230,71 +231,71 @@ export function ExportDialog({
               <option value="custom">日付を指定</option>
             </select>
           ) : (
-            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded-md border border-line bg-surface-4 px-3 py-2 text-sm text-ink-2">
               表示中の月（{format(anchorDate, "yyyy年M月", { locale: ja })}）
             </div>
           )}
 
           {method === "calendar" && period === "custom" && (
             <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-              <label className="text-xs font-medium text-gray-600">
+              <label className="text-xs font-medium text-ink-3">
                 開始日
                 <input
                   type="date"
                   value={customStart}
                   onChange={(event) => setCustomStart(event.target.value)}
                   disabled={busy}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-800"
+                  className="mt-1 w-full rounded-md border border-line-strong px-2 py-2 text-sm text-ink"
                 />
               </label>
-              <span className="pb-2 text-gray-400">〜</span>
-              <label className="text-xs font-medium text-gray-600">
+              <span className="pb-2 text-ink-5">〜</span>
+              <label className="text-xs font-medium text-ink-3">
                 終了日
                 <input
                   type="date"
                   value={customEnd}
                   onChange={(event) => setCustomEnd(event.target.value)}
                   disabled={busy}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-800"
+                  className="mt-1 w-full rounded-md border border-line-strong px-2 py-2 text-sm text-ink"
                 />
               </label>
             </div>
           )}
-          {invalidRange && <p className="mt-2 text-xs font-medium text-red-600">終了日は開始日以降にしてください</p>}
+          {invalidRange && <p className={FIELD_ERROR}>終了日は開始日以降にしてください</p>}
         </div>
 
-        <details className="mb-5 rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2.5">
-          <summary className="cursor-pointer text-sm font-bold text-gray-800">詳細設定</summary>
+        <details className="mb-5 rounded-lg border border-line bg-surface-4/60 px-3 py-2.5">
+          <summary className="cursor-pointer text-sm font-bold text-ink">詳細設定</summary>
 
           <fieldset className="mt-4">
-            <legend className="text-xs font-bold text-gray-700">予定の種類</legend>
+            <legend className="text-xs font-bold text-ink-2">予定の種類</legend>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {typeOptions.map((type) => (
-                <label key={type.key} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={type.key} className="flex items-center gap-2 text-sm text-ink-2">
                   <input
                     type="checkbox"
                     checked={selectedTypeKeys.has(type.key)}
                     onChange={() => toggleType(type.key)}
                     disabled={busy}
-                    className="h-4 w-4 rounded border-gray-300 text-[#248DD4] focus:ring-[#248DD4]"
+                    className="h-4 w-4 rounded border-line-strong text-brand focus:ring-brand"
                   />
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: type.color }} />
                   <span>{type.label}</span>
                 </label>
               ))}
             </div>
-            {selectedTypeKeys.size === 0 && <p className="mt-2 text-xs font-medium text-red-600">1種類以上選んでください</p>}
+            {selectedTypeKeys.size === 0 && <p className={FIELD_ERROR}>1種類以上選んでください</p>}
           </fieldset>
 
           <fieldset className="mt-4">
-            <legend className="text-xs font-bold text-gray-700">予定の状態</legend>
+            <legend className="text-xs font-bold text-ink-2">予定の状態</legend>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
               {([
                 ["all", "希望・確定"],
                 ["confirmed", "確定のみ"],
                 ["desired", "希望のみ"],
               ] as const).map(([value, label]) => (
-                <label key={value} className="flex items-center gap-1.5 text-sm text-gray-700">
+                <label key={value} className="flex items-center gap-1.5 text-sm text-ink-2">
                   <input
                     type="radio"
                     name="export-status"
@@ -306,7 +307,7 @@ export function ExportDialog({
                       setCopyError(false);
                     }}
                     disabled={busy}
-                    className="h-4 w-4 border-gray-300 text-[#248DD4] focus:ring-[#248DD4]"
+                    className={CHECKBOX}
                   />
                   {label}
                 </label>
@@ -315,8 +316,8 @@ export function ExportDialog({
           </fieldset>
         </details>
 
-        <div className="mb-5 rounded-md bg-blue-50 px-3 py-2">
-          <p className="text-xs text-[#1B6FA8]">
+        <div className="mb-5 rounded-md bg-brand-wash px-3 py-2">
+          <p className="text-xs text-brand-press">
             {isLoading
               ? "予定を読み込んでいます…"
               : targetShifts.length === 0
@@ -328,13 +329,13 @@ export function ExportDialog({
         </div>
 
         {method === "spreadsheet" && (
-          <div className="mb-5 text-xs leading-5 text-gray-600">
+          <div className="mb-5 text-xs leading-5 text-ink-3">
             「8月シフト」などの対象月シートで、自分の行の「1日」セルを選び、そのまま貼り付けてください。
             リモートは末尾に「(リ)」、同日の複数枠はカンマ区切りになります。
           </div>
         )}
         {copyError && (
-          <p className="mb-4 text-xs font-medium text-red-600">
+          <p className="mb-4 text-xs font-medium text-danger-text">
             コピーできませんでした。ブラウザのクリップボード許可を確認してください。
           </p>
         )}
@@ -344,7 +345,7 @@ export function ExportDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={DIALOG_SECONDARY}
           >
             キャンセル
           </button>
@@ -352,7 +353,7 @@ export function ExportDialog({
             type="button"
             onClick={handleExport}
             disabled={!canExport}
-            className="flex-1 px-4 py-2 text-[12px] font-bold border border-[#248DD4] rounded bg-[#248DD4] text-white hover:bg-[#1B6FA8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className={DIALOG_PRIMARY}
           >
             {copied ? "コピーしました" : method === "spreadsheet" ? "Excel用にコピー" : "書き出す"}
           </button>

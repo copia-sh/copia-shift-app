@@ -1,3 +1,4 @@
+import { COLOR } from "./theme/palette";
 export type ShiftStatus = "desired" | "confirmed";
 export type MemberRole = "admin" | "leader" | "member";
 
@@ -21,9 +22,9 @@ export interface ShiftTypeDef {
 }
 
 export const DEFAULT_SHIFT_TYPES: ShiftTypeDef[] = [
-  { key: "出勤", label: "出勤", color: "#248DD4", attendance: "available", mark: "○" },
-  { key: "リモート", label: "リモート", color: "#1F8A98", attendance: "available", mark: "R" },
-  { key: "欠勤", label: "欠勤", color: "#D9736F", attendance: "unavailable", mark: "×" },
+  { key: "出勤", label: "出勤", color: COLOR.brand, attendance: "available", mark: "○" },
+  { key: "リモート", label: "リモート", color: COLOR.teal, attendance: "available", mark: "R" },
+  { key: "欠勤", label: "欠勤", color: COLOR.coral, attendance: "unavailable", mark: "×" },
 ];
 
 export interface Group {

@@ -15,6 +15,7 @@ import { SelectedBadge } from "../SelectedBadge";
 import { weekDayWidth } from "../responsiveLayout";
 import { timeAxisBlocks } from "./timeAxis";
 import { TimeAxisBlockView } from "./TimeAxisBlockView";
+import { COLOR } from "../../theme/palette";
 
 const WEEK_GUTTER_W = 44;
 
@@ -46,10 +47,10 @@ export function ShiftWeekView({
 
   return (
     <>
-    <div ref={scrollRef} className="hidden max-h-[70vh] overflow-auto border-t border-gray-200 md:block">
+    <div ref={scrollRef} className="hidden max-h-[70vh] overflow-auto border-t border-line md:block">
       <div style={{ width: totalW }}>
-        <div className="sticky top-0 z-20 grid border-b border-gray-200 bg-[#FBFCFD]" style={{ gridTemplateColumns: gridCols }}>
-          <div className="sticky left-0 z-30 flex items-end justify-end border-r border-[#EFF1F3] bg-[#FBFCFD] p-1 text-[9px] font-bold leading-tight text-gray-400">可否</div>
+        <div className="sticky top-0 z-20 grid border-b border-line bg-surface-2" style={{ gridTemplateColumns: gridCols }}>
+          <div className="sticky left-0 z-30 flex items-end justify-end border-r border-line-2 bg-surface-2 p-1 text-[9px] font-bold leading-tight text-ink-5">可否</div>
           {days.map((day) => {
             const dateKey = toDateKey(day);
             const dow = day.getDay();
@@ -58,13 +59,13 @@ export function ShiftWeekView({
             return (
               <div
                 key={dateKey}
-                className="border-l border-[#EFF1F3] px-1 pb-1.5 pt-1.5 text-center"
-                style={{ background: isToday ? "#FFFBEA" : dow === 0 || dow === 6 ? "#FAFBFC" : "#fff" }}
+                className="border-l border-line-2 px-1 pb-1.5 pt-1.5 text-center"
+                style={{ background: isToday ? COLOR.todayWash2 : dow === 0 || dow === 6 ? COLOR.surface3 : COLOR.surface }}
               >
                 <div className="flex items-center justify-center gap-1.5">
                   <span
                     className="text-[10px] font-bold"
-                    style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}
+                    style={{ color: dow === 0 ? COLOR.coral : dow === 6 ? COLOR.brand : COLOR.ink4 }}
                   >
                     {DOW_LABELS[dow]}
                   </span>
@@ -83,8 +84,8 @@ export function ShiftWeekView({
                     style={
                       isToday
                         ? {
-                            background: "#248DD4",
-                            color: "#fff",
+                            background: COLOR.brand,
+                            color: COLOR.surface,
                             borderRadius: "50%",
                             width: 24,
                             height: 24,
@@ -92,7 +93,7 @@ export function ShiftWeekView({
                             alignItems: "center",
                             justifyContent: "center",
                           }
-                        : { color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#393939" }
+                        : { color: dow === 0 ? COLOR.coral : dow === 6 ? COLOR.brand : COLOR.ink2 }
                     }
                   >
                     {day.getDate()}
@@ -119,8 +120,8 @@ export function ShiftWeekView({
                         style={skForSel ? skinStyle(skForSel) : {}}
                       >
                         {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                        <span className="text-[9px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
-                        <span className="text-[11px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{sk?.mark ?? "·"}</span>
+                        <span className="text-[9px] font-bold" style={{ color: sk?.fg ?? COLOR.ink2 }}>{mem.displayName.slice(0, 2)}</span>
+                        <span className="text-[11px] font-bold" style={{ color: sk?.fg ?? COLOR.ink2 }}>{sk?.mark ?? "·"}</span>
                       </button>
                     );
                   })}
@@ -131,11 +132,11 @@ export function ShiftWeekView({
         </div>
 
         <div className="grid" style={{ gridTemplateColumns: gridCols }}>
-          <div className="sticky left-0 z-10 border-r border-[#EFF1F3] bg-white">
+          <div className="sticky left-0 z-10 border-r border-line-2 bg-white">
             {hours.map((h) => (
               <div
                 key={h}
-                className="border-t border-[#F4F6F8] pr-1 text-right text-[9px] text-gray-400"
+                className="border-t border-line-4 pr-1 text-right text-[9px] text-ink-5"
                 style={{ height: HOUR_H }}
               >
                 {h}:00
@@ -148,11 +149,11 @@ export function ShiftWeekView({
             return (
               <div
                 key={dateKey}
-                className="relative overflow-hidden border-l border-[#EFF1F3]"
-                style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}
+                className="relative overflow-hidden border-l border-line-2"
+                style={{ height: HOUR_H * hours.length, background: isToday ? COLOR.todayWash3 : COLOR.surface }}
               >
                 {hours.map((h) => (
-                  <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
+                  <div key={h} className="border-t border-line-3" style={{ height: HOUR_H }} />
                 ))}
                 {timeAxisBlocks(members, (memberId) =>
                   cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? [], unavailableKeys),
@@ -231,14 +232,14 @@ function MobileWeekView({
           primaryCellState(cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys)),
         );
         return (
-          <section key={dateKey} className="w-[calc(100vw-32px)] flex-none snap-center overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-[#FBFCFD] px-3 py-2">
+          <section key={dateKey} className="w-[calc(100vw-32px)] flex-none snap-center overflow-hidden rounded-lg border border-line bg-white">
+            <div className="flex items-center justify-between border-b border-line-3 bg-surface-2 px-3 py-2">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[16px] font-bold text-gray-900">{day.getDate()}日</span>
-                <span className="text-[11px] font-bold" style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}>
+                <span className="text-[16px] font-bold text-ink">{day.getDate()}日</span>
+                <span className="text-[11px] font-bold" style={{ color: dow === 0 ? COLOR.coral : dow === 6 ? COLOR.brand : COLOR.ink4 }}>
                   {DOW_LABELS[dow]}
                 </span>
-                {isToday && <span className="rounded-full bg-[#248DD4] px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
+                {isToday && <span className="rounded-full bg-brand px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
               </div>
               <button
                 type="button"
@@ -250,12 +251,12 @@ function MobileWeekView({
                       .map((member) => selKey(member.id, dateKey)),
                   )
                 }
-                className="text-[10px] font-bold text-gray-400"
+                className="text-[10px] font-bold text-ink-5"
               >
                 日を選択
               </button>
             </div>
-            <div className="grid gap-1 border-b border-gray-100 p-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, members.length)}, minmax(0, 1fr))` }}>
+            <div className="grid gap-1 border-b border-line-3 p-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, members.length)}, minmax(0, 1fr))` }}>
               {members.map((member, index) => {
                 const state = states[index];
                 const key = selKey(member.id, dateKey);
@@ -279,15 +280,15 @@ function MobileWeekView({
               })}
             </div>
             <div className="grid" style={{ gridTemplateColumns: `38px minmax(0, 1fr)` }}>
-              <div className="border-r border-gray-100 bg-[#FBFCFD]">
+              <div className="border-r border-line-3 bg-surface-2">
                 {hours.map((hour) => (
-                  <div key={hour} className="border-t border-gray-100 pr-1 text-right text-[8px] text-gray-400" style={{ height: HOUR_H }}>
+                  <div key={hour} className="border-t border-line-3 pr-1 text-right text-[8px] text-ink-5" style={{ height: HOUR_H }}>
                     {hour}:00
                   </div>
                 ))}
               </div>
-              <div className="relative" style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}>
-                {hours.map((hour) => <div key={hour} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />)}
+              <div className="relative" style={{ height: HOUR_H * hours.length, background: isToday ? COLOR.todayWash3 : COLOR.surface }}>
+                {hours.map((hour) => <div key={hour} className="border-t border-line-3" style={{ height: HOUR_H }} />)}
                 {timeAxisBlocks(members, (memberId) =>
                   cellStatesOf(byKey.get(selKey(memberId, dateKey)) ?? [], unavailableKeys),
                 ).map((block, index) => {

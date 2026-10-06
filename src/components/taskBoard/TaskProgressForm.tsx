@@ -16,8 +16,8 @@ interface TaskProgressFormProps {
 }
 
 // iPhone の Safari は16px未満の入力欄を触ると画面を拡大するので、スマホだけ16pxにする
-const FIELD = "w-full rounded-md border border-[#E5E7EB] bg-white px-2.5 text-[16px] text-[#111827] placeholder:text-[#9CA3AF] md:text-[13px]";
-const LABEL = "text-[11px] font-bold text-[#6B7280]";
+const FIELD = "w-full rounded-md border border-line bg-white px-2.5 text-[16px] text-ink placeholder:text-ink-5 md:text-[13px]";
+const LABEL = "text-[11px] font-bold text-ink-4";
 
 /**
  * 進捗の更新。送るとその場でタスク表に書き込まれる（承認なし）。
@@ -81,17 +81,17 @@ export function TaskProgressForm({ target, onSubmit, onCancel, onDone }: TaskPro
         />
       </label>
       {error && (
-        <p role="alert" className="rounded-md border border-[#F0C7C7] bg-[#FDF1F1] px-2.5 py-2 text-[12px] font-bold text-[#A8433F]">
+        <p role="alert" className="rounded-md border border-coral-line bg-coral-wash px-2.5 py-2 text-[12px] font-bold text-coral-deep">
           {error}
         </p>
       )}
-      <p className="text-[11px] leading-[1.6] text-[#6B7280]">送るとすぐタスク表に書き込まれます。状況メモは日付と名前を付けて末尾に追記します。</p>
+      <p className="text-[11px] leading-[1.6] text-ink-4">送るとすぐタスク表に書き込まれます。状況メモは日付と名前を付けて末尾に追記します。</p>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="inline-flex h-11 flex-1 items-center justify-center whitespace-nowrap rounded-md border border-[#E5E7EB] bg-white text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] md:h-9"
+          className="inline-flex h-11 flex-1 items-center justify-center whitespace-nowrap rounded-md border border-line bg-white text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] md:h-9"
         >
           キャンセル
         </button>
@@ -99,7 +99,7 @@ export function TaskProgressForm({ target, onSubmit, onCancel, onDone }: TaskPro
           type="button"
           onClick={submit}
           disabled={!payload || busy}
-          className="inline-flex h-11 flex-[2] items-center justify-center whitespace-nowrap rounded-md bg-[#248DD4] text-[13px] font-bold text-white shadow-[0_2px_0_0_#0863A0] disabled:cursor-not-allowed disabled:bg-[#C8CDD2] disabled:shadow-none md:h-9"
+          className="inline-flex h-11 flex-[2] items-center justify-center whitespace-nowrap rounded-md bg-brand text-[13px] font-bold text-white shadow-[0_2px_0_0_var(--color-brand-deep)] disabled:cursor-not-allowed disabled:bg-ink-none disabled:shadow-none md:h-9"
         >
           {busy ? "反映中…" : "シートに反映"}
         </button>

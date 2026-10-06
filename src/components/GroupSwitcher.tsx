@@ -16,11 +16,11 @@ export function GroupSwitcher({
   if (groups.length === 1) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-[13px] font-bold text-[#248DD4]">{groups[0].name}</span>
+        <span className="text-[13px] font-bold text-brand">{groups[0].name}</span>
         <button
           type="button"
           onClick={onCreateNew}
-          className="text-[11px] font-bold text-gray-500 hover:text-gray-700"
+          className="text-[11px] font-bold text-ink-4 hover:text-ink-2"
         >
           ＋新しいグループ
         </button>
@@ -33,7 +33,7 @@ export function GroupSwitcher({
       <select
         value={currentGroupId}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 font-semibold"
+        className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-2 font-semibold"
       >
         {groups.map((g) => (
           <option key={g.id} value={g.id}>
@@ -44,7 +44,7 @@ export function GroupSwitcher({
       <button
         type="button"
         onClick={onCreateNew}
-        className="text-[11px] font-bold text-gray-500 hover:text-gray-700"
+        className="text-[11px] font-bold text-ink-4 hover:text-ink-2"
       >
         ＋新しいグループ
       </button>
