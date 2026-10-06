@@ -15,7 +15,7 @@ compatibility_date = "2025-01-01"
 [vars]
 FIREBASE_PROJECT_ID = "copia-shift-app"
 AGENT_GROUP_ID = "2iogHeS5UYKAJKccFwqk"
-ICS_FEED_ENABLED = "false"
+ICS_FEED_ENABLED = "true"
 # SHIFT_SYNC_ENABLED  シフトのスプレッドシート同期。"true" のときだけ Cron が動く。
 #                     Google Sheets API の有効化と、サービスアカウントへの編集共有が
 #                     完了後に true へ切り替える。
