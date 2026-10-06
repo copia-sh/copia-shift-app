@@ -255,6 +255,50 @@ export function cellBoxes(
   return segmentLayout(states, startHour, endHour);
 }
 
+export interface LaneBox {
+  state: CellState;
+  /** 重なる枠を横に並べるときの位置。0 が左端 */
+  lane: number;
+}
+
+export interface LaneLayout {
+  boxes: LaneBox[];
+  /** 使用したレーン数。0 なら時間軸に描く枠が無い */
+  laneCount: number;
+}
+
+/**
+ * 時間軸（週表示）に描く枠を、1つも落とさずレーンへ割り当てる。
+ *
+ * 「確定を優先して1枠だけ描く」と、同じ日の2枠目以降が消える。表示を切り替えた
+ * だけで予定が見えなくなると、空き時間の判断を誤る。
+ *
+ * - 終日枠（時刻を持たない枠）は時間軸に位置を持てないので除く
+ * - 希望・確定・不可・却下の区別では除外しない
+ * - 重ならない枠は同じレーンに入れ、横幅を無駄に割らない
+ * - 戻り値は開始時刻の昇順
+ */
+export function timeAxisLanes(states: CellState[]): LaneLayout {
+  const timed = states
+    .filter((s): s is CellState & { startTime: string; endTime: string } =>
+      Boolean(s.startTime && s.endTime),
+    )
+    .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime));
+
+  // 各レーンが埋まっている終了時刻。空いている一番左のレーンへ入れる。
+  const laneEnds: number[] = [];
+  const boxes: LaneBox[] = timed.map((state) => {
+    const start = hourValue(state.startTime);
+    const end = hourValue(state.endTime);
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
+    if (lane === -1) lane = laneEnds.length;
+    laneEnds[lane] = end;
+    return { state, lane };
+  });
+
+  return { boxes, laneCount: laneEnds.length };
+}
+
 /**
  * セグメント構成の妥当性を検査する。問題があれば日本語のメッセージ、無ければ null。
  * 検査項目（この順でメッセージを返す）:

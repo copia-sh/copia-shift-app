@@ -36,6 +36,7 @@ export function subscribeToShiftsInRange(
   startDate: string,
   endDate: string,
   cb: (shifts: Shift[]) => void,
+  onError?: (error: unknown) => void,
 ): () => void {
   const shiftsCollection = collection(db, "groups", groupId, "shifts");
   const q = query(
@@ -43,10 +44,16 @@ export function subscribeToShiftsInRange(
     where("date", ">=", startDate),
     where("date", "<=", endDate),
   );
-  return onSnapshot(q, (snapshot) => {
-    const shifts = snapshot.docs.map((d) => toShift(d.id, d.data()));
-    cb(shifts);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const shifts = snapshot.docs.map((d) => toShift(d.id, d.data()));
+      cb(shifts);
+    },
+    // 失敗を握り潰すと「読み込み中…」のまま止まり、権限エラーや通信断が
+    // 「予定が1件も無い」画面と区別できなくなる。呼び出し側へ必ず渡す。
+    (error) => onError?.(error),
+  );
 }
 
 export async function createShiftsBulk(params: {

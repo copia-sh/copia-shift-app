@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { toDateKey } from "../utils/date";
 import {
   DOW_LABELS,
@@ -6,7 +6,6 @@ import {
   canTapCell,
   cellStatesOf,
   daysOfMonth,
-  hourValue,
   isSameDate,
   parseSelKey,
   primaryCellState,
@@ -16,66 +15,22 @@ import {
   skinStyle,
   type Skin,
   type BulkOp,
-  type CellState,
   type SelKey,
   type ShiftMode,
 } from "./shiftVisual";
 import type { ShiftTheme } from "./shiftTheme";
+import { useCenterToday, useStateMap, type ViewCommon } from "./viewShared";
+import { SelectedBadge } from "./SelectedBadge";
 import { GroupSwitcher } from "./GroupSwitcher";
 import { MonthGridPC } from "./monthView/MonthGridPC";
 import { MonthGridMobile } from "./monthView/MonthGridMobile";
 import { MonthTotals } from "./monthView/MonthTotals";
-import { listNameWidth, weekDayWidth } from "./responsiveLayout";
+import { listNameWidth } from "./responsiveLayout";
 import { REJECTED_TYPE } from "../types";
 import { formatHours, summarizeWorkHours, type WorkHoursSummary } from "./workHours";
-import type { GroupSettings, Member, Shift, Group } from "../types";
+import type { Shift, Group } from "../types";
 
 /* ------------------------------------------------------------------ 共通 */
-
-const HOUR_H = 32;
-const WEEK_GUTTER_W = 44;
-
-/** 選択中を色以外でも示す小さな ✓ バッジ（赤は使わず前景色を流用） */
-function SelectedBadge({ fg }: { fg: string }) {
-  return (
-    <span
-      className="pointer-events-none absolute right-[1px] top-[1px] text-[8px] font-bold leading-none"
-      style={{ color: fg }}
-      aria-hidden
-    >
-      ✓
-    </span>
-  );
-}
-
-/** 当月を開いたとき、当日の列が見えるよう中央付近へ移動する。 */
-function useCenterToday(
-  ref: React.RefObject<HTMLDivElement | null>,
-  anchorDate: Date,
-  leadingWidth: number,
-  dayWidth: number,
-) {
-  const monthKey = `${anchorDate.getFullYear()}-${anchorDate.getMonth()}`;
-  useEffect(() => {
-    const today = new Date();
-    if (
-      today.getFullYear() !== anchorDate.getFullYear() ||
-      today.getMonth() !== anchorDate.getMonth()
-    ) {
-      return;
-    }
-    const center = () => {
-      const node = ref.current;
-      if (!node) return;
-      node.scrollLeft = Math.max(
-        0,
-        leadingWidth + (today.getDate() - 1) * dayWidth + dayWidth / 2 - node.clientWidth / 2,
-      );
-    };
-    const timers = [60, 240, 600].map((delay) => window.setTimeout(center, delay));
-    return () => timers.forEach(window.clearTimeout);
-  }, [anchorDate, dayWidth, leadingWidth, monthKey, ref]);
-}
 
 /** 複数選択 / 確定選択 のモード切替。どちらもOFFなら single。 */
 export function ShiftModeToggle({
@@ -271,34 +226,6 @@ export function ShiftLegend({
       </div>
     </>
   );
-}
-
-interface ViewCommon {
-  anchorDate: Date;
-  members: Member[];
-  shifts: Shift[];
-  currentMemberId: string;
-  mode: ShiftMode;
-  selected: Set<SelKey>;
-  settings: GroupSettings;
-  theme: ShiftTheme | null;
-  /** モードごとの分岐は App.tsx 側で行う */
-  onCellTap: (key: SelKey, state: CellState) => void;
-  onToggleMany: (keys: SelKey[]) => void;
-  showTimes?: boolean;
-  density?: "compact" | "comfortable";
-}
-
-function useStateMap(shifts: Shift[]) {
-  return useMemo(() => {
-    const map = new Map<string, Shift[]>();
-    for (const s of shifts) {
-      const key = `${s.memberId}__${s.date}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(s);
-    }
-    return map;
-  }, [shifts]);
 }
 
 /** メンバー名を押している（マウスなら乗せている）間だけ出す、その月の合計時間 */
@@ -604,339 +531,8 @@ export function ShiftMonthGrid({
   );
 }
 
-/* ------------------------------------------------- 週（可否バー + 時間軸 / 横スクロール固定幅） */
-
-export function ShiftWeekView({
-  anchorDate,
-  members,
-  shifts,
-  currentMemberId,
-  mode,
-  selected,
-  settings,
-  theme,
-  onCellTap,
-  onToggleMany,
-}: ViewCommon) {
-  const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
-  const byKey = useStateMap(shifts);
-  const today = new Date();
-  const bulkHeaders = mode !== "single";
-  const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const weekDayW = weekDayWidth(members.length);
-  const gridCols = `${WEEK_GUTTER_W}px repeat(${days.length}, ${weekDayW}px)`;
-  const totalW = WEEK_GUTTER_W + weekDayW * days.length;
-  const hours = Array.from({ length: settings.displayEndHour - settings.displayStartHour }, (_, i) => i + settings.displayStartHour);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useCenterToday(scrollRef, anchorDate, WEEK_GUTTER_W, weekDayW);
-
-  return (
-    <>
-    <div ref={scrollRef} className="hidden max-h-[70vh] overflow-auto border-t border-gray-200 md:block">
-      <div style={{ width: totalW }}>
-        <div className="sticky top-0 z-20 grid border-b border-gray-200 bg-[#FBFCFD]" style={{ gridTemplateColumns: gridCols }}>
-          <div className="sticky left-0 z-30 flex items-end justify-end border-r border-[#EFF1F3] bg-[#FBFCFD] p-1 text-[9px] font-bold leading-tight text-gray-400">可否</div>
-          {days.map((day) => {
-            const dateKey = toDateKey(day);
-            const dow = day.getDay();
-            const isToday = isSameDate(day, today);
-            const states = members.map((m) => primaryCellState(cellStatesOf(byKey.get(selKey(m.id, dateKey)) ?? [], unavailableKeys)));
-            return (
-              <div
-                key={dateKey}
-                className="border-l border-[#EFF1F3] px-1 pb-1.5 pt-1.5 text-center"
-                style={{ background: isToday ? "#FFFBEA" : dow === 0 || dow === 6 ? "#FAFBFC" : "#fff" }}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <span
-                    className="text-[10px] font-bold"
-                    style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}
-                  >
-                    {DOW_LABELS[dow]}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!bulkHeaders}
-                    title={bulkHeaders ? "この日をまとめて選択" : undefined}
-                    onClick={() =>
-                      onToggleMany(
-                        members
-                          .filter((m, mi) => canTapCell(mode, m.id, currentMemberId, states[mi]))
-                          .map((m) => selKey(m.id, dateKey)),
-                      )
-                    }
-                    className="text-[16px] font-bold"
-                    style={
-                      isToday
-                        ? {
-                            background: "#248DD4",
-                            color: "#fff",
-                            borderRadius: "50%",
-                            width: 24,
-                            height: 24,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }
-                        : { color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#393939" }
-                    }
-                  >
-                    {day.getDate()}
-                  </button>
-                </div>
-                <div className="mt-1.5 grid gap-0.5" style={{ gridTemplateColumns: `repeat(${Math.max(1, members.length)}, minmax(0, 1fr))` }}>
-                  {members.map((mem, mi) => {
-                    const st = states[mi];
-                    const sk = theme ? theme.skinFor(st, false) : null;
-                    const k = selKey(mem.id, dateKey);
-                    const isSel = selected.has(k);
-                    const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                    const isOwn = mem.id === currentMemberId;
-                    const skForSel = theme ? theme.skinFor(st, isSel) : null;
-                    return (
-                      <button
-                        key={mem.id}
-                        type="button"
-                        disabled={!tappable}
-                        onClick={() => onCellTap(k, st)}
-                        className={`relative flex flex-col items-center gap-px rounded py-1 leading-none border ${
-                          isOwn && !isSel ? "shadow-[inset_0_0_0_2px_rgba(36,141,212,0.25)]" : ""
-                        } ${tappable ? "" : "cursor-default opacity-60"}`}
-                        style={skForSel ? skinStyle(skForSel) : {}}
-                      >
-                        {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                        <span className="text-[9px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
-                        <span className="text-[11px] font-bold" style={{ color: sk?.fg ?? "#333" }}>{sk?.mark ?? "·"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="grid" style={{ gridTemplateColumns: gridCols }}>
-          <div className="sticky left-0 z-10 border-r border-[#EFF1F3] bg-white">
-            {hours.map((h) => (
-              <div
-                key={h}
-                className="border-t border-[#F4F6F8] pr-1 text-right text-[9px] text-gray-400"
-                style={{ height: HOUR_H }}
-              >
-                {h}:00
-              </div>
-            ))}
-          </div>
-          {days.map((day) => {
-            const dateKey = toDateKey(day);
-            const isToday = isSameDate(day, today);
-            return (
-              <div
-                key={dateKey}
-                className="relative overflow-hidden border-l border-[#EFF1F3]"
-                style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}
-              >
-                {hours.map((h) => (
-                  <div key={h} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />
-                ))}
-                {members.map((mem, mi) => {
-                  const allStates = cellStatesOf(byKey.get(selKey(mem.id, dateKey)) ?? [], unavailableKeys);
-                  const timed = allStates.filter(
-                    (state) => state.startTime && state.endTime && (state.kind === "fixed" || state.kind === "want"),
-                  );
-                  const st = timed.find((state) => state.kind === "fixed") ?? timed[0];
-                  if (!st?.startTime || !st.endTime) return null;
-                  const sk = theme ? theme.skinFor(st, false) : null;
-                  const k = selKey(mem.id, dateKey);
-                  const isSel = selected.has(k);
-                  const tappable = canTapCell(mode, mem.id, currentMemberId, st);
-                  const top = (hourValue(st.startTime) - settings.displayStartHour) * HOUR_H;
-                  const height = Math.max((hourValue(st.endTime) - hourValue(st.startTime)) * HOUR_H - 3, 24);
-                  const skForSel = theme ? theme.skinFor(st, isSel) : null;
-                  const people = Math.max(1, members.length);
-                  return (
-                    <button
-                      key={mem.id}
-                      type="button"
-                      disabled={!tappable}
-                      onClick={() => onCellTap(k, st)}
-                      // 人数が多いと枠が細くなり、時刻が途中で切れる。全体はここで読める。
-                      title={`${mem.displayName} ${st.startTime}〜${st.endTime}`}
-                      className={`absolute flex flex-col gap-0.5 overflow-hidden rounded px-1 py-0.5 text-left border ${
-                        tappable ? "" : "cursor-default opacity-60"
-                      }`}
-                      style={{
-                        top,
-                        height,
-                        left: `calc(${(mi * 100) / people}% + 1px)`,
-                        width: `calc(${100 / people}% - 2px)`,
-                        ...(skForSel ? skinStyle(skForSel) : {}),
-                      }}
-                    >
-                      {isSel && sk && <SelectedBadge fg={sk.fg} />}
-                      <span className="text-[9px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>{mem.displayName.slice(0, 2)}</span>
-                      <span className="text-[8px] font-bold leading-tight" style={{ color: sk?.fg ?? "#333" }}>
-                        {shortRange(st)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-    <MobileWeekView
-      anchorDate={anchorDate}
-      members={members}
-      shifts={shifts}
-      currentMemberId={currentMemberId}
-      mode={mode}
-      selected={selected}
-      settings={settings}
-      theme={theme}
-      onCellTap={onCellTap}
-      onToggleMany={onToggleMany}
-    />
-    </>
-  );
-}
-
-function MobileWeekView({
-  anchorDate,
-  members,
-  shifts,
-  currentMemberId,
-  mode,
-  selected,
-  settings,
-  theme,
-  onCellTap,
-  onToggleMany,
-}: ViewCommon) {
-  const days = useMemo(() => daysOfMonth(anchorDate), [anchorDate]);
-  const byKey = useStateMap(shifts);
-  const unavailableKeys = theme?.unavailableKeys ?? new Set();
-  const hours = Array.from(
-    { length: settings.displayEndHour - settings.displayStartHour },
-    (_, index) => index + settings.displayStartHour,
-  );
-  const today = new Date();
-  const bulkHeaders = mode !== "single";
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // カード幅に gap-2 (8px) を足したスクロール刻み。ここがカード幅だけだと、
-  // 月末では gap の累積分だけ前日へずれる。
-  useCenterToday(scrollRef, anchorDate, 0, typeof window === "undefined" ? 351 : window.innerWidth - 24);
-
-  return (
-    <div ref={scrollRef} className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 md:hidden">
-      {days.map((day) => {
-        const dateKey = toDateKey(day);
-        const dow = day.getDay();
-        const isToday = isSameDate(day, today);
-        const states = members.map((member) =>
-          primaryCellState(cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys)),
-        );
-        return (
-          <section key={dateKey} className="w-[calc(100vw-32px)] flex-none snap-center overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-[#FBFCFD] px-3 py-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[16px] font-bold text-gray-900">{day.getDate()}日</span>
-                <span className="text-[11px] font-bold" style={{ color: dow === 0 ? "#D9736F" : dow === 6 ? "#248DD4" : "#8E8E8E" }}>
-                  {DOW_LABELS[dow]}
-                </span>
-                {isToday && <span className="rounded-full bg-[#248DD4] px-2 py-0.5 text-[9px] font-bold text-white">今日</span>}
-              </div>
-              <button
-                type="button"
-                disabled={!bulkHeaders}
-                onClick={() =>
-                  onToggleMany(
-                    members
-                      .filter((member, index) => canTapCell(mode, member.id, currentMemberId, states[index]))
-                      .map((member) => selKey(member.id, dateKey)),
-                  )
-                }
-                className="text-[10px] font-bold text-gray-400"
-              >
-                日を選択
-              </button>
-            </div>
-            <div className="grid gap-1 border-b border-gray-100 p-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, members.length)}, minmax(0, 1fr))` }}>
-              {members.map((member, index) => {
-                const state = states[index];
-                const key = selKey(member.id, dateKey);
-                const isSelected = selected.has(key);
-                const skin = theme ? theme.skinFor(state, isSelected) : null;
-                const tappable = canTapCell(mode, member.id, currentMemberId, state);
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    disabled={!tappable}
-                    onClick={() => onCellTap(key, state)}
-                    className={`relative min-w-0 rounded border px-1 py-1.5 ${tappable ? "" : "cursor-default opacity-60"}`}
-                    style={skin ? skinStyle(skin) : {}}
-                  >
-                    {isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                    <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
-                    <span className="mt-0.5 block text-[11px] font-bold" style={{ color: skin?.fg }}>{skin?.mark ?? "·"}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="grid" style={{ gridTemplateColumns: `38px minmax(0, 1fr)` }}>
-              <div className="border-r border-gray-100 bg-[#FBFCFD]">
-                {hours.map((hour) => (
-                  <div key={hour} className="border-t border-gray-100 pr-1 text-right text-[8px] text-gray-400" style={{ height: HOUR_H }}>
-                    {hour}:00
-                  </div>
-                ))}
-              </div>
-              <div className="relative" style={{ height: HOUR_H * hours.length, background: isToday ? "#FFFDF4" : "#fff" }}>
-                {hours.map((hour) => <div key={hour} className="border-t border-[#F1F3F5]" style={{ height: HOUR_H }} />)}
-                {members.map((member, index) => {
-                  const allStates = cellStatesOf(byKey.get(selKey(member.id, dateKey)) ?? [], unavailableKeys);
-                  const timed = allStates.filter((state) => state.startTime && state.endTime && (state.kind === "fixed" || state.kind === "want"));
-                  const state = timed.find((item) => item.kind === "fixed") ?? timed[0];
-                  if (!state?.startTime || !state.endTime) return null;
-                  const key = selKey(member.id, dateKey);
-                  const isSelected = selected.has(key);
-                  const skin = theme ? theme.skinFor(state, isSelected) : null;
-                  const tappable = canTapCell(mode, member.id, currentMemberId, state);
-                  const people = Math.max(1, members.length);
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      disabled={!tappable}
-                      onClick={() => onCellTap(key, state)}
-                      title={`${member.displayName} ${state.startTime}〜${state.endTime}`}
-                      className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left ${tappable ? "" : "cursor-default opacity-60"}`}
-                      style={{
-                        top: (hourValue(state.startTime) - settings.displayStartHour) * HOUR_H,
-                        height: Math.max((hourValue(state.endTime) - hourValue(state.startTime)) * HOUR_H - 3, 24),
-                        left: `calc(${(index * 100) / people}% + 1px)`,
-                        width: `calc(${100 / people}% - 2px)`,
-                        ...(skin ? skinStyle(skin) : {}),
-                      }}
-                    >
-                      {isSelected && skin && <SelectedBadge fg={skin.fg} />}
-                      <span className="block truncate text-[9px] font-bold" style={{ color: skin?.fg }}>{member.displayName}</span>
-                      <span className="block text-[8px] font-bold" style={{ color: skin?.fg }}>{shortRange(state)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
+/* 週は weekView/ShiftWeekView.tsx へ移した。App からの読み込み先を変えずに済むよう再輸出する。 */
+export { ShiftWeekView } from "./weekView/ShiftWeekView";
 
 /* ------------------------------------------------- 下部パネル（モード別） */
 

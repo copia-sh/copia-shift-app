@@ -1,7 +1,11 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, lazy, Suspense } from "react";
 import { useScreen } from "./hooks/useScreen";
 import { ScreenFooter, ScreenSwitcher } from "./components/ScreenSwitcher";
-import { TaskBoardScreen } from "./components/taskBoard/TaskBoardScreen";
+// 開くまで要らないものは初期読み込みから外す。タスク画面はタブを切り替えたとき、
+// ダイアログは開いたときに読み込む。
+const TaskBoardScreen = lazy(() =>
+  import("./components/taskBoard/TaskBoardScreen").then((m) => ({ default: m.TaskBoardScreen })),
+);
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { format } from "date-fns";
@@ -29,15 +33,15 @@ import {
   type SelKey,
   type ShiftMode,
 } from "./components/shiftVisual";
-import { SegmentEditor } from "./components/SegmentEditor";
-import { ProfileDialog } from "./components/ProfileDialog";
-import { MemberAdmin } from "./components/MemberAdmin";
+const SegmentEditor = lazy(() => import("./components/SegmentEditor").then((m) => ({ default: m.SegmentEditor })));
+const ProfileDialog = lazy(() => import("./components/ProfileDialog").then((m) => ({ default: m.ProfileDialog })));
+const MemberAdmin = lazy(() => import("./components/MemberAdmin").then((m) => ({ default: m.MemberAdmin })));
 import { MemberFilter } from "./components/MemberFilter";
 import { FullScreenMessage, LoadingScreen } from "./components/FullScreenMessage";
 import { HeaderMenu } from "./components/HeaderMenu";
-import { GroupSettingsDialog } from "./components/GroupSettingsDialog";
-import { ExportDialog } from "./components/ExportDialog";
-import { ShareLinkDialog } from "./components/ShareLinkDialog";
+const GroupSettingsDialog = lazy(() => import("./components/GroupSettingsDialog").then((m) => ({ default: m.GroupSettingsDialog })));
+const ExportDialog = lazy(() => import("./components/ExportDialog").then((m) => ({ default: m.ExportDialog })));
+const ShareLinkDialog = lazy(() => import("./components/ShareLinkDialog").then((m) => ({ default: m.ShareLinkDialog })));
 import { useAuthUser } from "./hooks/useAuth";
 import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
@@ -237,7 +241,7 @@ function ShiftCalendar({
     };
   }, [anchorDate, settings?.weekStartsOn]);
 
-  const shifts = useShiftsInRange(groupId, startKey, endKey);
+  const { shifts, error: shiftsError } = useShiftsInRange(groupId, startKey, endKey);
 
   function handlePrev() {
     setAnchorDate((d) => previousMonth(d));
@@ -692,6 +696,7 @@ function ShiftCalendar({
   return (
     <>
     {screen === "tasks" ? (
+      <Suspense fallback={<LoadingScreen />}>
       <TaskBoardScreen
         groupId={groupId}
         members={activeMembers}
@@ -704,6 +709,7 @@ function ShiftCalendar({
         accountMenuItems={accountMenuItems}
         onExport={() => setShowExportDialog(true)}
       />
+      </Suspense>
     ) : (
     <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
       {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
@@ -771,6 +777,21 @@ function ShiftCalendar({
       <main className="mx-auto max-w-[1400px] px-2 pb-[calc(146px+var(--screen-footer-h))] md:px-5 md:pb-[140px]">
         {shifts === undefined || settings === undefined ? (
           <p className="py-8 text-center text-sm text-gray-400">読み込み中...</p>
+        ) : shiftsError ? (
+          /* 読み込み失敗を「0件」と同じ見た目にすると、予定が無いのか取れていないのか
+             区別できない。原因と、やり直す手段をその場に出す。 */
+          <div className="mx-auto max-w-[520px] rounded-xl border border-[#F0C7C7] bg-[#FDF1F1] px-5 py-8 text-center">
+            <p role="alert" className="text-[14px] font-bold leading-relaxed text-[#D9736F]">
+              {shiftsError}
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 h-[38px] rounded-md border border-gray-200 bg-white px-4 text-[13px] font-bold text-[#374151] shadow-[0_2px_0_0_#E3E3E3] active:translate-y-0.5 active:shadow-none"
+            >
+              再読み込み
+            </button>
+          </div>
         ) : emptyReason ? (
           /* 0件のときは空の表を見せない。条件で隠れているのかが分からなくなる。 */
           <div className="mx-auto max-w-[560px] rounded-xl border border-gray-200 bg-white px-5 py-8 text-center">
@@ -815,6 +836,7 @@ function ShiftCalendar({
 
       <ScreenFooter screen={screen} onChange={setScreen} />
 
+      <Suspense fallback={null}>
       {editingCell && settings && theme && (
         <SegmentEditor
           dateKey={parseSelKey(editingCell).dateKey}
@@ -892,6 +914,7 @@ function ShiftCalendar({
           onClose={() => setShowShareLinkDialog(false)}
         />
       )}
+      </Suspense>
     </>
   );
 }

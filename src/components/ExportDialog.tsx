@@ -77,7 +77,7 @@ export function ExportDialog({
   }, [anchorDate, customEnd, customStart, monthStart, period]);
 
   const invalidRange = !startDate || !endDate || startDate > endDate;
-  const shifts = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
+  const { shifts } = useShiftsInRange(invalidRange ? null : groupId, startDate, endDate);
   const typeOptions = useMemo(() => {
     const options = [...theme.types];
     const keys = new Set(options.map((type) => type.key));
