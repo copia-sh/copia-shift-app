@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeLoadError } from "../src/hooks/loadError";
+import { describeLoadError } from "../src/utils/errorMessage";
 
 describe("describeLoadError", () => {
   it("権限エラーは原因が分かる文にする（再読み込みしても直らないため）", () => {

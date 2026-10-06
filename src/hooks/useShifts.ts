@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { subscribeToShiftsInRange } from "../firebase/shifts";
-import { describeLoadError } from "./loadError";
+import { describeLoadError } from "../utils/errorMessage";
 import type { Shift } from "../types";
 
 export interface ShiftsResult {

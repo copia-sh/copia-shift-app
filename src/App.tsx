@@ -1,17 +1,17 @@
 import { useMemo, useState, useEffect, lazy, Suspense } from "react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
 import { useScreen } from "./hooks/useScreen";
 import { ScreenFooter, ScreenSwitcher } from "./components/ScreenSwitcher";
-// 開くまで要らないものは初期読み込みから外す。タスク画面はタブを切り替えたとき、
-// ダイアログは開いたときに読み込む。
+// タスク画面はタブを切り替えたときに読み込む。初期表示には要らない。
 const TaskBoardScreen = lazy(() =>
   import("./components/taskBoard/TaskBoardScreen").then((m) => ({ default: m.TaskBoardScreen })),
 );
-import type { User } from "firebase/auth";
-import { FirebaseError } from "firebase/app";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import { LoginGate } from "./components/LoginGate";
-import { GroupSetup } from "./components/GroupSetup";
+import { GroupGate, type ResolvedGroup } from "./app/GroupGate";
+import { AppDialogs } from "./app/AppDialogs";
+import { NO_DIALOG, type DialogState } from "./app/dialogState";
+import { useShiftActions } from "./app/useShiftActions";
 import {
   ShiftModeToggle,
   CalendarNav,
@@ -25,7 +25,6 @@ import {
   canTapCell,
   nextInCycle,
   parseSelKey,
-  primaryCellState,
   cellStatesOf,
   isSimpleCell,
   type BulkOp,
@@ -33,45 +32,16 @@ import {
   type SelKey,
   type ShiftMode,
 } from "./components/shiftVisual";
-const SegmentEditor = lazy(() => import("./components/SegmentEditor").then((m) => ({ default: m.SegmentEditor })));
-const ProfileDialog = lazy(() => import("./components/ProfileDialog").then((m) => ({ default: m.ProfileDialog })));
-const MemberAdmin = lazy(() => import("./components/MemberAdmin").then((m) => ({ default: m.MemberAdmin })));
 import { MemberFilter } from "./components/MemberFilter";
-import { FullScreenMessage, LoadingScreen } from "./components/FullScreenMessage";
+import { LoadingScreen } from "./components/FullScreenMessage";
 import { HeaderMenu } from "./components/HeaderMenu";
-const GroupSettingsDialog = lazy(() => import("./components/GroupSettingsDialog").then((m) => ({ default: m.GroupSettingsDialog })));
-const ExportDialog = lazy(() => import("./components/ExportDialog").then((m) => ({ default: m.ExportDialog })));
-const ShareLinkDialog = lazy(() => import("./components/ShareLinkDialog").then((m) => ({ default: m.ShareLinkDialog })));
 import { useAuthUser } from "./hooks/useAuth";
-import { useMembers } from "./hooks/useMembers";
 import { useShiftsInRange } from "./hooks/useShifts";
-import { useMyGroupIds } from "./hooks/useMyGroupIds";
-import { useGroups } from "./hooks/useGroups";
 import { useGroupSettings } from "./hooks/useGroupSettings";
 import { useShiftTypes } from "./hooks/useShiftTypes";
 import { signOut } from "./firebase/auth";
-import {
-  updateMemberRole,
-  updateMemberActive,
-  updateMemberShiftTarget,
-  updateMemberDisplayName,
-  updateMemberAttributes,
-} from "./firebase/members";
-import { updateGroupSettings, updateShiftTypes } from "./firebase/settings";
-import {
-  getMonthGridDays,
-  nextMonth,
-  previousMonth,
-  toDateKey,
-} from "./utils/date";
-import {
-  createShiftsBulk,
-  deleteShiftsBulk,
-  confirmShift,
-  revertShiftToDesired,
-  updateShiftDetails,
-} from "./firebase/shifts";
-import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
+import { getMonthGridDays, nextMonth, previousMonth, toDateKey } from "./utils/date";
+import { DEFAULT_GROUP_SETTINGS } from "./types";
 import {
   emptyRosterReason,
   hasActiveFilter,
@@ -81,111 +51,28 @@ import {
 } from "./components/memberRoster";
 import { readRosterFilter, storeRosterFilter } from "./utils/rosterFilterStorage";
 import { buildShiftTheme } from "./components/shiftTheme";
-import type { Member, Shift, Group, ShiftType, ShiftTypeDef, MemberRole, GroupSettings } from "./types";
 
 type ViewMode = "list" | "month" | "week";
 
 const HEADER_BTN =
   "rounded-md bg-transparent px-2.5 py-1.5 text-[13px] font-bold text-ink-4 hover:bg-white/70";
 
+/** 空表示の中に置くボタン。条件の解除や再読み込みなど、その場でやり直すためのもの。 */
+const RETRY_BTN =
+  "mt-4 h-[38px] rounded-md border border-line bg-white px-4 text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] active:translate-y-0.5 active:shadow-none";
+
 function App() {
   const user = useAuthUser();
 
-  return <LoginGate user={user}>{(currentUser) => <GroupGate user={currentUser} />}</LoginGate>;
-}
-
-
-/**
- * ログイン済みユーザーを、所属グループとその中のメンバー情報に解決する。
- * currentMember は必ず Firestore 上の実データから引く（role や active を
- * 権限判定に使うため、認証情報から組み立てた偽物を渡してはいけない）。
- */
-const GROUP_STORAGE_KEY = "copia-shift:groupId";
-
-/** localStorage はプライベートブラウズ等で例外を投げうるので、失敗しても無視する。 */
-function readStoredGroupId(): string | null {
-  try {
-    return localStorage.getItem(GROUP_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-function storeGroupId(id: string) {
-  try {
-    localStorage.setItem(GROUP_STORAGE_KEY, id);
-  } catch {
-    /* 保存できなくても動作に影響はない */
-  }
-}
-
-function GroupGate({ user }: { user: User }) {
-  const groupIds = useMyGroupIds(user.uid);
-  const groups = useGroups(groupIds);
-  // 「ユーザーが明示的に選んだグループ」だけを state に持つ。実際に表示する
-  // グループは groupIds から毎レンダー導出する（effect で state を書き戻すと、
-  // 再購読のたびに画面が一瞬 undefined に落ちてフォームが失われる）。
-  const [pickedGroupId, setPickedGroupId] = useState<string | null>(readStoredGroupId);
-  const [showSetup, setShowSetup] = useState(false);
-
-  const groupId =
-    pickedGroupId && groupIds?.includes(pickedGroupId) ? pickedGroupId : (groupIds?.[0] ?? null);
-
-  useEffect(() => {
-    if (groupId) storeGroupId(groupId);
-  }, [groupId]);
-
-  const members = useMembers(groupId);
-
-  if (!groupIds) {
-    return <LoadingScreen />;
-  }
-
-  if (groupIds.length === 0 || showSetup) {
-    return <GroupSetup user={user} onDone={() => setShowSetup(false)} />;
-  }
-
-  if (!groupId || !groups || !members) {
-    return <LoadingScreen />;
-  }
-
-  const currentMember = members.find((m) => m.id === user.uid);
-  if (!currentMember) {
-    return (
-      <FullScreenMessage
-        title="このグループのメンバー情報が見つかりません"
-        action={
-          <button
-            type="button"
-            onClick={() => signOut()}
-            className="rounded-md px-4 py-2 text-sm font-bold text-ink-4 hover:bg-line-3"
-          >
-            ログアウト
-          </button>
-        }
-      />
-    );
-  }
-
   return (
-    <ShiftCalendar
-      key={groupId}
-      uid={user.uid}
-      groupId={groupId}
-      currentMember={currentMember}
-      members={members}
-      groups={groups}
-      currentGroupId={groupId}
-      onChangeGroup={setPickedGroupId}
-      onCreateNewGroup={() => setShowSetup(true)}
-    />
+    <LoginGate user={user}>
+      {(currentUser) => (
+        <GroupGate user={currentUser}>
+          {(resolved) => <ShiftCalendar key={resolved.groupId} uid={currentUser.uid} {...resolved} />}
+        </GroupGate>
+      )}
+    </LoginGate>
   );
-}
-
-interface Target {
-  memberId: string;
-  dateKey: string;
-  shifts: Shift[];
-  state: CellState;
 }
 
 function ShiftCalendar({
@@ -194,19 +81,9 @@ function ShiftCalendar({
   members,
   groupId,
   groups,
-  currentGroupId,
   onChangeGroup,
   onCreateNewGroup,
-}: {
-  uid: string;
-  currentMember: Member;
-  members: Member[];
-  groupId: string;
-  groups: Group[];
-  currentGroupId: string;
-  onChangeGroup: (id: string) => void;
-  onCreateNewGroup: () => void;
-}) {
+}: ResolvedGroup & { uid: string }) {
   const [view, setView] = useState<ViewMode>("list");
   const [screen, setScreen] = useScreen();
   const [mode, setMode] = useState<ShiftMode>("single");
@@ -217,54 +94,23 @@ function ShiftCalendar({
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>(() => readRosterFilter(groupId));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [busy, setBusy] = useState(false);
-  const [opError, setOpError] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
-  const [editingCell, setEditingCell] = useState<SelKey | null>(null);
-  const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [showMemberAdmin, setShowMemberAdmin] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showShareLinkDialog, setShowShareLinkDialog] = useState(false);
+  const [dialog, setDialog] = useState<DialogState>(NO_DIALOG);
   const settings = useGroupSettings(groupId);
   const shiftTypes = useShiftTypes(groupId);
 
-  const theme = useMemo(() => {
-    return shiftTypes ? buildShiftTheme(shiftTypes) : null;
-  }, [shiftTypes]);
+  const theme = useMemo(() => (shiftTypes ? buildShiftTheme(shiftTypes) : null), [shiftTypes]);
 
   const { startKey, endKey } = useMemo(() => {
     const days = getMonthGridDays(anchorDate, settings?.weekStartsOn ?? 0);
-    return {
-      startKey: toDateKey(days[0]),
-      endKey: toDateKey(days[days.length - 1]),
-    };
+    return { startKey: toDateKey(days[0]), endKey: toDateKey(days[days.length - 1]) };
   }, [anchorDate, settings?.weekStartsOn]);
 
   const { shifts, error: shiftsError } = useShiftsInRange(groupId, startKey, endKey);
-
-  function handlePrev() {
-    setAnchorDate((d) => previousMonth(d));
-  }
-  function handleNext() {
-    setAnchorDate((d) => nextMonth(d));
-  }
-  function handleToday() {
-    setAnchorDate(new Date());
-  }
-
-  async function handleCopyInviteLink() {
-    const inviteUrl = `${window.location.origin}${window.location.pathname}?g=${groupId}`;
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setInviteLinkCopied(true);
-      setTimeout(() => setInviteLinkCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy invite link:", err);
-    }
-  }
+  const actions = useShiftActions({ groupId, uid, currentMember, shifts, theme });
 
   const canConfirm = currentMember.role === "admin" || currentMember.role === "leader";
+  const openDialog = (patch: Partial<DialogState>) => setDialog((d) => ({ ...d, ...patch }));
 
   function changeMode(m: ShiftMode) {
     if (m === "review" && !canConfirm) return;
@@ -284,313 +130,10 @@ function ShiftCalendar({
     });
   }
 
-  async function applyOps(targets: Target[], op: BulkOp) {
-    setBusy(true);
-    try {
-      if (op.kind === "desired" || op.kind === "unavailable") {
-        const type = op.type;
-        const mine = targets.filter((t) => t.memberId === currentMember.id);
-        const existing = mine.filter((t) => t.shifts.length > 0);
-        const fresh = mine.filter((t) => t.shifts.length === 0);
-
-        await Promise.all(
-          existing.flatMap((t) =>
-            t.shifts.map((s) => updateShiftDetails(groupId, s.id, { type }))
-          ),
-        );
-
-        if (fresh.length > 0) {
-          await createShiftsBulk({
-            groupId,
-            memberId: currentMember.id,
-            dates: fresh.map((t) => t.dateKey),
-            type,
-            startTime: null,
-            endTime: null,
-            uid,
-          });
-        }
-      } else if (op.kind === "clear") {
-        const scope = targets.filter(
-          (t) => t.memberId === currentMember.id && t.state.kind !== "fixed",
-        );
-        const shiftIdsToDelete = scope.flatMap((t) => t.shifts.map((s) => s.id));
-        if (shiftIdsToDelete.length > 0) {
-          await deleteShiftsBulk(groupId, shiftIdsToDelete);
-        }
-      } else if (op.kind === "reject") {
-        const shiftIds = targets
-          .filter((t) => t.shifts.length > 0 && t.state.kind !== "fixed")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) =>
-            updateShiftDetails(groupId, id, { type: "却下" })
-          ),
-        );
-      } else if (op.kind === "time") {
-        const shiftIds = targets.flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) =>
-            updateShiftDetails(groupId, id, {
-              startTime: op.startTime,
-              endTime: op.endTime,
-            })
-          ),
-        );
-      } else if (op.kind === "confirm") {
-        const shiftIds = targets
-          .filter((t) => t.state.kind === "want")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) => confirmShift(groupId, id, uid)),
-        );
-      } else if (op.kind === "revert") {
-        const shiftIds = targets
-          .filter((t) => t.state.kind === "fixed")
-          .flatMap((t) => t.shifts.map((s) => s.id));
-        await Promise.all(
-          shiftIds.map((id) => revertShiftToDesired(groupId, id)),
-        );
-      }
-      setOpError(null);
-    } catch (err) {
-      // 権限が無い操作はセキュリティルールに拒否される。握り潰すと画面上は
-      // 何も起きなかったように見えるので、必ず理由を出す。
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません（確定・却下は管理者とリーダーのみ）"
-          : "操作に失敗しました。通信状況を確認してもう一度お試しください。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function targetOf(k: SelKey): Target {
-    const { memberId, dateKey } = parseSelKey(k);
-    const shifts_ = (shifts ?? []).filter((s) => s.memberId === memberId && s.date === dateKey);
-    const unavailableKeys = theme?.unavailableKeys ?? new Set();
-    const state = primaryCellState(cellStatesOf(shifts_, unavailableKeys));
-    return { memberId, dateKey, shifts: shifts_, state };
-  }
-
-  async function handleSegmentSave(
-    k: SelKey,
-    next: { id?: string; type: string; startTime: string | null; endTime: string | null }[]
-  ) {
-    setBusy(true);
-    try {
-      const target = targetOf(k);
-      const existing = new Set(target.shifts.map((s) => s.id));
-      const nextIds = new Set(next.filter((n) => n.id).map((n) => n.id!));
-
-      for (const seg of next) {
-        if (seg.id) {
-          await updateShiftDetails(groupId, seg.id, {
-            type: seg.type as ShiftType,
-            startTime: seg.startTime,
-            endTime: seg.endTime,
-          });
-        } else {
-          await createShiftsBulk({
-            groupId,
-            memberId: currentMember.id,
-            dates: [target.dateKey],
-            type: seg.type as ShiftType,
-            startTime: seg.startTime,
-            endTime: seg.endTime,
-            uid,
-          });
-        }
-      }
-
-      const toDelete = [...existing].filter((id) => !nextIds.has(id));
-      if (toDelete.length > 0) {
-        await deleteShiftsBulk(groupId, toDelete);
-      }
-
-      setOpError(null);
-      setEditingCell(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。通信状況を確認してもう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleBulk(op: BulkOp) {
-    await applyOps([...selected].map(targetOf), op);
+    await actions.applyOps([...selected].map(actions.targetOf), op);
     if (op.kind === "desired") return;
     setSelected(new Set());
-  }
-
-  async function handleSaveProfile(displayName: string) {
-    setBusy(true);
-    try {
-      await updateMemberDisplayName(groupId, currentMember.id, displayName);
-      setOpError(null);
-      setShowProfileDialog(false);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleMemberRoleChange(memberId: string, role: MemberRole) {
-    setBusy(true);
-    try {
-      await updateMemberRole(groupId, memberId, role);
-      setOpError(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleMemberShiftTargetChange(memberId: string, shiftTarget: boolean) {
-    setBusy(true);
-    try {
-      await updateMemberShiftTarget(groupId, memberId, shiftTarget);
-      setOpError(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleMemberActiveChange(memberId: string, active: boolean) {
-    setBusy(true);
-    try {
-      await updateMemberActive(groupId, memberId, active);
-      setOpError(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleMemberDisplayNameChange(memberId: string, displayName: string) {
-    setBusy(true);
-    try {
-      await updateMemberDisplayName(groupId, memberId, displayName);
-      setOpError(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleMemberAttributesChange(memberId: string, attributes: string[]) {
-    setBusy(true);
-    try {
-      await updateMemberAttributes(groupId, memberId, attributes);
-      setOpError(null);
-    } catch (err) {
-      const denied =
-        err instanceof FirebaseError
-          ? err.code === "permission-denied"
-          : String(err).includes("permission-denied");
-      setOpError(
-        denied
-          ? "この操作を行う権限がありません"
-          : "操作に失敗しました。もう一度お試しください。"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function describeWriteError(err: unknown): string {
-    const denied =
-      err instanceof FirebaseError
-        ? err.code === "permission-denied"
-        : String(err).includes("permission-denied");
-    return denied
-      ? "この操作を行う権限がありません"
-      : "操作に失敗しました。もう一度お試しください。";
-  }
-
-  async function handleSaveSettings(patch: Partial<GroupSettings>) {
-    setBusy(true);
-    try {
-      await updateGroupSettings(groupId, patch);
-      setOpError(null);
-      setShowSettingsDialog(false);
-    } catch (err) {
-      setOpError(describeWriteError(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSaveShiftTypes(types: ShiftTypeDef[]) {
-    setBusy(true);
-    try {
-      await updateShiftTypes(groupId, types);
-      setOpError(null);
-      setShowSettingsDialog(false);
-    } catch (err) {
-      setOpError(describeWriteError(err));
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function onCellTap(k: SelKey, st: CellState) {
@@ -599,13 +142,11 @@ function ShiftCalendar({
 
     if (mode === "single") {
       setSelected(new Set([k]));
-      const target = targetOf(k);
-      const unavailableKeys = theme?.unavailableKeys ?? new Set();
-      const cellStates = cellStatesOf(target.shifts, unavailableKeys);
+      const target = actions.targetOf(k);
+      const cellStates = cellStatesOf(target.shifts, theme?.unavailableKeys ?? new Set());
       if (isSimpleCell(cellStates)) {
-        const cycleKeys = theme?.cycleKeys ?? [];
-        const op = nextInCycle(st, cycleKeys);
-        if (op) await applyOps([target], op);
+        const op = nextInCycle(st, theme?.cycleKeys ?? []);
+        if (op) await actions.applyOps([target], op);
       }
       return;
     }
@@ -615,6 +156,18 @@ function ShiftCalendar({
       else next.add(k);
       return next;
     });
+  }
+
+  const inviteUrl = `${window.location.origin}${window.location.pathname}?g=${groupId}`;
+
+  async function handleCopyInviteLink() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setInviteLinkCopied(true);
+      setTimeout(() => setInviteLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy invite link:", err);
+    }
   }
 
   const activeMembers = useMemo(() => (members ?? []).filter((m) => m.active), [members]);
@@ -648,31 +201,21 @@ function ShiftCalendar({
     setRosterFilter((current) => ({ ...current, ...patch }));
     setSelected(new Set());
   }
-
-  function handleMemberFilterChange(attributes: Set<string>) {
-    updateFilter({ showCurrentMemberOnly: false, attributes });
-  }
-
-  function handleSelectCurrentMember() {
-    updateFilter({ showCurrentMemberOnly: true, attributes: new Set() });
-  }
-
-  function handleResetFilters() {
+  const resetFilters = () =>
     updateFilter({ showCurrentMemberOnly: false, attributes: new Set(), nameQuery: "" });
-  }
 
   // メニューの中身は1か所で組み立てる。PCとスマホで内容がずれないようにする。
   // 「管理」に入るのは権限のある項目だけで、無い人にはメニュー自体を出さない。
   const adminMenuItems =
     currentMember.role === "admin"
       ? [
-          { key: "settings", label: "グループ設定", onSelect: () => setShowSettingsDialog(true) },
-          { key: "members", label: "メンバー管理", onSelect: () => setShowMemberAdmin(true) },
+          { key: "settings", label: "グループ設定", onSelect: () => openDialog({ settings: true }) },
+          { key: "members", label: "メンバー管理", onSelect: () => openDialog({ memberAdmin: true }) },
         ]
       : [];
 
   const accountMenuItems = [
-    { key: "profile", label: "表示名の変更", onSelect: () => setShowProfileDialog(true) },
+    { key: "profile", label: "表示名の変更", onSelect: () => openDialog({ profile: true }) },
     { key: "signout", label: "ログアウト", onSelect: () => signOut() },
   ];
 
@@ -695,226 +238,175 @@ function ShiftCalendar({
 
   return (
     <>
-    {screen === "tasks" ? (
-      <Suspense fallback={<LoadingScreen />}>
-      <TaskBoardScreen
-        groupId={groupId}
-        members={activeMembers}
-        currentMember={currentMember}
-        groups={groups}
-        onChangeGroup={onChangeGroup}
-        onCreateNewGroup={onCreateNewGroup}
-        onChangeScreen={setScreen}
-        adminMenuItems={adminMenuItems}
-        accountMenuItems={accountMenuItems}
-        onExport={() => setShowExportDialog(true)}
-      />
-      </Suspense>
-    ) : (
-    <div className="min-h-screen" style={{ background: "var(--c-page)", color: "var(--c-ink)" }}>
-      {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
-          毎日は使わない操作を平置きすると、日々の入力と同じ重さに見えてしまう。 */}
-      <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
-        <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
-        <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
-          書き出し
-        </button>
-        {adminMenuItems.length > 0 && <HeaderMenu label="管理" items={adminMenuItems} />}
-        <HeaderMenu label={currentMember.displayName} items={accountMenuItems} />
-      </div>
+      {screen === "tasks" ? (
+        <Suspense fallback={<LoadingScreen />}>
+          <TaskBoardScreen
+            groupId={groupId}
+            members={activeMembers}
+            currentMember={currentMember}
+            groups={groups}
+            onChangeGroup={onChangeGroup}
+            onCreateNewGroup={onCreateNewGroup}
+            onChangeScreen={setScreen}
+            adminMenuItems={adminMenuItems}
+            accountMenuItems={accountMenuItems}
+            onExport={() => openDialog({ export: true })}
+          />
+        </Suspense>
+      ) : (
+        <div className="min-h-screen bg-page text-ink">
+          {/* 上段は所属と補助機能だけにする。設定・メンバー・ログアウトのような
+              毎日は使わない操作を平置きすると、日々の入力と同じ重さに見えてしまう。 */}
+          <div className="hidden flex-wrap items-center justify-end gap-2 px-5 pt-3.5 md:flex">
+            <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
+            <button type="button" onClick={() => openDialog({ export: true })} className={HEADER_BTN}>
+              書き出し
+            </button>
+            {adminMenuItems.length > 0 && <HeaderMenu label="管理" items={adminMenuItems} />}
+            <HeaderMenu label={currentMember.displayName} items={accountMenuItems} />
+          </div>
 
-      <div className="standalone-mobile-header flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:hidden">
-        <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowExportDialog(true)} className={HEADER_BTN}>
-            書き出し
-          </button>
-          <HeaderMenu label="メニュー" items={[...adminMenuItems, ...accountMenuItems]} />
-        </div>
-      </div>
+          <div className="standalone-mobile-header flex flex-wrap items-center justify-end gap-2 px-3 pt-2 md:hidden">
+            <ShiftModeToggle mode={mode} canConfirm={canConfirm} onChangeMode={changeMode} />
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => openDialog({ export: true })} className={HEADER_BTN}>
+                書き出し
+              </button>
+              <HeaderMenu label="メニュー" items={[...adminMenuItems, ...accountMenuItems]} />
+            </div>
+          </div>
 
-      <CalendarNav
-        // 週表示でも月単位で動かすので、ラベルは常に「YYYY年M月」
-        label={format(anchorDate, "yyyy年M月", { locale: ja })}
-        view={view}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        onToday={handleToday}
-        onChangeView={setView}
-        groups={groups}
-        currentGroupId={currentGroupId}
-        onChangeGroup={onChangeGroup}
-        onCreateNewGroup={onCreateNewGroup}
-        screenSwitcher={<ScreenSwitcher screen="shifts" onChange={setScreen} />}
-      />
-      <ShiftLegend mode={mode} theme={theme} />
-      <MemberFilter
-        members={activeMembers}
-        currentMemberId={currentMember.id}
-        showCurrentMemberOnly={effectiveFilter.showCurrentMemberOnly}
-        selectedAttributes={effectiveFilter.attributes as Set<string>}
-        nameQuery={effectiveFilter.nameQuery}
-        visibleCount={filteredMembers.length}
-        nonTargetCount={nonTargets}
-        hasActiveFilter={hasActiveFilter(effectiveFilter)}
-        onSelectCurrentMember={handleSelectCurrentMember}
-        onChange={handleMemberFilterChange}
-        onChangeNameQuery={(nameQuery) => updateFilter({ nameQuery, showCurrentMemberOnly: false })}
-        onResetFilters={handleResetFilters}
-      />
+          <CalendarNav
+            // 週表示でも月単位で動かすので、ラベルは常に「YYYY年M月」
+            label={format(anchorDate, "yyyy年M月", { locale: ja })}
+            view={view}
+            onPrev={() => setAnchorDate((d) => previousMonth(d))}
+            onNext={() => setAnchorDate((d) => nextMonth(d))}
+            onToday={() => setAnchorDate(new Date())}
+            onChangeView={setView}
+            groups={groups}
+            currentGroupId={groupId}
+            onChangeGroup={onChangeGroup}
+            onCreateNewGroup={onCreateNewGroup}
+            screenSwitcher={<ScreenSwitcher screen="shifts" onChange={setScreen} />}
+          />
+          <ShiftLegend mode={mode} theme={theme} />
+          <MemberFilter
+            members={activeMembers}
+            currentMemberId={currentMember.id}
+            showCurrentMemberOnly={effectiveFilter.showCurrentMemberOnly}
+            selectedAttributes={effectiveFilter.attributes as Set<string>}
+            nameQuery={effectiveFilter.nameQuery}
+            visibleCount={filteredMembers.length}
+            nonTargetCount={nonTargets}
+            hasActiveFilter={hasActiveFilter(effectiveFilter)}
+            onSelectCurrentMember={() =>
+              updateFilter({ showCurrentMemberOnly: true, attributes: new Set() })
+            }
+            onChange={(attributes) => updateFilter({ showCurrentMemberOnly: false, attributes })}
+            onChangeNameQuery={(nameQuery) =>
+              updateFilter({ nameQuery, showCurrentMemberOnly: false })
+            }
+            onResetFilters={resetFilters}
+          />
 
-      {opError && (
-        <div className="mx-auto max-w-[1400px] px-5">
-          <p
-            role="alert"
-            className="rounded-md border border-coral-line bg-coral-wash px-3 py-2 text-[12px] font-bold text-coral"
-          >
-            {opError}
-          </p>
+          {actions.opError && (
+            <div className="mx-auto max-w-[1400px] px-5">
+              <p
+                role="alert"
+                className="rounded-md border border-coral-line bg-coral-wash px-3 py-2 text-[12px] font-bold text-coral"
+              >
+                {actions.opError}
+              </p>
+            </div>
+          )}
+
+          <main className="mx-auto max-w-[1400px] px-2 pb-[calc(146px+var(--screen-footer-h))] md:px-5 md:pb-[140px]">
+            {shifts === undefined || settings === undefined ? (
+              <p className="py-8 text-center text-sm text-ink-5">読み込み中...</p>
+            ) : shiftsError ? (
+              /* 読み込み失敗を「0件」と同じ見た目にすると、予定が無いのか取れていないのか
+                 区別できない。原因と、やり直す手段をその場に出す。 */
+              <div className="mx-auto max-w-[520px] rounded-xl border border-coral-line bg-coral-wash px-5 py-8 text-center">
+                <p role="alert" className="text-[14px] font-bold leading-relaxed text-coral">
+                  {shiftsError}
+                </p>
+                <button type="button" onClick={() => window.location.reload()} className={RETRY_BTN}>
+                  再読み込み
+                </button>
+              </div>
+            ) : emptyReason ? (
+              /* 0件のときは空の表を見せない。条件で隠れているのかが分からなくなる。 */
+              <div className="mx-auto max-w-[560px] rounded-xl border border-line bg-white px-5 py-8 text-center">
+                <p className="text-[15px] font-bold leading-relaxed text-ink-2">{emptyReason}</p>
+                {hasActiveFilter(effectiveFilter) && (
+                  <button type="button" onClick={resetFilters} className={RETRY_BTN}>
+                    条件を解除
+                  </button>
+                )}
+              </div>
+            ) : view === "list" ? (
+              <ShiftListMatrix {...common} />
+            ) : view === "month" ? (
+              <ShiftMonthGrid {...common} />
+            ) : (
+              <ShiftWeekView {...common} />
+            )}
+          </main>
+
+          <BulkEditToolbar
+            mode={mode}
+            selected={selected}
+            shifts={shifts ?? []}
+            startTime={startTime}
+            endTime={endTime}
+            busy={actions.busy}
+            onChangeStart={setStartTime}
+            onChangeEnd={setEndTime}
+            onApply={handleBulk}
+            onClear={() => setSelected(new Set())}
+            currentMemberId={currentMember.id}
+            onOpenSegmentEditor={(k) => openDialog({ editingCell: k })}
+            theme={theme}
+          />
         </div>
       )}
-
-      <main className="mx-auto max-w-[1400px] px-2 pb-[calc(146px+var(--screen-footer-h))] md:px-5 md:pb-[140px]">
-        {shifts === undefined || settings === undefined ? (
-          <p className="py-8 text-center text-sm text-ink-5">読み込み中...</p>
-        ) : shiftsError ? (
-          /* 読み込み失敗を「0件」と同じ見た目にすると、予定が無いのか取れていないのか
-             区別できない。原因と、やり直す手段をその場に出す。 */
-          <div className="mx-auto max-w-[520px] rounded-xl border border-coral-line bg-coral-wash px-5 py-8 text-center">
-            <p role="alert" className="text-[14px] font-bold leading-relaxed text-coral">
-              {shiftsError}
-            </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-4 h-[38px] rounded-md border border-line bg-white px-4 text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] active:translate-y-0.5 active:shadow-none"
-            >
-              再読み込み
-            </button>
-          </div>
-        ) : emptyReason ? (
-          /* 0件のときは空の表を見せない。条件で隠れているのかが分からなくなる。 */
-          <div className="mx-auto max-w-[560px] rounded-xl border border-line bg-white px-5 py-8 text-center">
-            <p className="text-[15px] font-bold leading-relaxed text-ink-2">{emptyReason}</p>
-            {hasActiveFilter(effectiveFilter) && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="mt-4 h-[38px] rounded-md border border-line bg-white px-4 text-[13px] font-bold text-ink-2 shadow-[0_2px_0_0_var(--color-edge)] active:translate-y-0.5 active:shadow-none"
-              >
-                条件を解除
-              </button>
-            )}
-          </div>
-        ) : view === "list" ? (
-          <ShiftListMatrix {...common} />
-        ) : view === "month" ? (
-          <ShiftMonthGrid {...common} />
-        ) : (
-          <ShiftWeekView {...common} />
-        )}
-      </main>
-
-      <BulkEditToolbar
-        mode={mode}
-        selected={selected}
-        shifts={shifts ?? []}
-        startTime={startTime}
-        endTime={endTime}
-        busy={busy}
-        onChangeStart={setStartTime}
-        onChangeEnd={setEndTime}
-        onApply={handleBulk}
-        onClear={() => setSelected(new Set())}
-        currentMemberId={currentMember.id}
-        onOpenSegmentEditor={(k) => setEditingCell(k)}
-        theme={theme}
-      />
-
-    </div>
-    )}
 
       <ScreenFooter screen={screen} onChange={setScreen} />
 
-      <Suspense fallback={null}>
-      {editingCell && settings && theme && (
-        <SegmentEditor
-          dateKey={parseSelKey(editingCell).dateKey}
-          memberName={currentMember.displayName}
-          segments={(shifts ?? []).filter(
-            (s) =>
-              s.memberId === parseSelKey(editingCell).memberId &&
-              s.date === parseSelKey(editingCell).dateKey
-          )}
-          theme={theme}
-          busy={busy}
-          maxSegments={settings.maxSegmentsPerDay}
-          onClose={() => setEditingCell(null)}
-          onSave={async (next) => {
-            await handleSegmentSave(editingCell, next);
-          }}
-        />
-      )}
-
-      {showProfileDialog && (
-        <ProfileDialog
-          member={currentMember}
-          busy={busy}
-          onClose={() => setShowProfileDialog(false)}
-          onSave={handleSaveProfile}
-        />
-      )}
-
-      {showMemberAdmin && (
-        <MemberAdmin
-          members={members}
-          currentMemberId={currentMember.id}
-          canManage={currentMember.role === "admin"}
-          busy={busy}
-          onClose={() => setShowMemberAdmin(false)}
-          onChangeRole={handleMemberRoleChange}
-          onChangeActive={handleMemberActiveChange}
-          onChangeShiftTarget={handleMemberShiftTargetChange}
-          onChangeDisplayName={handleMemberDisplayNameChange}
-          onChangeAttributes={handleMemberAttributesChange}
-        />
-      )}
-
-      {showSettingsDialog && settings && (
-        <GroupSettingsDialog
-          settings={settings}
-          shiftTypes={shiftTypes ?? DEFAULT_SHIFT_TYPES}
-          inviteUrl={`${window.location.origin}${window.location.pathname}?g=${groupId}`}
-          inviteLinkCopied={inviteLinkCopied}
-          onCopyInviteLink={handleCopyInviteLink}
-          busy={busy}
-          onClose={() => setShowSettingsDialog(false)}
-          onSave={handleSaveSettings}
-          onSaveTypes={handleSaveShiftTypes}
-        />
-      )}
-
-      {showExportDialog && theme && (
-        <ExportDialog
-          anchorDate={anchorDate}
-          groupId={groupId}
-          currentMemberId={currentMember.id}
-          theme={theme}
-          busy={busy}
-          onClose={() => setShowExportDialog(false)}
-        />
-      )}
-
-      {showShareLinkDialog && theme && (
-        <ShareLinkDialog
-          groupId={groupId}
-          currentMemberId={currentMember.id}
-          theme={theme}
-          busy={busy}
-          onClose={() => setShowShareLinkDialog(false)}
-        />
-      )}
-      </Suspense>
+      <AppDialogs
+        dialog={dialog}
+        onClose={openDialog}
+        groupId={groupId}
+        anchorDate={anchorDate}
+        currentMember={currentMember}
+        members={members}
+        shifts={shifts ?? []}
+        settings={settings}
+        shiftTypes={shiftTypes}
+        theme={theme}
+        busy={actions.busy}
+        inviteUrl={inviteUrl}
+        inviteLinkCopied={inviteLinkCopied}
+        onCopyInviteLink={handleCopyInviteLink}
+        onSaveSegments={async (key, next) => {
+          if (await actions.saveSegments(key, next)) openDialog({ editingCell: null });
+        }}
+        onSaveProfile={async (displayName) => {
+          if (await actions.saveProfile(displayName)) openDialog({ profile: false });
+        }}
+        onSaveSettings={async (patch) => {
+          if (await actions.saveSettings(patch)) openDialog({ settings: false });
+        }}
+        onSaveShiftTypes={async (types) => {
+          if (await actions.saveShiftTypes(types)) openDialog({ settings: false });
+        }}
+        onChangeMemberRole={actions.changeMemberRole}
+        onChangeMemberActive={actions.changeMemberActive}
+        onChangeMemberShiftTarget={actions.changeMemberShiftTarget}
+        onChangeMemberDisplayName={actions.changeMemberDisplayName}
+        onChangeMemberAttributes={actions.changeMemberAttributes}
+      />
     </>
   );
 }

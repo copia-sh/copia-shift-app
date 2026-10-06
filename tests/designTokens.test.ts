@@ -44,3 +44,23 @@ describe("配色はトークン経由でしか書かない", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("CSS変数の参照先が存在すること", () => {
+  it("src から参照している var(--…) は index.css で定義されている", () => {
+    const css = readFileSync(join(SRC, "index.css"), "utf8");
+    const defined = new Set(
+      [...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]),
+    );
+    // Tailwind が @theme から生成する変数は index.css に直接は現れない
+    const generated = /^--(color|spacing|font|text|radius|shadow|breakpoint)-/;
+    const offenders = files.flatMap((path) => {
+      const lines = readFileSync(path, "utf8").split("\n");
+      return lines.flatMap((line, index) =>
+        [...line.matchAll(/var\((--[a-z0-9-]+)/g)]
+          .filter(([, name]) => !defined.has(name) && !generated.test(name))
+          .map(() => `${path.replace(SRC, "src")}:${index + 1}  ${line.trim()}`),
+      );
+    });
+    expect(offenders).toEqual([]);
+  });
+});
