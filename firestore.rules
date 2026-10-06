@@ -126,9 +126,14 @@ service cloud.firestore {
         allow read: if isMember(gid);
 
         // 希望の登録は本人のみ。admin だけは代理登録もできる。必ず desired で作る。
+        // 「却下」はリーダー・管理者が付けるものなので、本人が最初から名乗ることはできない。
         allow create: if isMember(gid)
           && request.resource.data.status == 'desired'
-          && (request.resource.data.memberId == request.auth.uid || isAdmin(gid));
+          && (
+            (request.resource.data.memberId == request.auth.uid
+             && request.resource.data.type != '却下')
+            || isAdmin(gid)
+          );
 
         // 確定済みは削除できない(先に確定を取り消す)。
         // 未確定なら本人、または leader/admin が消せる。
@@ -146,7 +151,12 @@ service cloud.firestore {
             canConfirm(gid)
             || (resource.data.memberId == request.auth.uid
                 && resource.data.status == 'desired'
-                && request.resource.data.status == 'desired')
+                && request.resource.data.status == 'desired'
+                // 却下はリーダー・管理者の判断。本人が付けることも、却下されたものを
+                // 別の種別に書き換えて無かったことにすることもできない。
+                // 取り下げて出し直すこと（削除して作り直す）は今までどおりできる。
+                && resource.data.type != '却下'
+                && request.resource.data.type != '却下')
           );
       }
     }

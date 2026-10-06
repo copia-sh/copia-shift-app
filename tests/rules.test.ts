@@ -23,6 +23,29 @@ const MEMBER2 = "member2";
 const INACTIVE = "inactive1";
 const OUTSIDER = "outsider";
 
+/**
+ * ルールの検査は Firestore エミュレータ（と Java）が要る。
+ * 入っていない環境で落とすと、通常のテストの失敗と見分けがつかなくなるので飛ばす。
+ * 実際に走らせるときは `npm run emulator`。
+ */
+async function emulatorIsUp(): Promise<boolean> {
+  try {
+    await fetch("http://127.0.0.1:8080/", { signal: AbortSignal.timeout(1500) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const EMULATOR_UP = await emulatorIsUp();
+if (!EMULATOR_UP) {
+  console.warn(
+    "Firestore エミュレータに繋がらないため、ルールの検査を飛ばします（`npm run emulator` で実行できます）",
+  );
+}
+/** エミュレータが無ければ丸ごと飛ばす。 */
+const describeRules = describe.skipIf(!EMULATOR_UP);
+
 let env: RulesTestEnvironment;
 
 /** 認証済みユーザーとしての Firestore ハンドル */
@@ -55,6 +78,7 @@ const shiftDoc = (memberId: string, status: "desired" | "confirmed") => ({
 });
 
 beforeAll(async () => {
+  if (!EMULATOR_UP) return;
   env = await initializeTestEnvironment({
     projectId: "copia-shift-rules-test",
     firestore: {
@@ -66,10 +90,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (!EMULATOR_UP) return;
   await env.cleanup();
 });
 
 beforeEach(async () => {
+  if (!EMULATOR_UP) return;
   await env.clearFirestore();
   // シードはルールを無効化して投入する（ルール経由だと参加フローに依存してしまうため）
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -88,6 +114,11 @@ beforeEach(async () => {
     // 既存シフト: member1 の未確定と確定を1件ずつ
     await setDoc(doc(db, "groups", GID, "shifts", "s_pending"), shiftDoc(MEMBER, "desired"));
     await setDoc(doc(db, "groups", GID, "shifts", "s_fixed"), shiftDoc(MEMBER, "confirmed"));
+    // リーダーに却下された希望。status は desired のまま、type だけ「却下」になる。
+    await setDoc(doc(db, "groups", GID, "shifts", "s_rejected"), {
+      ...shiftDoc(MEMBER, "desired"),
+      type: "却下",
+    });
     // 別グループ（分離の確認用）
     await setDoc(doc(db, "groups", OTHER_GID), {
       name: "別グループ",
@@ -98,7 +129,7 @@ beforeEach(async () => {
   });
 });
 
-describe("読み取り", () => {
+describeRules("読み取り", () => {
   it("未ログインはシフトを読めない", async () => {
     await assertFails(getDoc(doc(anon(), "groups", GID, "shifts", "s_pending")));
   });
@@ -120,7 +151,7 @@ describe("読み取り", () => {
   });
 });
 
-describe("希望の登録", () => {
+describeRules("希望の登録", () => {
   it("メンバーは自分の希望を作れる", async () => {
     await assertSucceeds(
       setDoc(doc(as(MEMBER), "groups", GID, "shifts", "new1"), shiftDoc(MEMBER, "desired")),
@@ -146,7 +177,7 @@ describe("希望の登録", () => {
   });
 });
 
-describe("確定の権限", () => {
+describeRules("確定の権限", () => {
   const confirm = { status: "confirmed", confirmedBy: LEADER, confirmedAt: new Date() };
 
   it("一般メンバーは自分の希望すら確定できない", async () => {
@@ -172,7 +203,7 @@ describe("確定の権限", () => {
   });
 });
 
-describe("シフトの編集と削除", () => {
+describeRules("シフトの編集と削除", () => {
   it("誰も memberId を書き換えられない（リーダーでも不可）", async () => {
     await assertFails(
       updateDoc(doc(as(LEADER), "groups", GID, "shifts", "s_pending"), { memberId: MEMBER2 }),
@@ -212,9 +243,47 @@ describe("シフトの編集と削除", () => {
   it("リーダーは他人の未確定シフトを却下（削除）できる", async () => {
     await assertSucceeds(deleteDoc(doc(as(LEADER), "groups", GID, "shifts", "s_pending")));
   });
+
+  // 却下はリーダー・管理者の判断。本人が付け外しできると、却下に意味がなくなる。
+  it("メンバーは自分のシフトを自分で却下にできない", async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_pending"), { type: "却下" }),
+    );
+  });
+
+  it("メンバーは却下されたシフトを別の種別に書き換えられない", async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_rejected"), { type: "出勤" }),
+    );
+  });
+
+  it("メンバーは却下されたシフトの時刻も動かせない", async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_rejected"), { startTime: "09:00" }),
+    );
+  });
+
+  it("メンバーは最初から却下として希望を作れない", async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_new_rejected"), {
+        ...shiftDoc(MEMBER, "desired"),
+        type: "却下",
+      }),
+    );
+  });
+
+  it("却下されたシフトを取り下げる（削除する）ことはできる", async () => {
+    await assertSucceeds(deleteDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_rejected")));
+  });
+
+  it("リーダーは却下を取り消して元の種別に戻せる", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(LEADER), "groups", GID, "shifts", "s_rejected"), { type: "出勤" }),
+    );
+  });
 });
 
-describe("グループ設定", () => {
+describeRules("グループ設定", () => {
   it("一般メンバーは設定を変更できない", async () => {
     await assertFails(
       updateDoc(doc(as(MEMBER), "groups", GID, "settings", "general"), { inviteCode: "hacked" }),
@@ -238,7 +307,7 @@ describe("グループ設定", () => {
   });
 });
 
-describe("メンバー管理", () => {
+describeRules("メンバー管理", () => {
   it("管理者は自分自身のロールを変更できない（最後の管理者の保護）", async () => {
     await assertFails(
       updateDoc(doc(as(ADMIN), "groups", GID, "members", ADMIN), { role: "member" }),
@@ -296,7 +365,7 @@ describe("メンバー管理", () => {
   });
 });
 
-describe("グループへの参加", () => {
+describeRules("グループへの参加", () => {
   it("招待コードが一致すればメンバーとして参加できる", async () => {
     await assertSucceeds(
       setDoc(doc(as(OUTSIDER), "groups", GID, "members", OUTSIDER), {
@@ -343,7 +412,7 @@ describe("グループへの参加", () => {
   });
 });
 
-describe("グループ作成", () => {
+describeRules("グループ作成", () => {
   it("ログイン済みなら自分をオーナーとしてグループを作れる", async () => {
     await assertSucceeds(
       setDoc(doc(as(OUTSIDER), "groups", "newgroup"), {
@@ -391,7 +460,7 @@ describe("グループ作成", () => {
   });
 });
 
-describe("共有リンク(shareLinks)", () => {
+describeRules("共有リンク(shareLinks)", () => {
   const shareLink = (memberId: string) => ({
     memberId,
     statuses: ["confirmed"],
@@ -511,7 +580,7 @@ describe("共有リンク(shareLinks)", () => {
   });
 });
 
-describe("所属グループの逆引き(users)", () => {
+describeRules("所属グループの逆引き(users)", () => {
   it("自分のドキュメントは読み書きできる", async () => {
     await assertSucceeds(setDoc(doc(as(MEMBER), "users", MEMBER), { groupIds: [GID] }));
     await assertSucceeds(getDoc(doc(as(MEMBER), "users", MEMBER)));
@@ -530,7 +599,7 @@ describe("所属グループの逆引き(users)", () => {
   });
 });
 
-describe("タスク表(taskBoard)", () => {
+describeRules("タスク表(taskBoard)", () => {
   const board = { syncedAt: 1, sourceUrl: "https://docs.google.com/spreadsheets/d/x/edit", payload: "{}" };
 
   beforeEach(async () => {
