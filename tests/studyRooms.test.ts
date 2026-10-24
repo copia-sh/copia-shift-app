@@ -53,6 +53,12 @@ describe("calendar projection", () => {
   it("fails on changed source structure", () => {
     expect(() => parseCalendarTab({ properties: { title: "10月", sheetId: 1 }, data: [] }, spreadsheetId)).toThrow();
   });
+  it("leaves the known legacy seminar layout outside coverage instead of claiming no study rooms", () => {
+    const legacy = { properties: { title: "6月セミナーカレンダー", sheetId: 1 }, data: [{ rowData: [{ values:
+      ["", "曜日", "開始", "伊藤さんメモ欄", "担当者", "テーマ・タイトル", "Zoomリンク"].map((formattedValue) => ({ formattedValue }))
+    }] }] };
+    expect(parseCalendarTab(legacy, spreadsheetId)).toEqual({ coveredMonths: [], uncertainDates: [], sessions: [] });
+  });
 });
 
 it("links the scheduled circle directly to the session, rather than to the calendar", () => {
@@ -135,7 +141,7 @@ it("writes only the calendar projection and verified index links after all reads
   const calendar = tab([["2026/10/23", "金", "19:00:00", "田村", "", "自習室"]]);
   let call = 0;
   const replies = [
-    { sheets: [{ properties: { title: calendar.properties.title, sheetId: 123, gridProperties: { rowCount: 100 } } }] },
+    { sheets: [{ properties: { title: calendar.properties.title + " ", sheetId: 123, gridProperties: { rowCount: 100 } } }] },
     { sheets: [calendar] },
     { values: [["開催日", "開始", "Googleフォーム", "集計スプレッドシート", "Slack出典", "実施確認"],
       ["2026-10-23", "19:00", formUrl, resultsUrl, "https://example.slack.com/archives/C123/p1792742307681749", "実施済み"]] },

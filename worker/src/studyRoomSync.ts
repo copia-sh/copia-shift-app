@@ -19,7 +19,16 @@ export function calendarDate(value: string): string | null {
 export function parseCalendarTab(tab: CalendarTab, spreadsheetId: string) {
   const rows = tab.data?.[0]?.rowData ?? [];
   const headerIndex = rows.findIndex((r) => r.values?.some((c) => normalize(text(c)) === "日付"));
-  if (headerIndex < 0) throw new Error("study room calendar header missing");
+  if (headerIndex < 0) {
+    // 6月以前の旧セミナー表には自習室の判定列がない。予定なしとはせず取得範囲外にする。
+    const legacyHeader = rows[0]?.values?.map((c) => normalize(text(c))) ?? [];
+    if (legacyHeader[0] === "" && legacyHeader[1] === "曜日" && legacyHeader[2] === "開始"
+      && legacyHeader[3] === "伊藤さんメモ欄" && legacyHeader.includes("テーマ・タイトル")
+      && legacyHeader.includes("Zoomリンク") && !legacyHeader.includes("自習室")) {
+      return { coveredMonths: [], uncertainDates: [], sessions: [] };
+    }
+    throw new Error(`study room calendar header missing: ${tab.properties.title}`);
+  }
   const header = rows[headerIndex].values!.map((c) => normalize(text(c)));
   const dateCol = header.indexOf("日付"), timeCol = header.indexOf("開始"), roomCol = header.indexOf("自習室");
   const titleCol = header.indexOf("カレンダー用タイトル");
@@ -104,7 +113,7 @@ export async function syncStudyRooms({ firestore, groupId, spreadsheetId, survey
     return response.json();
   };
   const metadata = await read(`${base}?fields=sheets(properties(sheetId,title,gridProperties(rowCount)))`) as { sheets?: (CalendarTab & { properties: { gridProperties?: { rowCount?: number } } })[] };
-  const monthTabs = metadata.sheets?.filter((s) => /^(?:\d{4}年)?\d{1,2}月セミナーカレンダー$/.test(s.properties.title)) ?? [];
+  const monthTabs = metadata.sheets?.filter((s) => /^(?:\d{4}年)?\d{1,2}月セミナーカレンダー$/.test(s.properties.title.trim())) ?? [];
   if (!monthTabs.length) throw new Error("study room calendar tabs missing");
   // 既存タブの実数を確認し、取得上限を越える構造なら省略せず失敗させる。
   if (monthTabs.length > 24 || monthTabs.some((s) => (s.properties.gridProperties?.rowCount ?? 0) > 1500)) throw new Error("study room calendar exceeds read bounds");
