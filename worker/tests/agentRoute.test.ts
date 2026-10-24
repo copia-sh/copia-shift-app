@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import worker, { type Env } from "../src/index";
-import { toJstDateKey } from "../src/feed";
+import { toJstDateKey } from "../src/jstDate";
 import { MIN_AGENT_TOKEN_LENGTH } from "../src/agentAuth";
 
 // 実運用と同じ強度(32文字以上)。短いトークンはWorker側で無効扱いになる。

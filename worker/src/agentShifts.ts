@@ -274,7 +274,7 @@ export async function buildAgentShifts({
   ]);
 
   // クエリ結果を過信しない(Firestoreはサービスアカウントの管理者権限で読んでいるため、
-  // ここで絞らないと他人・他日のシフトがそのまま外へ出る)。feed.ts と同じ多層防御。
+  // ここで絞らないと他人・他日のシフトがそのまま外へ出る)。ほかの読み取り経路と同じ多層防御。
   const segments = shiftDocs
     .filter((doc) => doc.data.memberId === member.memberId && doc.data.date === date)
     .map((doc) => toSegment(doc.data, typeInfoByKey))

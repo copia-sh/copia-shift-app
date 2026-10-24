@@ -1,4 +1,4 @@
-import { toJstDateKey } from "./feed";
+import { toJstDateKey } from "./jstDate";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];

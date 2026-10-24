@@ -9,13 +9,9 @@ compatibility_date = "2025-01-01"
 #
 # AGENT_GROUP_ID   運用エージェント向けAPI(`/agent/shifts`)が読むグループ。
 #                  空のままなら、そのAPIは無効(404)のまま。
-# ICS_FEED_ENABLED カレンダー購読フィード(`/feed/...`)を使うかどうか。"true" のときだけ有効。
-#                  既定は無効。使うつもりが無い機能を、サービスアカウント鍵を設定しただけで
-#                  公開してしまわないようにするため(worker/README.md 参照)。
 [vars]
 FIREBASE_PROJECT_ID = "copia-shift-app"
 AGENT_GROUP_ID = "2iogHeS5UYKAJKccFwqk"
-ICS_FEED_ENABLED = "true"
 # SHIFT_SYNC_ENABLED  シフトのスプレッドシート同期。"true" のときだけ Cron が動く。
 #                     Google Sheets API の有効化と、サービスアカウントへの編集共有が
 #                     完了後に true へ切り替える。

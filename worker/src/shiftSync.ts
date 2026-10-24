@@ -1,6 +1,6 @@
 import { buildShiftSyncPayloads, type ShiftSyncPayload } from "./agentShifts";
 import type { FirestoreClient } from "./firestoreRest";
-import { toJstDateKey } from "./feed";
+import { toJstDateKey } from "./jstDate";
 import { buildShiftMatrix, matrixDates, matrixKey } from "./shiftMatrix";
 import { REJECTED_TYPE } from "../../src/types";
 import { formatSpreadsheetSegment } from "../../src/utils/ical";

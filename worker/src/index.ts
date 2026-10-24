@@ -1,7 +1,6 @@
 import { parseServiceAccountKey, fetchAccessToken, SPREADSHEETS_SCOPE } from "./googleAuth";
 import { createFirestoreClient, type FirestoreWriteClient } from "./firestoreRest";
-import { buildFeed, toJstDateKey } from "./feed";
-import { isValidPathSegment } from "./pathSegment";
+import { toJstDateKey } from "./jstDate";
 import { isAuthorizedAgentRequest, isTokenStrongEnough, MIN_AGENT_TOKEN_LENGTH } from "./agentAuth";
 import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShifts";
 import { handleMcpRequest } from "./mcp";
@@ -41,12 +40,6 @@ export interface Env {
    */
   FIRESTORE_EMULATOR_HOST?: string;
   /**
-   * カレンダー購読フィード(`/feed/...`)を有効にするかどうか。文字列 `"true"` のときだけ有効。
-   * 既定では無効で、経路そのものが404になる。使うつもりが無い機能を、サービスアカウント鍵を
-   * 設定しただけで公開してしまわないようにするため(フェイルクローズ)。
-   */
-  ICS_FEED_ENABLED?: string;
-  /**
    * 運用エージェント向けAPIが参照するグループ。1グループに固定し、APIでは受け付けない
    * (シークレットが漏れた場合の影響範囲を、このグループだけに閉じるため)。
    */
@@ -80,7 +73,6 @@ export interface Env {
   TASK_API_ALLOWED_ORIGIN?: string;
 }
 
-const FEED_PATH = /^\/feed\/([^/]+)\/([^/]+)\.ics$/;
 const AGENT_SHIFTS_PATH = "/agent/shifts";
 const MCP_PATH = "/mcp";
 
@@ -194,49 +186,11 @@ async function runScheduledJobs(jobs: Promise<void>[]): Promise<void> {
   if (failed) throw failed.reason;
 }
 
-/**
- * フィードが有効かどうか。`"true"` 以外(未設定・空・"false"・大文字・前後の空白付きを含む)は
- * すべて無効として扱う。設定ミスで意図せず公開されるより、有効化に気づかないほうが安全。
- */
-function isFeedEnabled(env: Env): boolean {
-  return env.ICS_FEED_ENABLED === "true";
-}
-
-/** `GET /feed/{groupId}/{token}.ics` — カレンダーアプリ向けの購読フィード。 */
-async function handleFeed(env: Env, groupIdRaw: string, tokenRaw: string): Promise<Response> {
-  // %2F はここで初めて `/` に戻る(ルーティングの正規表現はデコード前の文字列にしか効かない)。
-  // 不正な文字が混じっていれば、Firestoreへの往復もOAuthトークン取得も行わずここで弾く。
-  const groupId = decodeURIComponent(groupIdRaw);
-  const token = decodeURIComponent(tokenRaw);
-  if (!isValidPathSegment(groupId) || !isValidPathSegment(token)) return notFound();
-
-  try {
-    const firestore = await connectFirestore(env);
-    const result = await buildFeed({ firestore, groupId, token });
-    if (!result.ok) return notFound();
-
-    return new Response(result.icalendar, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/calendar; charset=utf-8",
-        // カレンダーアプリの定期的なポーリングを想定した短時間キャッシュ。
-        // no-store にすると更新のたびにFirestore/OAuth往復が走ってしまう。
-        "Cache-Control": "private, max-age=300",
-      },
-    });
-  } catch (error) {
-    // サービスアカウント鍵の設定ミス・Google側の一時的な障害・Firestoreのインデックス不足など。
-    // ここで拾わないと Cloudflare の素の 1101 エラーページが出て原因が追えなくなる。
-    console.error("copia-shift-ics-feed: failed to build feed", error);
-    return new Response("internal error", { status: 500 });
-  }
-}
-
 /** `GET /agent/shifts?date=YYYY-MM-DD&name=氏名` — 運用エージェント向けの読み取り専用API。 */
 async function handleAgentShifts(request: Request, url: URL, env: Env): Promise<Response> {
   const groupId = env.AGENT_GROUP_ID;
   const expectedToken = env.AGENT_API_TOKEN;
-  // フィードと同じく任意機能。未設定なら、そもそもこのパスが存在しないものとして扱う。
+  // 任意機能。未設定なら、そもそもこのパスが存在しないものとして扱う。
   if (!groupId || !expectedToken) return notFound();
 
   // 短いシークレットは総当たりされうる。黙って通さず、無効のまま理由をログに残す。
@@ -335,11 +289,7 @@ export default {
     if (url.pathname === AGENT_SHIFTS_PATH) {
       return handleAgentShifts(request, url, env);
     }
-
-    const match = FEED_PATH.exec(url.pathname);
-    // 無効時はFirestoreへの往復もOAuthトークン取得も行わず、経路が無いものとして返す。
-    if (!match || !isFeedEnabled(env)) return notFound();
-    return handleFeed(env, match[1], match[2]);
+    return notFound();
   },
   // waitUntil ではなく await する。waitUntil だと同期の成否に関わらず実行が成功扱いになり、
   // Cron の実行履歴から失敗を読み取れない。

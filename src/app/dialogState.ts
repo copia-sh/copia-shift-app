@@ -7,7 +7,6 @@ export interface DialogState {
   memberAdmin: boolean;
   settings: boolean;
   export: boolean;
-  shareLink: boolean;
 }
 
 export const NO_DIALOG: DialogState = {
@@ -16,5 +15,4 @@ export const NO_DIALOG: DialogState = {
   memberAdmin: false,
   settings: false,
   export: false,
-  shareLink: false,
 };

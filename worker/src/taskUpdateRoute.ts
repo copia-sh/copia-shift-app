@@ -1,5 +1,5 @@
 import type { FirestoreWriteClient } from "./firestoreRest";
-import { toJstDateKey } from "./feed";
+import { toJstDateKey } from "./jstDate";
 import { buildRowUpdates, parseTaskUpdate, type CellWrite } from "./taskUpdate";
 import { ROUTINE_SHEET_TITLE, syncTaskBoard, TASK_SHEET_TITLE } from "./taskSync";
 

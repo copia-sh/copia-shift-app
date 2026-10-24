@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ローカルのFirestoreエミュレータに、Workerの2つのエンドポイントを試すためのダミーデータを入れる。
+ * ローカルのFirestoreエミュレータに、Workerの運用エージェント向けAPIを試すためのダミーデータを入れる。
  * 実際のFirebaseプロジェクト・サービスアカウント鍵は不要(FIRESTORE_EMULATOR_HOST 経由)。
  *
  * 使い方:
@@ -26,7 +26,6 @@ const db = getFirestore();
 
 const GROUP_ID = "demo-group";
 const MEMBER_ID = "demo-member";
-const TOKEN = "dev-seed-token-0123456789abcdef";
 
 /** Asia/Tokyo 基準の暦日。Shift.date と、エージェントAPIの既定日(本日)に合わせる。 */
 function jstDayPlus(days) {
@@ -50,13 +49,6 @@ await db.doc(`groups/${GROUP_ID}/members/${MEMBER_ID}`).set({
   joinedAt: Timestamp.now(),
 });
 
-await db.doc(`groups/${GROUP_ID}/shareLinks/${TOKEN}`).set({
-  memberId: MEMBER_ID,
-  statuses: ["confirmed"],
-  typeKeys: ["出勤", "リモート"],
-  createdAt: Timestamp.now(),
-});
-
 const shifts = [
   // 本日分は2区分に分けてある。エージェントAPIの workStart/workEnd が
   // 区分をまたいで 10:00-18:00 にまとまることを確認するため。
@@ -64,7 +56,7 @@ const shifts = [
   { date: jstDayPlus(0), status: "confirmed", type: "リモート", startTime: "14:00", endTime: "18:00" },
   { date: jstDayPlus(1), status: "confirmed", type: "出勤", startTime: "09:00", endTime: "17:00" },
   { date: jstDayPlus(2), status: "confirmed", type: "リモート", startTime: null, endTime: null },
-  { date: jstDayPlus(3), status: "desired", type: "出勤", startTime: "09:00", endTime: "17:00" }, // 希望のみ→フィードに出ないはず
+  { date: jstDayPlus(3), status: "desired", type: "出勤", startTime: "09:00", endTime: "17:00" }, // 希望のみ
 ];
 
 for (const [i, shift] of shifts.entries()) {
@@ -81,12 +73,8 @@ for (const [i, shift] of shifts.entries()) {
 
 console.log("投入完了。");
 console.log(`  groupId: ${GROUP_ID}`);
-console.log(`  token:   ${TOKEN}`);
 console.log(
   "  試す: curl -H 'Authorization: Bearer <AGENT_API_TOKEN>' " +
     `'http://127.0.0.1:8787/agent/shifts?name=${encodeURIComponent("開発用ユーザー")}'`,
-);
-console.log(
-  `  カレンダーフィード(ICS_FEED_ENABLED=true のときだけ): curl http://127.0.0.1:8787/feed/${GROUP_ID}/${TOKEN}.ics`,
 );
 process.exit(0);
