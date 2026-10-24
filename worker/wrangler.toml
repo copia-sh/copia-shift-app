@@ -29,6 +29,12 @@ TASK_SYNC_ENABLED = "true"
 TASK_EDIT_ENABLED = "true"
 TASK_API_ALLOWED_ORIGIN = "https://copia-sh.github.io"
 
+# 一覧の自習室予定。サービスアカウントへの閲覧共有・secret登録後に有効化する。
+# STUDY_ROOM_CALENDAR_SPREADSHEET_ID / STUDY_ROOM_SURVEY_SPREADSHEET_ID は secret。
+# Slackを読んだ運用エージェントが、管理表「自習室アンケート」へ開催回とリンクを記録する。
+STUDY_ROOM_SYNC_ENABLED = "false"
+STUDY_ROOM_SURVEY_SHEET_TITLE = "自習室アンケート"
+
 # 5分ごとに実行し、そのうち0分・30分の回だけ `シフト月間表`(30日分)も書く。
 # 30日分を5分ごとに読むとFirestoreの無料枠(1日50,000読み取り)を超えるため、
 # 人が読む表は頻度を落とす。判定は実行時刻で行う(worker/src/index.ts の

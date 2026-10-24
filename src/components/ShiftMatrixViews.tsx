@@ -30,6 +30,8 @@ import { REJECTED_TYPE } from "../types";
 import { formatHours, summarizeWorkHours, type WorkHoursSummary } from "./workHours";
 import type { Shift, Group } from "../types";
 import { COLOR, WHITE } from "../theme/palette";
+import { StudyRoomLegend, StudyRoomRow } from "./StudyRoomRow";
+import type { StudyRoomState } from "../studyRooms";
 
 /* ------------------------------------------------------------------ 共通 */
 
@@ -273,7 +275,8 @@ export function ShiftListMatrix({
   onToggleMany,
   showTimes = true,
   density = "compact",
-}: ViewCommon) {
+  studyRooms = { kind: "unavailable" },
+}: ViewCommon & { studyRooms?: StudyRoomState }) {
   const comfy = density === "comfortable";
   const colW = showTimes ? (comfy ? 56 : 48) : comfy ? 42 : 34;
   const rowH = comfy ? 62 : 50;
@@ -490,7 +493,9 @@ export function ShiftListMatrix({
             </div>
           ))}
         </div>
+        <StudyRoomRow dates={dayMeta.map((d) => d.dateKey)} nameWidth={nameW} columnWidth={colW} state={studyRooms} />
       </div>
+      <StudyRoomLegend />
       {peekMember && (
         <MemberHoursPopover
           peek={peek!}

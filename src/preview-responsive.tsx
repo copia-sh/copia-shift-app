@@ -14,6 +14,7 @@ import { buildShiftTheme } from "./components/shiftTheme";
 import { DEFAULT_GROUP_SETTINGS, DEFAULT_SHIFT_TYPES } from "./types";
 import type { Member, Shift } from "./types";
 import { COLOR, MEMBER_COLORS } from "./theme/palette";
+import type { StudyRoomState } from "./studyRooms";
 
 type PreviewView = "list" | "month" | "week";
 
@@ -63,12 +64,24 @@ const shifts: Shift[] = [
 }));
 
 export function Preview() {
-  const [view, setView] = useState<PreviewView>("month");
+  const studyRoomPreview = new URLSearchParams(window.location.search).has("studyRooms");
+  const [view, setView] = useState<PreviewView>(studyRoomPreview ? "list" : "month");
   const [count, setCount] = useState(4);
+  const [previewSyncedAt] = useState(Date.now);
   // 本体と同じく、シフト表に載せるのは対象のメンバーだけ
   const selectedMembers = members.slice(0, count);
   const visibleMembers = shiftTargetMembers(selectedMembers);
   const theme = buildShiftTheme(DEFAULT_SHIFT_TYPES);
+  const studyRooms: StudyRoomState = { kind: "ready", board: {
+    syncedAt: previewSyncedAt, coveredMonths: ["2026-08"],
+    sessions: [
+      { id: "sample-1", date: "2026-08-03", startTime: "19:00", sourceUrl: "https://docs.google.com/spreadsheets/d/preview/edit",
+        formUrl: "https://docs.google.com/forms/d/preview/edit", resultsUrl: "https://docs.google.com/spreadsheets/d/preview-results/edit" },
+      { id: "sample-2", date: "2026-08-04", startTime: "13:00", sourceUrl: "https://docs.google.com/spreadsheets/d/preview/edit",
+        formUrl: "https://docs.google.com/forms/d/preview/edit" },
+      { id: "sample-3", date: "2026-08-06", startTime: "19:00", title: "自習室", content: "AIの使い方・講座の質問相談", sourceUrl: "https://docs.google.com/spreadsheets/d/preview/edit", joinUrl: "https://us06web.zoom.us/j/12345678900" },
+    ],
+  } };
   const common = {
     anchorDate: new Date(2026, 7, 1),
     members: visibleMembers,
@@ -128,7 +141,7 @@ export function Preview() {
       />
       <main className="mx-auto max-w-[1400px] px-2 pb-10 md:px-5">
         {view === "list" ? (
-          <ShiftListMatrix {...common} />
+          <ShiftListMatrix {...common} studyRooms={studyRoomPreview ? studyRooms : undefined} />
         ) : view === "month" ? (
           <ShiftMonthGrid {...common} />
         ) : (

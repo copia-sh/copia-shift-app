@@ -6,6 +6,7 @@ import { buildAgentShifts, isValidAgentName, isValidDateKey } from "./agentShift
 import { handleMcpRequest } from "./mcp";
 import { syncShiftSheet } from "./shiftSync";
 import { syncTaskBoard } from "./taskSync";
+import { syncStudyRooms } from "./studyRoomSync";
 import { handleTaskUpdate, TASK_UPDATE_PATH } from "./taskUpdateRoute";
 import { verifyFirebaseIdToken } from "./firebaseIdToken";
 
@@ -71,6 +72,10 @@ export interface Env {
   TASK_EDIT_ENABLED?: string;
   /** アプリを配信しているオリジン。タスク更新の CORS で、これ以外からの呼び出しを断る。 */
   TASK_API_ALLOWED_ORIGIN?: string;
+  STUDY_ROOM_SYNC_ENABLED?: string;
+  STUDY_ROOM_CALENDAR_SPREADSHEET_ID?: string;
+  STUDY_ROOM_SURVEY_SPREADSHEET_ID?: string;
+  STUDY_ROOM_SURVEY_SHEET_TITLE?: string;
 }
 
 const AGENT_SHIFTS_PATH = "/agent/shifts";
@@ -186,6 +191,19 @@ async function runScheduledJobs(jobs: Promise<void>[]): Promise<void> {
   if (failed) throw failed.reason;
 }
 
+async function handleScheduledStudyRoomSync(env: Env): Promise<void> {
+  if (env.STUDY_ROOM_SYNC_ENABLED !== "true") return;
+  if (!env.AGENT_GROUP_ID || !env.STUDY_ROOM_CALENDAR_SPREADSHEET_ID) throw new Error("study room sync is not configured");
+  const [firestore, accessToken] = await Promise.all([
+    connectFirestore(env),
+    fetchAccessToken(parseServiceAccountKey(env.FIREBASE_SERVICE_ACCOUNT_KEY), { scopes: [SPREADSHEETS_SCOPE] }),
+  ]);
+  await syncStudyRooms({ firestore, accessToken, groupId: env.AGENT_GROUP_ID,
+    spreadsheetId: env.STUDY_ROOM_CALENDAR_SPREADSHEET_ID,
+    surveySpreadsheetId: env.STUDY_ROOM_SURVEY_SPREADSHEET_ID,
+    surveySheetTitle: env.STUDY_ROOM_SURVEY_SHEET_TITLE });
+}
+
 /** `GET /agent/shifts?date=YYYY-MM-DD&name=氏名` — 運用エージェント向けの読み取り専用API。 */
 async function handleAgentShifts(request: Request, url: URL, env: Env): Promise<Response> {
   const groupId = env.AGENT_GROUP_ID;
@@ -263,7 +281,7 @@ export default {
       if (!(await isAuthorizedAgentRequest(request.headers.get("Authorization"), token))) return jsonError(401, "unauthorized");
       try {
         // 手動起動は「今すぐ全部更新したい」ときに使うので、月間表とタスク表も書く。
-        await runScheduledJobs([handleScheduledSync(env, true), handleScheduledTaskSync(env)]);
+        await runScheduledJobs([handleScheduledSync(env, true), handleScheduledTaskSync(env), handleScheduledStudyRoomSync(env)]);
         return jsonResponse(200, { ok: true });
       } catch {
         return jsonError(500, "sync_failed");
@@ -298,7 +316,7 @@ export default {
     const now = new Date();
     await runScheduledJobs([
       handleScheduledSync(env, shouldIncludeMatrix(now)),
-      ...(shouldSyncTasks(now) ? [handleScheduledTaskSync(env)] : []),
+      ...(shouldSyncTasks(now) ? [handleScheduledTaskSync(env), handleScheduledStudyRoomSync(env)] : []),
     ]);
   },
 };

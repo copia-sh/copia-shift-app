@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useScreen } from "./hooks/useScreen";
+import { useStudyRooms } from "./hooks/useStudyRooms";
 import { ScreenFooter, ScreenSwitcher } from "./components/ScreenSwitcher";
 // タスク画面はタブを切り替えたときに読み込む。初期表示には要らない。
 const TaskBoardScreen = lazy(() =>
@@ -86,6 +87,7 @@ function ShiftCalendar({
 }: ResolvedGroup & { uid: string }) {
   const [view, setView] = useState<ViewMode>("list");
   const [screen, setScreen] = useScreen();
+  const studyRooms = useStudyRooms(groupId, screen === "shifts" && view === "list");
   const [mode, setMode] = useState<ShiftMode>("single");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
@@ -346,7 +348,7 @@ function ShiftCalendar({
                 )}
               </div>
             ) : view === "list" ? (
-              <ShiftListMatrix {...common} />
+              <ShiftListMatrix {...common} studyRooms={studyRooms} />
             ) : view === "month" ? (
               <ShiftMonthGrid {...common} />
             ) : (
