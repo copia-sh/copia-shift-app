@@ -202,8 +202,7 @@ function JoinGroupForm({
       <input
         type="text"
         required
-        minLength={6}
-        placeholder="招待コード(6文字以上)"
+        placeholder="招待コード"
         value={inviteCode}
         onChange={(e) => setInviteCode(e.target.value)}
         className={FIELD}
