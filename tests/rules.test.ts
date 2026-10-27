@@ -8,7 +8,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, type Firestore } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, deleteField, type Firestore } from "firebase/firestore";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -279,6 +279,18 @@ describeRules("シフトの編集と削除", () => {
   it("リーダーは却下を取り消して元の種別に戻せる", async () => {
     await assertSucceeds(
       updateDoc(doc(as(LEADER), "groups", GID, "shifts", "s_rejected"), { type: "出勤" }),
+    );
+  });
+
+  it("リーダーは元の種別を控えて却下でき、取消でその控えを消せる", async () => {
+    const ref = doc(as(LEADER), "groups", GID, "shifts", "s_pending");
+    await assertSucceeds(updateDoc(ref, { type: "却下", rejectedFromType: "出勤" }));
+    await assertSucceeds(updateDoc(ref, { type: "出勤", rejectedFromType: deleteField() }));
+  });
+
+  it("メンバーは控えの種別を書き換えても却下を外せない", async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), "groups", GID, "shifts", "s_rejected"), { rejectedFromType: deleteField() }),
     );
   });
 });

@@ -5,6 +5,8 @@ import {
   confirmShift,
   revertShiftToDesired,
   updateShiftDetails,
+  rejectShift,
+  unrejectShift,
 } from "../firebase/shifts";
 import {
   updateMemberRole,
@@ -18,6 +20,8 @@ import { cellStatesOf, parseSelKey, primaryCellState } from "../components/shift
 import type { BulkOp, CellState, SelKey } from "../components/shiftVisual";
 import type { ShiftTheme } from "../components/shiftTheme";
 import { describeWriteError } from "../utils/errorMessage";
+import { rejectedFromTypeOf, restoredTypeOf } from "./rejection";
+import { DEFAULT_SHIFT_TYPES } from "../types";
 import type {
   GroupSettings,
   Member,
@@ -122,10 +126,25 @@ export function useShiftActions({ groupId, uid, currentMember, shifts, theme }: 
             await deleteShiftsBulk(groupId, ids);
           }
         } else if (op.kind === "reject") {
-          const ids = targets
-            .filter((t) => t.shifts.length > 0 && t.state.kind !== "fixed")
-            .flatMap((t) => t.shifts.map((s) => s.id));
-          await Promise.all(ids.map((id) => updateShiftDetails(groupId, id, { type: "却下" })));
+          const shiftsToReject = targets
+            .filter((t) => t.state.kind !== "fixed")
+            .flatMap((t) => t.shifts);
+          await Promise.all(
+            shiftsToReject.flatMap((s) => {
+              const fromType = rejectedFromTypeOf(s);
+              return fromType === null ? [] : [rejectShift(groupId, s.id, fromType)];
+            }),
+          );
+        } else if (op.kind === "unreject") {
+          const types = theme?.types ?? DEFAULT_SHIFT_TYPES;
+          await Promise.all(
+            targets.flatMap((t) =>
+              t.shifts.flatMap((s) => {
+                const type = restoredTypeOf(s, types);
+                return type === null ? [] : [unrejectShift(groupId, s.id, type)];
+              }),
+            ),
+          );
         } else if (op.kind === "time") {
           const ids = targets.flatMap((t) => t.shifts.map((s) => s.id));
           await Promise.all(
@@ -146,7 +165,7 @@ export function useShiftActions({ groupId, uid, currentMember, shifts, theme }: 
         }
       },
       {
-        denied: "この操作を行う権限がありません（確定・却下は管理者とリーダーのみ）",
+        denied: "この操作を行う権限がありません（確定・却下とその取消は管理者とリーダーのみ）",
         failed: RETRY_MESSAGE,
       },
     );

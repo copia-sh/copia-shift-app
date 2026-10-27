@@ -155,7 +155,7 @@ export function CalendarNav({
 const MODE_HINT: Record<ShiftMode, string> = {
   single: "自分のセルをタップ → 希望・不可を1段階ずつ切替",
   multi: "自分のセルを複数選択 → 下のバーでまとめて適用",
-  review: "誰のセルでも選択 → 確定 / 取消 / 却下",
+  review: "誰のセルでも選択 → 確定 / 取消 / 却下 / 却下を取消",
 };
 
 export function ShiftLegend({
@@ -636,6 +636,14 @@ export function BulkEditToolbar({
               className={`${btn} border border-coral-line bg-coral-wash text-coral`}
             >
               却下
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onApply({ kind: "unreject" })}
+              className={`${btn} border border-line bg-white text-ink-2`}
+            >
+              却下を取消
             </button>
           </div>
         ) : (

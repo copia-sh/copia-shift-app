@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   onSnapshot,
   query,
@@ -28,6 +29,7 @@ function toShift(id: string, data: Record<string, unknown>): Shift {
     confirmedBy: (data.confirmedBy as string) ?? null,
     confirmedAt: toMillis(data.confirmedAt),
     updatedAt: toMillis(data.updatedAt),
+    rejectedFromType: (data.rejectedFromType as string) ?? null,
   };
 }
 
@@ -135,4 +137,16 @@ export async function updateShiftDetails(
 ): Promise<void> {
   const ref = doc(db, "groups", groupId, "shifts", shiftId);
   await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
+}
+
+/** 却下する。取り消したときに戻せるよう、元の種別を残しておく。 */
+export async function rejectShift(groupId: string, shiftId: string, fromType: ShiftType): Promise<void> {
+  const ref = doc(db, "groups", groupId, "shifts", shiftId);
+  await updateDoc(ref, { type: "却下", rejectedFromType: fromType, updatedAt: serverTimestamp() });
+}
+
+/** 却下を取り消して、渡された種別（元の種別）に戻す。 */
+export async function unrejectShift(groupId: string, shiftId: string, type: ShiftType): Promise<void> {
+  const ref = doc(db, "groups", groupId, "shifts", shiftId);
+  await updateDoc(ref, { type, rejectedFromType: deleteField(), updatedAt: serverTimestamp() });
 }

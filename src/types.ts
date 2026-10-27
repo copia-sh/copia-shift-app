@@ -88,6 +88,8 @@ export interface Shift {
   confirmedBy: string | null;
   confirmedAt: number | null;
   updatedAt: number | null;
+  /** 却下されたときの元の種別。却下を取り消すときに戻す。それ以外・この欄を入れる前に却下されたものは無い */
+  rejectedFromType?: ShiftType | null;
 }
 
 export interface GroupSettings {

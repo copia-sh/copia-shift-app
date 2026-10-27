@@ -129,6 +129,7 @@ export type BulkOp =
   | { kind: "confirm" }
   | { kind: "revert" }
   | { kind: "reject" }
+  | { kind: "unreject" }
   | { kind: "time"; startTime: string | null; endTime: string | null };
 
 export const TIME_CHOICES = (() => {
